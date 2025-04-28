@@ -438,12 +438,31 @@ def demote_user(user_id):
 @app.route('/matches')
 @login_required
 def matches():
-    risultati = carica_risultati()
-    
-    # Ordina i risultati per data (più recenti prima)
-    risultati.sort(key=lambda x: datetime.strptime(x.get('data_partita', '01/01/2000'), '%d/%m/%Y'), reverse=True)
-    
-    return render_template('matches.html', risultati=risultati)
+    try:
+        risultati = carica_risultati()
+        
+        # Funzione sicura per convertire la data
+        def safe_date_convert(match):
+            try:
+                data = match.get('data_partita')
+                if data is None or data == '':
+                    return datetime.strptime('01/01/2000', '%d/%m/%Y')
+                return datetime.strptime(data, '%d/%m/%Y')
+            except (ValueError, TypeError) as e:
+                app.logger.warning(f"Errore nella conversione della data: {e}, match: {match}")
+                return datetime.strptime('01/01/2000', '%d/%m/%Y')
+        
+        # Ordina i risultati per data (più recenti prima)
+        try:
+            risultati.sort(key=safe_date_convert, reverse=True)
+        except Exception as e:
+            app.logger.error(f"Errore nell'ordinamento delle partite: {e}")
+        
+        return render_template('matches.html', risultati=risultati)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina matches: {e}")
+        flash(f"Si è verificato un errore nel caricamento delle partite: {str(e)}", "danger")
+        return render_template('matches.html', risultati=[])
 
 # Rotta per aggiungere una nuova partita
 @app.route('/match/add', methods=['GET', 'POST'])

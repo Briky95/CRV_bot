@@ -44,13 +44,13 @@
                 <tbody>
                     {% for partita in risultati %}
                     <tr>
-                        <td>{{ partita.data_partita }}</td>
-                        <td>{{ partita.categoria }}</td>
-                        <td>{{ partita.genere }}</td>
-                        <td>{{ partita.squadra1 }} vs {{ partita.squadra2 }}</td>
-                        <td>{{ partita.punteggio1 }} - {{ partita.punteggio2 }}</td>
-                        <td>{{ partita.mete1 }} - {{ partita.mete2 }}</td>
-                        <td>{{ partita.arbitro }}</td>
+                        <td>{{ partita.get('data_partita', 'N/D') }}</td>
+                        <td>{{ partita.get('categoria', 'N/D') }}</td>
+                        <td>{{ partita.get('genere', 'N/D') }}</td>
+                        <td>{{ partita.get('squadra1', 'N/D') }} vs {{ partita.get('squadra2', 'N/D') }}</td>
+                        <td>{{ partita.get('punteggio1', 'N/D') }} - {{ partita.get('punteggio2', 'N/D') }}</td>
+                        <td>{{ partita.get('mete1', 'N/D') }} - {{ partita.get('mete2', 'N/D') }}</td>
+                        <td>{{ partita.get('arbitro', 'N/D') }}</td>
                         <td>
                             <div class="btn-group">
                                 <a href="{{ url_for('match_details', match_id=loop.index0) }}" class="btn btn-sm btn-info">
@@ -171,27 +171,37 @@
             
             // Filtra per data
             if (dataInizio || dataFine) {
-                const dataParts = cells[0].innerText.split('/');
-                if (dataParts.length === 3) {
-                    const dataPartita = new Date(`${dataParts[2]}-${dataParts[1]}-${dataParts[0]}`);
-                    
-                    if (dataInizio && new Date(dataInizio) > dataPartita) {
-                        show = false;
+                const dataText = cells[0].innerText;
+                if (dataText && dataText !== 'N/D') {
+                    const dataParts = dataText.split('/');
+                    if (dataParts.length === 3) {
+                        try {
+                            const dataPartita = new Date(`${dataParts[2]}-${dataParts[1]}-${dataParts[0]}`);
+                            
+                            if (dataInizio && new Date(dataInizio) > dataPartita) {
+                                show = false;
+                            }
+                            
+                            if (dataFine && new Date(dataFine) < dataPartita) {
+                                show = false;
+                            }
+                        } catch (e) {
+                            console.error("Errore nella conversione della data:", e);
+                        }
                     }
-                    
-                    if (dataFine && new Date(dataFine) < dataPartita) {
-                        show = false;
-                    }
+                } else if (dataInizio || dataFine) {
+                    // Se la data è N/D e c'è un filtro di data, nascondi la riga
+                    show = false;
                 }
             }
             
             // Filtra per categoria
-            if (categoria && cells[1].innerText !== categoria) {
+            if (categoria && cells[1].innerText !== categoria && cells[1].innerText !== 'N/D') {
                 show = false;
             }
             
             // Filtra per genere
-            if (genere && cells[2].innerText !== genere) {
+            if (genere && cells[2].innerText !== genere && cells[2].innerText !== 'N/D') {
                 show = false;
             }
             
