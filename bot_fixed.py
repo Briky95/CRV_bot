@@ -630,7 +630,12 @@ def genera_riepilogo_weekend():
     risultati_weekend = []
     for r in risultati:
         try:
-            data_partita = datetime.strptime(r.get('data_partita', '01/01/2000'), '%d/%m/%Y')
+            data_partita_raw = r.get('data_partita')
+            if data_partita_raw is None or data_partita_raw == '':
+                # Salta i risultati senza data
+                continue
+                
+            data_partita = datetime.strptime(data_partita_raw, '%d/%m/%Y')
             data_partita_str = data_partita.strftime("%d/%m/%Y")
             
             # Verifica se la data è nel weekend
@@ -1226,9 +1231,19 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         messaggio = "<b>📋 ULTIMI RISULTATI</b>\n\n"
         
         # Ordina i risultati per data (dal più recente)
+        def get_date_key(x):
+            data_partita = x.get('data_partita')
+            if data_partita is None or data_partita == '':
+                return datetime.strptime('01/01/2000', '%d/%m/%Y')
+            try:
+                return datetime.strptime(data_partita, '%d/%m/%Y')
+            except ValueError:
+                # In caso di formato data non valido, usa una data predefinita
+                return datetime.strptime('01/01/2000', '%d/%m/%Y')
+        
         risultati_ordinati = sorted(
             risultati, 
-            key=lambda x: datetime.strptime(x.get('data_partita', '01/01/2000'), '%d/%m/%Y'),
+            key=get_date_key,
             reverse=True
         )
         
@@ -2925,9 +2940,19 @@ async def risultati_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     messaggio = "<b>📋 ULTIMI RISULTATI</b>\n\n"
     
     # Ordina i risultati per data (dal più recente)
+    def get_date_key(x):
+        data_partita = x.get('data_partita')
+        if data_partita is None or data_partita == '':
+            return datetime.strptime('01/01/2000', '%d/%m/%Y')
+        try:
+            return datetime.strptime(data_partita, '%d/%m/%Y')
+        except ValueError:
+            # In caso di formato data non valido, usa una data predefinita
+            return datetime.strptime('01/01/2000', '%d/%m/%Y')
+    
     risultati_ordinati = sorted(
         risultati, 
-        key=lambda x: datetime.strptime(x.get('data_partita', '01/01/2000'), '%d/%m/%Y'),
+        key=get_date_key,
         reverse=True
     )
     
