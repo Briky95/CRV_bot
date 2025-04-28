@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('export_excel') }}" class="btn btn-sm btn-success me-2">
+            <i class="fas fa-file-excel"></i> Esporta Dati Excel
+        </a>
+        <a href="{{ url_for('weekend_summary') }}" class="btn btn-sm btn-primary me-2">
+            <i class="fas fa-calendar-week"></i> Riepilogo Weekend
+        </a>
+        <div class="btn-group me-2">
+            <a href="{{ url_for('matches') }}" class="btn btn-sm btn-outline-secondary">Gestione Partite</a>
+            <a href="{{ url_for('users') }}" class="btn btn-sm btn-outline-secondary">Gestione Utenti</a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Partite Totali</div>
+                        <div class="card-text">{{ num_partite }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-futbol card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard card-users shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Utenti Autorizzati</div>
+                        <div class="card-text">{{ num_utenti_autorizzati }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard card-pending shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Utenti in Attesa</div>
+                        <div class="card-text">{{ num_utenti_in_attesa }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-clock card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard card-matches shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Partite Recenti</div>
+                        <div class="card-text">{{ partite_recenti|length }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar-alt card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h4 mb-3">Partite Recenti</h2>
+<div class="table-responsive">
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Squadre</th>
+                <th>Risultato</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for partita in partite_recenti %}
+            <tr>
+                <td>{{ partita.data_partita }}</td>
+                <td>{{ partita.categoria }} {{ partita.genere }}</td>
+                <td>{{ partita.squadra1 }} vs {{ partita.squadra2 }}</td>
+                <td>{{ partita.punteggio1 }} - {{ partita.punteggio2 }}</td>
+                <td>
+                    <a href="{{ url_for('match_details', match_id=loop.index0) }}" class="btn btn-sm btn-info">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center">Nessuna partita recente</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Distribuzione Partite per Categoria</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categorieChart" width="100%" height="50"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Attività Utenti</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="utentiChart" width="100%" height="50"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Grafico distribuzione partite per categoria
+    var ctx = document.getElementById('categorieChart').getContext('2d');
+    var categorieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Serie A Elite', 'Serie A', 'Serie B', 'Serie C1', 'U18', 'U16', 'U14'],
+            datasets: [{
+                data: [12, 19, 8, 15, 10, 7, 5],
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'
+                ],
+                hoverBackgroundColor: [
+                    '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#373840'
+                ],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+            },
+            legend: {
+                display: true,
+                position: 'bottom'
+            },
+            cutoutPercentage: 0,
+        },
+    });
+
+    // Grafico attività utenti
+    var ctx2 = document.getElementById('utentiChart').getContext('2d');
+    var utentiChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno'],
+            datasets: [{
+                label: 'Nuovi Utenti',
+                backgroundColor: '#4e73df',
+                data: [5, 8, 12, 7, 10, 15],
+            }, {
+                label: 'Partite Inserite',
+                backgroundColor: '#1cc88a',
+                data: [10, 15, 20, 12, 18, 25],
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{
+                    gridLines: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 6
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                        min: 0,
+                        maxTicksLimit: 5,
+                        padding: 10,
+                    },
+                    gridLines: {
+                        color: "rgb(234, 236, 244)",
+                        zeroLineColor: "rgb(234, 236, 244)",
+                        drawBorder: false,
+                        borderDash: [2],
+                        zeroLineBorderDash: [2]
+                    }
+                }],
+            },
+            legend: {
+                display: true,
+                position: 'bottom'
+            },
+            tooltips: {
+                titleMarginBottom: 10,
+                titleFontColor: '#6e707e',
+                titleFontSize: 14,
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+            },
+        }
+    });
+</script>
+{% endblock %}

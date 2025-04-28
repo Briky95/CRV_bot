@@ -1,0 +1,16 @@
+[Unit]
+Description=CRV Rugby Bot
+After=network.target
+
+[Service]
+Type=simple
+User=riccardo
+WorkingDirectory=/Users/riccardo/CRV_bot
+ExecStart=/usr/bin/python3 bot.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

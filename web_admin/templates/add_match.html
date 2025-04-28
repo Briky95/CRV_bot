@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Aggiungi Partita - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Aggiungi Nuova Partita</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('matches') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Torna alle Partite
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Dettagli Partita</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_match') }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="categoria" class="form-label">Categoria</label>
+                            <select class="form-select" id="categoria" name="categoria" required>
+                                <option value="" selected disabled>Seleziona categoria</option>
+                                {% for categoria in categorie %}
+                                <option value="{{ categoria }}">{{ categoria }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="genere" class="form-label">Genere</label>
+                            <select class="form-select" id="genere" name="genere" required>
+                                <option value="" selected disabled>Seleziona genere</option>
+                                <option value="Maschile">Maschile</option>
+                                <option value="Femminile">Femminile</option>
+                                <option value="Misto">Misto</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="data_partita" class="form-label">Data Partita</label>
+                        <input type="date" class="form-control" id="data_partita" name="data_partita" required>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="squadra1" class="form-label">Squadra 1</label>
+                            <select class="form-select" id="squadra1" name="squadra1" required>
+                                <option value="" selected disabled>Seleziona squadra</option>
+                                {% for squadra in squadre %}
+                                <option value="{{ squadra }}">{{ squadra }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="squadra2" class="form-label">Squadra 2</label>
+                            <select class="form-select" id="squadra2" name="squadra2" required>
+                                <option value="" selected disabled>Seleziona squadra</option>
+                                {% for squadra in squadre %}
+                                <option value="{{ squadra }}">{{ squadra }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="punteggio1" class="form-label">Punteggio Squadra 1</label>
+                            <input type="number" class="form-control" id="punteggio1" name="punteggio1" min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="punteggio2" class="form-label">Punteggio Squadra 2</label>
+                            <input type="number" class="form-control" id="punteggio2" name="punteggio2" min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="mete1" class="form-label">Mete Squadra 1</label>
+                            <input type="number" class="form-control" id="mete1" name="mete1" min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="mete2" class="form-label">Mete Squadra 2</label>
+                            <input type="number" class="form-control" id="mete2" name="mete2" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="arbitro" class="form-label">Arbitro</label>
+                        <input type="text" class="form-control" id="arbitro" name="arbitro">
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('matches') }}" class="btn btn-secondary me-md-2">Annulla</a>
+                        <button type="submit" class="btn btn-primary">Salva Partita</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Imposta la data di oggi come valore predefinito
+        const today = new Date();
+        const formattedDate = today.toISOString().substr(0, 10);
+        $('#data_partita').val(formattedDate);
+        
+        // Verifica che le squadre selezionate siano diverse
+        $('form').submit(function(e) {
+            const squadra1 = $('#squadra1').val();
+            const squadra2 = $('#squadra2').val();
+            
+            if (squadra1 === squadra2) {
+                e.preventDefault();
+                alert('Le due squadre devono essere diverse!');
+                return false;
+            }
+            
+            // Verifica la congruenza tra punteggio e mete
+            const punteggio1 = parseInt($('#punteggio1').val());
+            const punteggio2 = parseInt($('#punteggio2').val());
+            const mete1 = parseInt($('#mete1').val());
+            const mete2 = parseInt($('#mete2').val());
+            
+            // Verifica che il punteggio sia almeno 5 punti per ogni meta
+            if (punteggio1 < mete1 * 5) {
+                e.preventDefault();
+                alert('Il punteggio della Squadra 1 deve essere almeno 5 punti per ogni meta!');
+                return false;
+            }
+            
+            if (punteggio2 < mete2 * 5) {
+                e.preventDefault();
+                alert('Il punteggio della Squadra 2 deve essere almeno 5 punti per ogni meta!');
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Partite - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Gestione Partite</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('add_match') }}" class="btn btn-sm btn-success me-2">
+            <i class="fas fa-plus"></i> Nuova Partita
+        </a>
+        <div class="btn-group me-2">
+            <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="fas fa-filter"></i> Filtra
+            </a>
+            <a href="#" class="btn btn-sm btn-outline-secondary" onclick="exportToCSV()">
+                <i class="fas fa-download"></i> Esporta CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Elenco Partite</h5>
+        <span class="badge bg-light text-dark">{{ risultati|length }}</span>
+    </div>
+    <div class="card-body">
+        {% if risultati %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="matchesTable">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Categoria</th>
+                        <th>Genere</th>
+                        <th>Squadre</th>
+                        <th>Risultato</th>
+                        <th>Mete</th>
+                        <th>Arbitro</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for partita in risultati %}
+                    <tr>
+                        <td>{{ partita.data_partita }}</td>
+                        <td>{{ partita.categoria }}</td>
+                        <td>{{ partita.genere }}</td>
+                        <td>{{ partita.squadra1 }} vs {{ partita.squadra2 }}</td>
+                        <td>{{ partita.punteggio1 }} - {{ partita.punteggio2 }}</td>
+                        <td>{{ partita.mete1 }} - {{ partita.mete2 }}</td>
+                        <td>{{ partita.arbitro }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('match_details', match_id=loop.index0) }}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('edit_match', match_id=loop.index0) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger delete-match" data-match-id="{{ loop.index0 }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessuna partita registrata.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Filtri -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="filterModalLabel">Filtra Partite</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="filterForm">
+                    <div class="mb-3">
+                        <label for="filterCategoria" class="form-label">Categoria</label>
+                        <select class="form-select" id="filterCategoria">
+                            <option value="">Tutte</option>
+                            <option value="Serie A Elite">Serie A Elite</option>
+                            <option value="Serie A">Serie A</option>
+                            <option value="Serie B">Serie B</option>
+                            <option value="Serie C1">Serie C1</option>
+                            <option value="U18 Nazionale">U18 Nazionale</option>
+                            <option value="U18">U18</option>
+                            <option value="U16">U16</option>
+                            <option value="U14">U14</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="filterGenere" class="form-label">Genere</label>
+                        <select class="form-select" id="filterGenere">
+                            <option value="">Tutti</option>
+                            <option value="Maschile">Maschile</option>
+                            <option value="Femminile">Femminile</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="filterSquadra" class="form-label">Squadra</label>
+                        <input type="text" class="form-control" id="filterSquadra" placeholder="Nome squadra">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="filterDataInizio" class="form-label">Data Inizio</label>
+                                <input type="date" class="form-control" id="filterDataInizio">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="filterDataFine" class="form-label">Data Fine</label>
+                                <input type="date" class="form-control" id="filterDataFine">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary" onclick="applyFilters()">Applica Filtri</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form per eliminazione partita -->
+<form id="deleteMatchForm" method="POST" style="display: none;">
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Gestione eliminazione partita
+        $('.delete-match').click(function() {
+            const matchId = $(this).data('match-id');
+            if (confirm('Sei sicuro di voler eliminare questa partita? Questa azione non può essere annullata.')) {
+                const form = $('#deleteMatchForm');
+                form.attr('action', `/match/delete/${matchId}`);
+                form.submit();
+            }
+        });
+    });
+
+    // Funzione per applicare i filtri
+    function applyFilters() {
+        const categoria = $('#filterCategoria').val();
+        const genere = $('#filterGenere').val();
+        const squadra = $('#filterSquadra').val().toLowerCase();
+        const dataInizio = $('#filterDataInizio').val();
+        const dataFine = $('#filterDataFine').val();
+        
+        $('#matchesTable tbody tr').each(function() {
+            let show = true;
+            const cells = $(this).find('td');
+            
+            // Filtra per data
+            if (dataInizio || dataFine) {
+                const dataParts = cells[0].innerText.split('/');
+                if (dataParts.length === 3) {
+                    const dataPartita = new Date(`${dataParts[2]}-${dataParts[1]}-${dataParts[0]}`);
+                    
+                    if (dataInizio && new Date(dataInizio) > dataPartita) {
+                        show = false;
+                    }
+                    
+                    if (dataFine && new Date(dataFine) < dataPartita) {
+                        show = false;
+                    }
+                }
+            }
+            
+            // Filtra per categoria
+            if (categoria && cells[1].innerText !== categoria) {
+                show = false;
+            }
+            
+            // Filtra per genere
+            if (genere && cells[2].innerText !== genere) {
+                show = false;
+            }
+            
+            // Filtra per squadra
+            if (squadra && !cells[3].innerText.toLowerCase().includes(squadra)) {
+                show = false;
+            }
+            
+            $(this).toggle(show);
+        });
+        
+        $('#filterModal').modal('hide');
+    }
+
+    // Funzione per resettare i filtri
+    function resetFilters() {
+        $('#filterForm')[0].reset();
+        $('#matchesTable tbody tr').show();
+    }
+
+    // Funzione per esportare in CSV
+    function exportToCSV() {
+        let csv = 'Data,Categoria,Genere,Squadra1,Squadra2,Punteggio1,Punteggio2,Mete1,Mete2,Arbitro\n';
+        
+        $('#matchesTable tbody tr:visible').each(function() {
+            const cells = $(this).find('td');
+            const data = cells[0].innerText;
+            const categoria = cells[1].innerText;
+            const genere = cells[2].innerText;
+            
+            const squadre = cells[3].innerText.split(' vs ');
+            const squadra1 = squadre[0];
+            const squadra2 = squadre[1];
+            
+            const punteggi = cells[4].innerText.split(' - ');
+            const punteggio1 = punteggi[0];
+            const punteggio2 = punteggi[1];
+            
+            const mete = cells[5].innerText.split(' - ');
+            const mete1 = mete[0];
+            const mete2 = mete[1];
+            
+            const arbitro = cells[6].innerText;
+            
+            csv += `${data},${categoria},${genere},${squadra1},${squadra2},${punteggio1},${punteggio2},${mete1},${mete2},${arbitro}\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'partite_rugby.csv');
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+{% endblock %}

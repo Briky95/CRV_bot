@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Squadre - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Gestione Squadre</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addTeamModal">
+            <i class="fas fa-plus"></i> Aggiungi Squadra
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Elenco Squadre</h5>
+                <span class="badge bg-light text-dark">{{ squadre|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if squadre %}
+                <div class="table-responsive">
+                    <table class="table table-striped" id="teamsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nome Squadra</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for squadra in squadre %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ squadra }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning edit-team" data-team="{{ squadra }}" data-index="{{ loop.index0 }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger delete-team" data-team="{{ squadra }}" data-index="{{ loop.index0 }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    Nessuna squadra registrata.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Squadra -->
+<div class="modal fade" id="addTeamModal" tabindex="-1" aria-labelledby="addTeamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTeamModalLabel">Aggiungi Squadra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTeamForm">
+                    <div class="mb-3">
+                        <label for="teamName" class="form-label">Nome Squadra</label>
+                        <input type="text" class="form-control" id="teamName" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="saveTeamBtn">Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Squadra -->
+<div class="modal fade" id="editTeamModal" tabindex="-1" aria-labelledby="editTeamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTeamModalLabel">Modifica Squadra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTeamForm">
+                    <input type="hidden" id="editTeamIndex">
+                    <div class="mb-3">
+                        <label for="editTeamName" class="form-label">Nome Squadra</label>
+                        <input type="text" class="form-control" id="editTeamName" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="updateTeamBtn">Aggiorna</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="deleteTeamModal" tabindex="-1" aria-labelledby="deleteTeamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteTeamModalLabel">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Sei sicuro di voler eliminare la squadra <strong id="deleteTeamName"></strong>?</p>
+                <p class="text-danger">Attenzione: questa azione potrebbe influire sulle partite già registrate.</p>
+                <input type="hidden" id="deleteTeamIndex">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Elimina</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Funzione per mostrare messaggi di notifica
+        function showNotification(message, type = 'success') {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Aggiungi l'alert all'inizio del contenuto principale
+            $('.main-content').prepend(alertHtml);
+            
+            // Rimuovi automaticamente l'alert dopo 5 secondi
+            setTimeout(() => {
+                $('.alert').alert('close');
+            }, 5000);
+        }
+        
+        // Gestione aggiunta squadra
+        $('#saveTeamBtn').click(function() {
+            const teamName = $('#teamName').val().trim();
+            
+            if (!teamName) {
+                showNotification('Inserisci il nome della squadra', 'error');
+                return;
+            }
+            
+            // Invia la richiesta AJAX per aggiungere la squadra
+            $.ajax({
+                url: '/api/teams/add',
+                type: 'POST',
+                data: {
+                    team_name: teamName
+                },
+                success: function(response) {
+                    $('#addTeamModal').modal('hide');
+                    $('#teamName').val('');
+                    showNotification(response.message);
+                    
+                    // Ricarica la pagina per vedere le modifiche
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || {};
+                    showNotification(response.message || 'Errore durante l\'aggiunta della squadra', 'error');
+                }
+            });
+        });
+        
+        // Gestione modifica squadra
+        $('.edit-team').click(function() {
+            const teamName = $(this).data('team');
+            const index = $(this).data('index');
+            
+            $('#editTeamName').val(teamName);
+            $('#editTeamIndex').val(index);
+            $('#editTeamModal').modal('show');
+        });
+        
+        $('#updateTeamBtn').click(function() {
+            const teamName = $('#editTeamName').val().trim();
+            const index = $('#editTeamIndex').val();
+            
+            if (!teamName) {
+                showNotification('Inserisci il nome della squadra', 'error');
+                return;
+            }
+            
+            // Invia la richiesta AJAX per aggiornare la squadra
+            $.ajax({
+                url: '/api/teams/update',
+                type: 'POST',
+                data: {
+                    team_index: index,
+                    team_name: teamName
+                },
+                success: function(response) {
+                    $('#editTeamModal').modal('hide');
+                    showNotification(response.message);
+                    
+                    // Ricarica la pagina per vedere le modifiche
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || {};
+                    showNotification(response.message || 'Errore durante l\'aggiornamento della squadra', 'error');
+                }
+            });
+        });
+        
+        // Gestione eliminazione squadra
+        $('.delete-team').click(function() {
+            const teamName = $(this).data('team');
+            const index = $(this).data('index');
+            
+            $('#deleteTeamName').text(teamName);
+            $('#deleteTeamIndex').val(index);
+            $('#deleteTeamModal').modal('show');
+        });
+        
+        $('#confirmDeleteBtn').click(function() {
+            const index = $('#deleteTeamIndex').val();
+            
+            // Invia la richiesta AJAX per eliminare la squadra
+            $.ajax({
+                url: '/api/teams/delete',
+                type: 'POST',
+                data: {
+                    team_index: index
+                },
+                success: function(response) {
+                    $('#deleteTeamModal').modal('hide');
+                    showNotification(response.message);
+                    
+                    // Ricarica la pagina per vedere le modifiche
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || {};
+                    showNotification(response.message || 'Errore durante l\'eliminazione della squadra', 'error');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

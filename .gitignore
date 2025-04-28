@@ -1,0 +1,44 @@
+# Ambiente virtuale
+.venv/
+venv/
+env/
+
+# File di cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# File di log
+*.log
+bot_log.txt
+
+# File di ambiente e configurazione sensibili
+.env
+token.txt
+
+# File di database locali
+*.db
+*.sqlite3
+
+# File temporanei
+.tmp*
+*.tmp
+
+# File di sistema
+.DS_Store
+Thumbs.db
+
+# Directory di IDE
+.idea/
+.vscode/
+
+# File di backup
+*~
+*.bak
+
+# File JSON locali (se necessario, rimuovi queste righe se vuoi includere i file JSON nel repository)
+# *.json
+
+# Directory Users
+Users/

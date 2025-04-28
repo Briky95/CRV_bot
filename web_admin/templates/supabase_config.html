@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurazione Supabase - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Configurazione Supabase</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-database"></i> Impostazioni Supabase</h5>
+            </div>
+            <div class="card-body">
+                {% if supabase_configured %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> Supabase è configurato correttamente e pronto all'uso.
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Supabase non è configurato correttamente. Inserisci le credenziali per iniziare a utilizzare il database.
+                </div>
+                {% endif %}
+                
+                <form method="post" action="{{ url_for('supabase_config') }}">
+                    <div class="mb-3">
+                        <label for="supabase_url" class="form-label">URL Supabase</label>
+                        <input type="text" class="form-control" id="supabase_url" name="supabase_url" value="{{ supabase_url }}" required>
+                        <div class="form-text">Es. https://your-project-id.supabase.co</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="supabase_key" class="form-label">Chiave API Supabase</label>
+                        <input type="text" class="form-control" id="supabase_key" name="supabase_key" value="{{ supabase_key }}" required>
+                        <div class="form-text">La chiave API si trova nelle impostazioni del progetto Supabase</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salva Configurazione
+                        </button>
+                        <button type="submit" name="migrate" value="1" class="btn btn-success">
+                            <i class="fas fa-database"></i> Salva e Migra Dati
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Informazioni su Supabase</h5>
+            </div>
+            <div class="card-body">
+                <p>Supabase è una piattaforma di database PostgreSQL open source che offre:</p>
+                <ul>
+                    <li>Database PostgreSQL completamente gestito</li>
+                    <li>API RESTful automatica</li>
+                    <li>Autenticazione e autorizzazione integrate</li>
+                    <li>Storage di file</li>
+                    <li>Funzioni serverless</li>
+                </ul>
+                
+                <p>Utilizzando Supabase, il bot Rugby può:</p>
+                <ul>
+                    <li>Archiviare i dati in modo più sicuro e affidabile</li>
+                    <li>Migliorare le prestazioni con grandi volumi di dati</li>
+                    <li>Supportare query complesse</li>
+                    <li>Gestire l'accesso concorrente in modo sicuro</li>
+                    <li>Beneficiare di backup automatici</li>
+                </ul>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i> <strong>Suggerimento:</strong> Per creare un nuovo progetto Supabase, visita <a href="https://supabase.com" target="_blank">supabase.com</a> e registrati per un account gratuito.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-tasks"></i> Guida alla Migrazione</h5>
+            </div>
+            <div class="card-body">
+                <p>Per migrare i dati dai file JSON a Supabase:</p>
+                <ol>
+                    <li>Inserisci le credenziali Supabase</li>
+                    <li>Clicca su "Salva e Migra Dati"</li>
+                    <li>Attendi il completamento della migrazione</li>
+                </ol>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Attenzione:</strong> La migrazione sovrascriverà tutti i dati esistenti nel database Supabase.
+                </div>
+                
+                <p>Tabelle che verranno create:</p>
+                <ul>
+                    <li><strong>utenti</strong> - Utenti autorizzati e in attesa</li>
+                    <li><strong>risultati</strong> - Risultati delle partite</li>
+                    <li><strong>squadre</strong> - Elenco delle squadre</li>
+                    <li><strong>admin_users</strong> - Amministratori dell'interfaccia web</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Sicurezza</h5>
+            </div>
+            <div class="card-body">
+                <p>Consigli per la sicurezza:</p>
+                <ul>
+                    <li>Usa una chiave API con privilegi limitati</li>
+                    <li>Non condividere le credenziali Supabase</li>
+                    <li>Configura le regole di sicurezza nel pannello di controllo Supabase</li>
+                    <li>Abilita l'autenticazione a due fattori per il tuo account Supabase</li>
+                </ul>
+                
+                <div class="alert alert-danger">
+                    <i class="fas fa-lock"></i> <strong>Importante:</strong> Le credenziali Supabase sono sensibili. Assicurati che il file .env non sia accessibile pubblicamente.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

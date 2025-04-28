@@ -1,0 +1,13 @@
+{
+  "autorizzati": [
+    {
+      "id": 30658851,
+      "nome": "Admin",
+      "username": "admin",
+      "data_registrazione": "2025-04-28T20:10:03.138513+00:00",
+      "ruolo": "admin",
+      "stato": "autorizzato"
+    }
+  ],
+  "in_attesa": []
+}

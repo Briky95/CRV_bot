@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Utenti - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Gestione Utenti</h1>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Utenti Autorizzati</h5>
+                <span class="badge bg-light text-dark">{{ utenti_autorizzati|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if utenti_autorizzati %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Username</th>
+                                <th>Data Autorizzazione</th>
+                                <th>Ruolo</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for utente in utenti_autorizzati %}
+                            <tr>
+                                <td>{{ utente.id }}</td>
+                                <td>{{ utente.nome }}</td>
+                                <td>{% if utente.username %}@{{ utente.username }}{% else %}N/A{% endif %}</td>
+                                <td>{{ utente.data_registrazione if utente.data_registrazione else 'N/A' }}</td>
+                                <td>
+                                    {% if utente.ruolo == 'admin' %}
+                                    <span class="badge bg-danger">Admin</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Utente</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        {% if utente.ruolo != 'admin' %}
+                                        <button class="btn btn-sm btn-warning promote-btn" data-user-id="{{ utente.id }}">
+                                            <i class="fas fa-arrow-up"></i> Promuovi
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary demote-btn" data-user-id="{{ utente.id }}">
+                                            <i class="fas fa-arrow-down"></i> Rimuovi Admin
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-danger revoke-btn" data-user-id="{{ utente.id }}">
+                                            <i class="fas fa-ban"></i> Revoca
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    Nessun utente autorizzato.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Utenti in Attesa</h5>
+                <span class="badge bg-light text-dark">{{ utenti_in_attesa|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if utenti_in_attesa %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Username</th>
+                                <th>Data Richiesta</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for utente in utenti_in_attesa %}
+                            <tr>
+                                <td>{{ utente.id }}</td>
+                                <td>{{ utente.nome }}</td>
+                                <td>@{{ utente.username }}</td>
+                                <td>{{ utente.data_richiesta if utente.data_richiesta else 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success approve-btn" data-user-id="{{ utente.id }}">
+                                        <i class="fas fa-check"></i> Approva
+                                    </button>
+                                    <button class="btn btn-sm btn-danger reject-btn" data-user-id="{{ utente.id }}">
+                                        <i class="fas fa-times"></i> Rifiuta
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    Nessun utente in attesa di approvazione.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Gestione approvazione utente
+        $('.approve-btn').click(function() {
+            const userId = $(this).data('user-id');
+            if (confirm('Sei sicuro di voler approvare questo utente?')) {
+                $.ajax({
+                    url: `/api/approve_user/${userId}`,
+                    type: 'POST',
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Utente approvato con successo!');
+                            location.reload();
+                        } else {
+                            alert('Errore: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Si è verificato un errore durante l\'approvazione dell\'utente.');
+                    }
+                });
+            }
+        });
+
+        // Gestione rifiuto utente
+        $('.reject-btn').click(function() {
+            const userId = $(this).data('user-id');
+            if (confirm('Sei sicuro di voler rifiutare questo utente?')) {
+                $.ajax({
+                    url: `/api/reject_user/${userId}`,
+                    type: 'POST',
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Utente rifiutato con successo!');
+                            location.reload();
+                        } else {
+                            alert('Errore: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Si è verificato un errore durante il rifiuto dell\'utente.');
+                    }
+                });
+            }
+        });
+
+        // Gestione revoca autorizzazione
+        $('.revoke-btn').click(function() {
+            const userId = $(this).data('user-id');
+            if (confirm('Sei sicuro di voler revocare l\'autorizzazione a questo utente?')) {
+                $.ajax({
+                    url: `/api/revoke_user/${userId}`,
+                    type: 'POST',
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Autorizzazione revocata con successo!');
+                            location.reload();
+                        } else {
+                            alert('Errore: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Si è verificato un errore durante la revoca dell\'autorizzazione.');
+                    }
+                });
+            }
+        });
+        
+        // Gestione promozione a admin
+        $('.promote-btn').click(function() {
+            const userId = $(this).data('user-id');
+            if (confirm('Sei sicuro di voler promuovere questo utente ad amministratore?')) {
+                $.ajax({
+                    url: `/api/promote_user/${userId}`,
+                    type: 'POST',
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Utente promosso ad amministratore con successo!');
+                            location.reload();
+                        } else {
+                            alert('Errore: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Si è verificato un errore durante la promozione dell\'utente.');
+                    }
+                });
+            }
+        });
+        
+        // Gestione declassamento da admin
+        $('.demote-btn').click(function() {
+            const userId = $(this).data('user-id');
+            if (confirm('Sei sicuro di voler rimuovere i privilegi di amministratore a questo utente?')) {
+                $.ajax({
+                    url: `/api/demote_user/${userId}`,
+                    type: 'POST',
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Privilegi di amministratore rimossi con successo!');
+                            location.reload();
+                        } else {
+                            alert('Errore: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Si è verificato un errore durante la rimozione dei privilegi.');
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

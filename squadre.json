@@ -1,0 +1,50 @@
+{
+  "Serie A Elite": [
+    "Petrarca Padova",
+    "Rovigo Delta",
+    "Valorugby Emilia",
+    "Fiamme Oro Rugby"
+  ],
+  "Serie A": [
+    "Rangers Vicenza",
+    "Rugby Paese",
+    "Valsugana Rugby",
+    "Rugby Badia"
+  ],
+  "Serie B": [
+    "Rugby Feltre",
+    "Rugby Trento",
+    "Rugby Bassano",
+    "Rugby Mirano"
+  ],
+  "Serie C1": [
+    "Rugby Belluno",
+    "Rugby Conegliano",
+    "Rugby Casale",
+    "Rugby Verona"
+  ],
+  "U18 Nazionale": [
+    "Petrarca Padova U18",
+    "Rovigo Delta U18",
+    "Valorugby Emilia U18",
+    "Fiamme Oro Rugby U18"
+  ],
+  "U18": [
+    "Rangers Vicenza U18",
+    "Rugby Paese U18",
+    "Valsugana Rugby U18",
+    "Rugby Badia U18"
+  ],
+  "U16": [
+    "Rugby Feltre U16",
+    "Rugby Trento U16",
+    "Rugby Bassano U16",
+    "Rugby Mirano U16"
+  ],
+  "U14": [
+    "Rugby Belluno U14",
+    "Rugby Conegliano U14",
+    "Rugby Casale U14",
+    "Rugby Verona U14"
+  ]
+}

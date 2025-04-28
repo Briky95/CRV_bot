@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Amministratore - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Modifica Amministratore</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-sm btn-secondary">
+            <i class="fas fa-arrow-left"></i> Torna all'elenco
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Modifica Amministratore</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_admin_user', admin_id=admin.id) }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ admin.username }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Nuova Password</label>
+                        <input type="password" class="form-control" id="password" name="password">
+                        <div class="form-text">Lascia vuoto per mantenere la password attuale. La nuova password deve essere di almeno 8 caratteri.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Conferma Nuova Password</label>
+                        <input type="password" class="form-control" id="confirm_password">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin" {% if admin.is_admin %}checked{% endif %}>
+                        <label class="form-check-label" for="is_admin">Super Admin</label>
+                        <div class="form-text">I Super Admin possono gestire altri amministratori.</div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Aggiorna Amministratore</button>
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">Annulla</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Validazione password
+        $('#confirm_password').on('input', function() {
+            const password = $('#password').val();
+            const confirmPassword = $(this).val();
+            
+            if (password && password !== confirmPassword) {
+                $(this).addClass('is-invalid');
+                $('#submitBtn').prop('disabled', true);
+            } else {
+                $(this).removeClass('is-invalid');
+                $('#submitBtn').prop('disabled', false);
+            }
+        });
+        
+        // Validazione lunghezza password
+        $('#password').on('input', function() {
+            const password = $(this).val();
+            
+            if (password && password.length < 8) {
+                $(this).addClass('is-invalid');
+                $('#submitBtn').prop('disabled', true);
+            } else {
+                $(this).removeClass('is-invalid');
+                // Controlla anche la conferma password
+                const confirmPassword = $('#confirm_password').val();
+                if (confirmPassword && password !== confirmPassword) {
+                    $('#submitBtn').prop('disabled', true);
+                } else {
+                    $('#submitBtn').prop('disabled', false);
+                }
+            }
+        });
+        
+        // Validazione form prima dell'invio
+        $('form').on('submit', function(e) {
+            const password = $('#password').val();
+            const confirmPassword = $('#confirm_password').val();
+            
+            if (password) {
+                if (password.length < 8) {
+                    e.preventDefault();
+                    alert('La password deve essere di almeno 8 caratteri.');
+                    return false;
+                }
+                
+                if (password !== confirmPassword) {
+                    e.preventDefault();
+                    alert('Le password non corrispondono.');
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %}

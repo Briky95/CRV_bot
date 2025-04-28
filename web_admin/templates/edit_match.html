@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Partita - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Modifica Partita</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('match_details', match_id=match_id) }}" class="btn btn-sm btn-secondary">
+                <i class="fas fa-arrow-left"></i> Torna ai dettagli
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Modifica Informazioni Partita</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_match', match_id=match_id) }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="categoria" class="form-label">Categoria</label>
+                            <select class="form-select" id="categoria" name="categoria" required>
+                                {% for categoria in categorie %}
+                                <option value="{{ categoria }}" {% if partita.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="genere" class="form-label">Genere</label>
+                            <select class="form-select" id="genere" name="genere" required>
+                                <option value="Maschile" {% if partita.genere == "Maschile" %}selected{% endif %}>Maschile</option>
+                                <option value="Femminile" {% if partita.genere == "Femminile" %}selected{% endif %}>Femminile</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="data_partita" class="form-label">Data Partita</label>
+                        <input type="text" class="form-control" id="data_partita" name="data_partita" value="{{ partita.data_partita }}" placeholder="GG/MM/AAAA" required>
+                        <div class="form-text">Formato: GG/MM/AAAA (es. 01/05/2023)</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="squadra1" class="form-label">Prima Squadra</label>
+                            <input type="text" class="form-control" id="squadra1" name="squadra1" value="{{ partita.squadra1 }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="squadra2" class="form-label">Seconda Squadra</label>
+                            <input type="text" class="form-control" id="squadra2" name="squadra2" value="{{ partita.squadra2 }}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="punteggio1" class="form-label">Punteggio {{ partita.squadra1 }}</label>
+                            <input type="number" class="form-control" id="punteggio1" name="punteggio1" value="{{ partita.punteggio1 }}" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="punteggio2" class="form-label">Punteggio {{ partita.squadra2 }}</label>
+                            <input type="number" class="form-control" id="punteggio2" name="punteggio2" value="{{ partita.punteggio2 }}" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="mete1" class="form-label">Mete {{ partita.squadra1 }}</label>
+                            <input type="number" class="form-control" id="mete1" name="mete1" value="{{ partita.mete1 }}" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="mete2" class="form-label">Mete {{ partita.squadra2 }}</label>
+                            <input type="number" class="form-control" id="mete2" name="mete2" value="{{ partita.mete2 }}" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="arbitro" class="form-label">Arbitro</label>
+                        <input type="text" class="form-control" id="arbitro" name="arbitro" value="{{ partita.arbitro }}" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                        <a href="{{ url_for('match_details', match_id=match_id) }}" class="btn btn-outline-secondary">Annulla</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Validazione del formato data
+        $('#data_partita').on('blur', function() {
+            const value = $(this).val();
+            const regex = /^\d{2}\/\d{2}\/\d{4}$/;
+            
+            if (!regex.test(value)) {
+                alert('Formato data non valido. Usa il formato GG/MM/AAAA (es. 01/05/2023)');
+                $(this).addClass('is-invalid');
+            } else {
+                $(this).removeClass('is-invalid');
+            }
+        });
+        
+        // Suggerimenti per le squadre
+        const squadre = {{ squadre|tojson }};
+        
+        $('#squadra1, #squadra2').on('input', function() {
+            const input = $(this);
+            const value = input.val().toLowerCase();
+            
+            // Trova le corrispondenze
+            const matches = squadre.filter(squadra => 
+                squadra.toLowerCase().includes(value)
+            );
+            
+            // Mostra suggerimenti se ci sono corrispondenze
+            if (matches.length > 0 && value.length > 1) {
+                let datalist = $(`#${input.attr('id')}-list`);
+                
+                // Crea datalist se non esiste
+                if (datalist.length === 0) {
+                    datalist = $('<datalist>').attr('id', `${input.attr('id')}-list`);
+                    $('body').append(datalist);
+                    input.attr('list', `${input.attr('id')}-list`);
+                }
+                
+                // Aggiorna le opzioni
+                datalist.empty();
+                matches.forEach(match => {
+                    datalist.append($('<option>').val(match));
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

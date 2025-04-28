@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiche - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Statistiche</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportStats()">
+                <i class="fas fa-download"></i> Esporta Statistiche
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Partite per Categoria</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categorieChart" width="100%" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Top 10 Squadre per Vittorie</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="vittorieChart" width="100%" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Statistiche Squadre</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="statsTable">
+                        <thead>
+                            <tr>
+                                <th>Squadra</th>
+                                <th>Partite</th>
+                                <th>Vittorie</th>
+                                <th>Pareggi</th>
+                                <th>Sconfitte</th>
+                                <th>Punti Fatti</th>
+                                <th>Punti Subiti</th>
+                                <th>Diff.</th>
+                                <th>% Vittorie</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for squadra, stats in stats_squadre.items() %}
+                            <tr>
+                                <td>{{ squadra }}</td>
+                                <td>{{ stats.partite }}</td>
+                                <td>{{ stats.vittorie }}</td>
+                                <td>{{ stats.pareggi }}</td>
+                                <td>{{ stats.sconfitte }}</td>
+                                <td>{{ stats.punti_fatti }}</td>
+                                <td>{{ stats.punti_subiti }}</td>
+                                <td class="{% if stats.punti_fatti - stats.punti_subiti > 0 %}text-success{% elif stats.punti_fatti - stats.punti_subiti < 0 %}text-danger{% endif %}">
+                                    {{ stats.punti_fatti - stats.punti_subiti }}
+                                </td>
+                                <td>
+                                    {% if stats.partite > 0 %}
+                                        {{ "%.1f"|format(stats.vittorie / stats.partite * 100) }}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Media Punti per Categoria</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="puntiCategoriaChart" width="100%" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Media Mete per Categoria</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="meteCategoriaChart" width="100%" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Dati per i grafici
+        const categorieData = {
+            {% for categoria, count in stats_categoria.items() %}
+                "{{ categoria }}": {{ count }},
+            {% endfor %}
+        };
+        
+        const squadreData = {};
+        {% for squadra, stats in stats_squadre.items() %}
+            squadreData["{{ squadra }}"] = {
+                vittorie: {{ stats.vittorie }},
+                pareggi: {{ stats.pareggi }},
+                sconfitte: {{ stats.sconfitte }},
+                punti_fatti: {{ stats.punti_fatti }},
+                punti_subiti: {{ stats.punti_subiti }}
+            };
+        {% endfor %}
+        
+        // Grafico partite per categoria
+        const ctxCategorie = document.getElementById('categorieChart').getContext('2d');
+        new Chart(ctxCategorie, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(categorieData),
+                datasets: [{
+                    data: Object.values(categorieData),
+                    backgroundColor: [
+                        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#4e73df'
+                    ],
+                    hoverBackgroundColor: [
+                        '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#373840', '#2e59d9'
+                    ],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                },
+                cutoutPercentage: 0,
+            },
+        });
+        
+        // Grafico top 10 squadre per vittorie
+        const squadreOrdered = Object.entries(squadreData)
+            .sort((a, b) => b[1].vittorie - a[1].vittorie)
+            .slice(0, 10);
+        
+        const ctxVittorie = document.getElementById('vittorieChart').getContext('2d');
+        new Chart(ctxVittorie, {
+            type: 'horizontalBar',
+            data: {
+                labels: squadreOrdered.map(item => item[0]),
+                datasets: [{
+                    label: 'Vittorie',
+                    data: squadreOrdered.map(item => item[1].vittorie),
+                    backgroundColor: '#1cc88a',
+                    borderColor: '#169b6b',
+                    borderWidth: 1
+                }, {
+                    label: 'Pareggi',
+                    data: squadreOrdered.map(item => item[1].pareggi),
+                    backgroundColor: '#f6c23e',
+                    borderColor: '#dda20a',
+                    borderWidth: 1
+                }, {
+                    label: 'Sconfitte',
+                    data: squadreOrdered.map(item => item[1].sconfitte),
+                    backgroundColor: '#e74a3b',
+                    borderColor: '#be2617',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    xAxes: [{
+                        stacked: true,
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }],
+                    yAxes: [{
+                        stacked: true
+                    }]
+                },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            }
+        });
+        
+        // Grafico media punti per categoria (dati di esempio)
+        const ctxPuntiCategoria = document.getElementById('puntiCategoriaChart').getContext('2d');
+        new Chart(ctxPuntiCategoria, {
+            type: 'bar',
+            data: {
+                labels: ['Serie A Elite', 'Serie A', 'Serie B', 'Serie C1', 'U18', 'U16', 'U14'],
+                datasets: [{
+                    label: 'Media Punti per Partita',
+                    data: [35, 28, 25, 22, 20, 18, 15],
+                    backgroundColor: '#4e73df',
+                    borderColor: '#2e59d9',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            }
+        });
+        
+        // Grafico media mete per categoria (dati di esempio)
+        const ctxMeteCategoria = document.getElementById('meteCategoriaChart').getContext('2d');
+        new Chart(ctxMeteCategoria, {
+            type: 'bar',
+            data: {
+                labels: ['Serie A Elite', 'Serie A', 'Serie B', 'Serie C1', 'U18', 'U16', 'U14'],
+                datasets: [{
+                    label: 'Media Mete per Partita',
+                    data: [5.2, 4.5, 4.0, 3.8, 3.5, 3.2, 2.8],
+                    backgroundColor: '#e74a3b',
+                    borderColor: '#be2617',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            }
+        });
+    });
+    
+    // Funzione per esportare le statistiche
+    function exportStats() {
+        let csv = 'Squadra,Partite,Vittorie,Pareggi,Sconfitte,Punti Fatti,Punti Subiti,Differenza,% Vittorie\n';
+        
+        $('#statsTable tbody tr').each(function() {
+            const cells = $(this).find('td');
+            const row = [];
+            
+            cells.each(function() {
+                // Rimuovi eventuali caratteri speciali
+                let cellText = $(this).text().trim().replace(/,/g, ' ');
+                row.push(cellText);
+            });
+            
+            csv += row.join(',') + '\n';
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'statistiche_rugby.csv');
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block title %}Dettagli Partita - Rugby Bot Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reaction-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .reaction-count {
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    .reaction-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dettagli Partita</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('edit_match', match_id=match_id) }}" class="btn btn-sm btn-warning">
+                <i class="fas fa-edit"></i> Modifica
+            </a>
+            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="fas fa-trash"></i> Elimina
+            </button>
+            <a href="{{ url_for('matches') }}" class="btn btn-sm btn-secondary">
+                <i class="fas fa-arrow-left"></i> Torna all'elenco
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Informazioni Partita</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h3 class="text-center">{{ partita.squadra1 }}</h3>
+                        <div class="display-1 text-center">{{ partita.punteggio1 }}</div>
+                        <div class="text-center">Mete: {{ partita.mete1 }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <h3 class="text-center">{{ partita.squadra2 }}</h3>
+                        <div class="display-1 text-center">{{ partita.punteggio2 }}</div>
+                        <div class="text-center">Mete: {{ partita.mete2 }}</div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table">
+                            <tr>
+                                <th>Categoria:</th>
+                                <td>{{ partita.categoria }}</td>
+                            </tr>
+                            <tr>
+                                <th>Genere:</th>
+                                <td>{{ partita.genere }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data:</th>
+                                <td>{{ partita.data_partita }}</td>
+                            </tr>
+                            <tr>
+                                <th>Arbitro:</th>
+                                <td>{{ partita.arbitro }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table">
+                            <tr>
+                                <th>Inserito da:</th>
+                                <td>{{ partita.inserito_da }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data inserimento:</th>
+                                <td>{{ partita.timestamp.split('T')[0] if partita.timestamp else 'N/A' }}</td>
+                            </tr>
+                            {% if partita.modificato_da %}
+                            <tr>
+                                <th>Modificato da:</th>
+                                <td>{{ partita.modificato_da }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data modifica:</th>
+                                <td>{{ partita.timestamp_modifica.split('T')[0] if partita.timestamp_modifica else 'N/A' }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Statistiche Partita</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statsChart" width="100%" height="200"></canvas>
+                
+                <hr>
+                
+                <h6 class="mt-4">Differenza Punti</h6>
+                <div class="progress mb-3">
+                    {% set diff = partita.punteggio1 - partita.punteggio2 %}
+                    {% set abs_diff = diff|abs %}
+                    {% set max_points = [partita.punteggio1, partita.punteggio2]|max %}
+                    {% set percentage = (abs_diff / max_points * 100) if max_points > 0 else 50 %}
+                    
+                    {% if diff > 0 %}
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ percentage }}%">+{{ diff }}</div>
+                    {% elif diff < 0 %}
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ percentage }}%">{{ diff }}</div>
+                    {% else %}
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: 50%">Pareggio</div>
+                    {% endif %}
+                </div>
+                
+                <h6>Efficienza Mete</h6>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center mb-2">{{ partita.squadra1 }}</div>
+                        {% set efficiency1 = (partita.mete1 / partita.punteggio1 * 100) if partita.punteggio1 > 0 else 0 %}
+                        <div class="progress">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ efficiency1 }}%">
+                                {{ "%.1f"|format(efficiency1) }}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center mb-2">{{ partita.squadra2 }}</div>
+                        {% set efficiency2 = (partita.mete2 / partita.punteggio2 * 100) if partita.punteggio2 > 0 else 0 %}
+                        <div class="progress">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ efficiency2 }}%">
+                                {{ "%.1f"|format(efficiency2) }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Azioni</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="generateShareImage()">
+                        <i class="fas fa-share-alt"></i> Genera Immagine Condivisibile
+                    </button>
+                    <button class="btn btn-outline-success" onclick="republishToChannel()">
+                        <i class="fab fa-telegram"></i> Ripubblica su Telegram
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Reazioni Telegram</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <div class="reaction-icon">
+                            <i class="fas fa-thumbs-up"></i>
+                        </div>
+                        <div class="reaction-count">{{ reazioni.like|length }}</div>
+                        <div class="reaction-label">Like</div>
+                    </div>
+                    <div class="col">
+                        <div class="reaction-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="reaction-count">{{ reazioni.love|length }}</div>
+                        <div class="reaction-label">Love</div>
+                    </div>
+                    <div class="col">
+                        <div class="reaction-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="reaction-count">{{ reazioni.fire|length }}</div>
+                        <div class="reaction-label">Fire</div>
+                    </div>
+                    <div class="col">
+                        <div class="reaction-icon">
+                            <i class="fas fa-hands-clapping"></i>
+                        </div>
+                        <div class="reaction-count">{{ reazioni.clap|length }}</div>
+                        <div class="reaction-label">Clap</div>
+                    </div>
+                    <div class="col">
+                        <div class="reaction-icon">
+                            <i class="fas fa-football"></i>
+                        </div>
+                        <div class="reaction-count">{{ reazioni.rugby|length }}</div>
+                        <div class="reaction-label">Rugby</div>
+                    </div>
+                </div>
+                
+                {% if reazioni.like|length + reazioni.love|length + reazioni.fire|length + reazioni.clap|length + reazioni.rugby|length > 0 %}
+                <hr>
+                <h6 class="mt-3">Utenti che hanno reagito:</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Utente</th>
+                                <th>Reazione</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reaction_type in ['like', 'love', 'fire', 'clap', 'rugby'] %}
+                                {% for reaction in reazioni[reaction_type] %}
+                                <tr>
+                                    <td>{{ reaction.name }}</td>
+                                    <td>
+                                        {% if reaction_type == 'like' %}
+                                            <i class="fas fa-thumbs-up text-primary"></i>
+                                        {% elif reaction_type == 'love' %}
+                                            <i class="fas fa-heart text-danger"></i>
+                                        {% elif reaction_type == 'fire' %}
+                                            <i class="fas fa-fire text-warning"></i>
+                                        {% elif reaction_type == 'clap' %}
+                                            <i class="fas fa-hands-clapping text-success"></i>
+                                        {% elif reaction_type == 'rugby' %}
+                                            <i class="fas fa-football text-secondary"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ reaction.timestamp }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-3">
+                    Nessuna reazione per questa partita.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminazione -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Sei sicuro di voler eliminare questa partita? Questa azione non può essere annullata.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form action="{{ url_for('delete_match', match_id=match_id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Elimina</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Grafico statistiche partita
+    var ctx = document.getElementById('statsChart').getContext('2d');
+    var statsChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Punti', 'Mete', 'Punti/Meta', 'Efficienza'],
+            datasets: [
+                {
+                    label: '{{ partita.squadra1 }}',
+                    data: [
+                        {{ partita.punteggio1 }},
+                        {{ partita.mete1 }},
+                        {{ (partita.punteggio1 / partita.mete1) if partita.mete1 > 0 else 0 }},
+                        {{ (partita.mete1 / partita.punteggio1 * 100) if partita.punteggio1 > 0 else 0 }}
+                    ],
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: '{{ partita.squadra2 }}',
+                    data: [
+                        {{ partita.punteggio2 }},
+                        {{ partita.mete2 }},
+                        {{ (partita.punteggio2 / partita.mete2) if partita.mete2 > 0 else 0 }},
+                        {{ (partita.mete2 / partita.punteggio2 * 100) if partita.punteggio2 > 0 else 0 }}
+                    ],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            scale: {
+                ticks: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Funzione per generare immagine condivisibile
+    function generateShareImage() {
+        // Mostra un indicatore di caricamento
+        const btn = $('.btn-outline-primary');
+        const originalText = btn.html();
+        btn.html('<i class="fas fa-spinner fa-spin"></i> Generazione in corso...');
+        btn.prop('disabled', true);
+        
+        // Invia la richiesta AJAX
+        $.ajax({
+            url: '/api/generate_image/{{ match_id }}',
+            type: 'POST',
+            success: function(response) {
+                // Ripristina il pulsante
+                btn.html(originalText);
+                btn.prop('disabled', false);
+                
+                // Crea un modal per mostrare l'immagine
+                const modalHtml = `
+                    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="imageModalLabel">Immagine Condivisibile</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <img src="data:image/png;base64,${response.image}" class="img-fluid" alt="Immagine partita">
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                                    <a href="data:image/png;base64,${response.image}" download="partita_${partita.squadra1}_vs_${partita.squadra2}.png" class="btn btn-primary">
+                                        <i class="fas fa-download"></i> Scarica
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Aggiungi il modal al DOM e mostralo
+                $('body').append(modalHtml);
+                $('#imageModal').modal('show');
+                
+                // Rimuovi il modal dal DOM quando viene chiuso
+                $('#imageModal').on('hidden.bs.modal', function() {
+                    $(this).remove();
+                });
+            },
+            error: function(xhr) {
+                // Ripristina il pulsante
+                btn.html(originalText);
+                btn.prop('disabled', false);
+                
+                // Mostra un messaggio di errore
+                const response = xhr.responseJSON || {};
+                const alertHtml = `
+                    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                        ${response.message || 'Errore durante la generazione dell\'immagine'}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                $('.card-body').first().prepend(alertHtml);
+            }
+        });
+    }
+
+    // Funzione per ripubblicare su Telegram
+    function republishToChannel() {
+        if (confirm('Sei sicuro di voler ripubblicare questa partita sul canale Telegram?')) {
+            // Mostra un indicatore di caricamento
+            const btn = $('.btn-outline-success');
+            const originalText = btn.html();
+            btn.html('<i class="fas fa-spinner fa-spin"></i> Pubblicazione in corso...');
+            btn.prop('disabled', true);
+            
+            // Invia la richiesta AJAX
+            $.ajax({
+                url: '/api/republish/{{ match_id }}',
+                type: 'POST',
+                success: function(response) {
+                    // Ripristina il pulsante
+                    btn.html(originalText);
+                    btn.prop('disabled', false);
+                    
+                    // Mostra un messaggio di successo
+                    const alertHtml = `
+                        <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                            ${response.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.card-body').first().prepend(alertHtml);
+                },
+                error: function(xhr) {
+                    // Ripristina il pulsante
+                    btn.html(originalText);
+                    btn.prop('disabled', false);
+                    
+                    // Mostra un messaggio di errore
+                    const response = xhr.responseJSON || {};
+                    const alertHtml = `
+                        <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                            ${response.message || 'Errore durante la ripubblicazione'}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.card-body').first().prepend(alertHtml);
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}
