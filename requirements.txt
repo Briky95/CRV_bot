@@ -8,6 +8,7 @@ werkzeug==2.3.7
 python-dotenv>=0.19.0
 supabase>=2.0.0
 httpx>=0.26.0
+requests>=2.25.0
 
 # Dipendenze per la generazione di report
 xlsxwriter>=3.0.0
