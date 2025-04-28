@@ -2324,12 +2324,26 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Per le altre categorie, procedi direttamente alla selezione della squadra
             context.user_data['tipo_partita'] = 'normale'  # Imposta il tipo di partita come normale per default
             
+            # Carica le squadre disponibili
+            squadre = get_squadre_list()
+            
+            # Crea una tastiera con le squadre
+            keyboard = []
+            for i in range(0, len(squadre), 1):
+                keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+            
+            # Aggiungi un pulsante per inserire manualmente una squadra
+            keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             # Crea un messaggio per la selezione della squadra
             await query.edit_message_text(
                 f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {genere} 🏉\n\n"
-                "<b>Inserisci il nome della prima squadra:</b>\n\n"
+                "<b>Seleziona la prima squadra:</b>\n\n"
                 "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML'
+                parse_mode='HTML',
+                reply_markup=reply_markup
             )
             
             context.user_data['stato_corrente'] = SQUADRA1
@@ -2351,13 +2365,27 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         tipo_partita = query.data
         context.user_data['tipo_partita'] = tipo_partita
         
+        # Carica le squadre disponibili
+        squadre = get_squadre_list()
+        
+        # Crea una tastiera con le squadre
+        keyboard = []
+        for i in range(0, len(squadre), 1):
+            keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+        
+        # Aggiungi un pulsante per inserire manualmente una squadra
+        keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         # Crea un messaggio per la selezione della squadra
         await query.edit_message_text(
             f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
             f"<b>Tipo partita:</b> {tipo_partita}\n\n"
-            "<b>Inserisci il nome della prima squadra:</b>\n\n"
+            "<b>Seleziona la prima squadra:</b>\n\n"
             "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-            parse_mode='HTML'
+            parse_mode='HTML',
+            reply_markup=reply_markup
         )
         
         context.user_data['stato_corrente'] = SQUADRA1
@@ -2378,22 +2406,68 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await query.answer()
             squadra = query.data
             
+            # Se l'utente ha selezionato "Altra squadra", chiedi di inserire manualmente
+            if squadra == "altra_squadra":
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
+                    "<b>Inserisci manualmente il nome della prima squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return SQUADRA1
+            
+            # Carica le squadre disponibili per la seconda squadra
+            squadre = get_squadre_list()
+            
+            # Rimuovi la prima squadra dalla lista
+            if squadra in squadre:
+                squadre.remove(squadra)
+            
+            # Crea una tastiera con le squadre rimanenti
+            keyboard = []
+            for i in range(0, len(squadre), 1):
+                keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+            
+            # Aggiungi un pulsante per inserire manualmente una squadra
+            keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             await query.edit_message_text(
                 f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
                 f"<b>Prima squadra:</b> {squadra}\n\n"
-                "<b>Inserisci il nome della seconda squadra:</b>\n\n"
+                "<b>Seleziona la seconda squadra:</b>\n\n"
                 "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML'
+                parse_mode='HTML',
+                reply_markup=reply_markup
             )
         else:
             squadra = update.message.text
             
+            # Carica le squadre disponibili per la seconda squadra
+            squadre = get_squadre_list()
+            
+            # Rimuovi la prima squadra dalla lista
+            if squadra in squadre:
+                squadre.remove(squadra)
+            
+            # Crea una tastiera con le squadre rimanenti
+            keyboard = []
+            for i in range(0, len(squadre), 1):
+                keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+            
+            # Aggiungi un pulsante per inserire manualmente una squadra
+            keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             await update.message.reply_text(
                 f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
                 f"<b>Prima squadra:</b> {squadra}\n\n"
-                "<b>Inserisci il nome della seconda squadra:</b>\n\n"
+                "<b>Seleziona la seconda squadra:</b>\n\n"
                 "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML'
+                parse_mode='HTML',
+                reply_markup=reply_markup
             )
         
         context.user_data['squadra1'] = squadra
@@ -2419,15 +2493,67 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             query = update.callback_query
             await query.answer()
             squadra = query.data
+            # Se l'utente ha selezionato "Altra squadra", chiedi di inserire manualmente
+            if squadra == "altra_squadra":
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n\n"
+                    "<b>Inserisci manualmente il nome della seconda squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return SQUADRA2
             
-            await query.edit_message_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                f"<b>Seconda squadra:</b> {squadra}\n\n"
-                "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML'
-            )
+            # Verifica che la seconda squadra sia diversa dalla prima
+            if squadra == context.user_data['squadra1']:
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
+                    "⚠️ La seconda squadra deve essere diversa dalla prima. Seleziona un'altra squadra.\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return SQUADRA2
+            
+            # Se è un triangolare, prepara la selezione della terza squadra
+            if context.user_data.get('tipo_partita') == 'triangolare':
+                # Carica le squadre disponibili per la terza squadra
+                squadre = get_squadre_list()
+                
+                # Rimuovi la prima e la seconda squadra dalla lista
+                if context.user_data['squadra1'] in squadre:
+                    squadre.remove(context.user_data['squadra1'])
+                if squadra in squadre:
+                    squadre.remove(squadra)
+                
+                # Crea una tastiera con le squadre rimanenti
+                keyboard = []
+                for i in range(0, len(squadre), 1):
+                    keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                
+                # Aggiungi un pulsante per inserire manualmente una squadra
+                keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+                
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
+                    f"<b>Seconda squadra:</b> {squadra}\n\n"
+                    "<b>Seleziona la terza squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+            else:
+                # Per le partite normali, chiedi la data
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
+                    f"<b>Seconda squadra:</b> {squadra}\n\n"
+                    "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
         else:
             squadra = update.message.text
             
@@ -2438,14 +2564,46 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 )
                 return SQUADRA2
             
-            await update.message.reply_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                f"<b>Seconda squadra:</b> {squadra}\n\n"
-                "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML'
-            )
+            # Se è un triangolare, prepara la selezione della terza squadra
+            if context.user_data.get('tipo_partita') == 'triangolare':
+                # Carica le squadre disponibili per la terza squadra
+                squadre = get_squadre_list()
+                
+                # Rimuovi la prima e la seconda squadra dalla lista
+                if context.user_data['squadra1'] in squadre:
+                    squadre.remove(context.user_data['squadra1'])
+                if squadra in squadre:
+                    squadre.remove(squadra)
+                
+                # Crea una tastiera con le squadre rimanenti
+                keyboard = []
+                for i in range(0, len(squadre), 1):
+                    keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                
+                # Aggiungi un pulsante per inserire manualmente una squadra
+                keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+                
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
+                    f"<b>Seconda squadra:</b> {squadra}\n\n"
+                    "<b>Seleziona la terza squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+            else:
+                # Per le partite normali, chiedi la data
+                await update.message.reply_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
+                    f"<b>Seconda squadra:</b> {squadra}\n\n"
+                    "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
         
         context.user_data['squadra2'] = squadra
         
@@ -2476,6 +2634,29 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             query = update.callback_query
             await query.answer()
             squadra = query.data
+            
+            # Se l'utente ha selezionato "Altra squadra", chiedi di inserire manualmente
+            if squadra == "altra_squadra":
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
+                    f"<b>Seconda squadra:</b> {context.user_data['squadra2']}\n\n"
+                    "<b>Inserisci manualmente il nome della terza squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return SQUADRA3
+            
+            # Verifica che la terza squadra sia diversa dalle altre
+            if squadra == context.user_data['squadra1'] or squadra == context.user_data['squadra2']:
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
+                    "⚠️ La terza squadra deve essere diversa dalle altre. Seleziona un'altra squadra.\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return SQUADRA3
+            
             
             await query.edit_message_text(
                 f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
