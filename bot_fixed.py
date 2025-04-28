@@ -6,6 +6,8 @@ import json
 import os
 import time
 import pandas as pd
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
@@ -3379,5 +3381,31 @@ def main() -> None:
         allowed_updates=["message", "callback_query", "inline_query"]  # Limita gli aggiornamenti da processare
     )
 
+# Classe per gestire le richieste HTTP
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'Bot Telegram CRV Rugby attivo!')
+    
+    def log_message(self, format, *args):
+        # Disabilita i log delle richieste HTTP per evitare spam nel log
+        return
+
+# Funzione per avviare il server HTTP
+def run_http_server():
+    # Ottieni la porta da Render o usa 8080 come default
+    port = int(os.environ.get('PORT', 8080))
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    logger.info(f"Avvio server HTTP sulla porta {port}...")
+    httpd.serve_forever()
+
 if __name__ == "__main__":
+    # Avvia il server HTTP in un thread separato
+    http_thread = threading.Thread(target=run_http_server, daemon=True)
+    http_thread.start()
+    
+    # Avvia il bot
     main()
