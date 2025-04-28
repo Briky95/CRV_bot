@@ -628,7 +628,16 @@ def delete_match(match_id):
 @app.route('/teams')
 @login_required
 def teams():
-    squadre = carica_squadre()
+    squadre_per_categoria = carica_squadre()
+    
+    # Estrai tutte le squadre in una lista unica
+    squadre = []
+    for categoria, squadre_categoria in squadre_per_categoria.items():
+        squadre.extend(squadre_categoria)
+    
+    # Rimuovi eventuali duplicati e ordina alfabeticamente
+    squadre = sorted(list(set(squadre)))
+    
     return render_template('teams.html', squadre=squadre)
 
 # API per aggiungere una squadra
@@ -641,17 +650,25 @@ def add_team():
     
     try:
         # Carica le squadre esistenti
-        squadre = carica_squadre()
+        squadre_per_categoria = carica_squadre()
+        
+        # Estrai tutte le squadre in una lista unica per verificare duplicati
+        tutte_le_squadre = []
+        for categoria, squadre_categoria in squadre_per_categoria.items():
+            tutte_le_squadre.extend(squadre_categoria)
         
         # Verifica se la squadra esiste già
-        if team_name in squadre:
+        if team_name in tutte_le_squadre:
             return jsonify({"success": False, "message": "Squadra già esistente"}), 400
         
-        # Aggiungi la nuova squadra
-        squadre.append(team_name)
+        # Aggiungi la nuova squadra alla categoria "Generale" (o crea la categoria se non esiste)
+        if "Generale" not in squadre_per_categoria:
+            squadre_per_categoria["Generale"] = []
+        
+        squadre_per_categoria["Generale"].append(team_name)
         
         # Salva le squadre
-        salva_squadre(squadre)
+        salva_squadre(squadre_per_categoria)
         
         return jsonify({"success": True, "message": "Squadra aggiunta con successo"})
     except Exception as e:
@@ -669,20 +686,36 @@ def update_team():
     
     try:
         team_index = int(team_index)
-        squadre = carica_squadre()
+        squadre_per_categoria = carica_squadre()
         
-        if team_index < 0 or team_index >= len(squadre):
+        # Estrai tutte le squadre in una lista unica
+        tutte_le_squadre = []
+        for categoria, squadre_categoria in squadre_per_categoria.items():
+            tutte_le_squadre.extend(squadre_categoria)
+        
+        # Ordina alfabeticamente (come nella route teams())
+        tutte_le_squadre = sorted(list(set(tutte_le_squadre)))
+        
+        if team_index < 0 or team_index >= len(tutte_le_squadre):
             return jsonify({"success": False, "message": "Indice squadra non valido"}), 400
         
+        # Ottieni il nome della squadra da aggiornare
+        old_team_name = tutte_le_squadre[team_index]
+        
         # Verifica se il nuovo nome esiste già (escludendo la squadra corrente)
-        if new_team_name in [s for i, s in enumerate(squadre) if i != team_index]:
+        if new_team_name in tutte_le_squadre and new_team_name != old_team_name:
             return jsonify({"success": False, "message": "Esiste già una squadra con questo nome"}), 400
         
-        # Aggiorna il nome della squadra
-        squadre[team_index] = new_team_name
+        # Aggiorna il nome della squadra in tutte le categorie
+        for categoria, squadre_categoria in squadre_per_categoria.items():
+            if old_team_name in squadre_categoria:
+                # Trova l'indice della squadra nella categoria
+                idx = squadre_categoria.index(old_team_name)
+                # Aggiorna il nome
+                squadre_categoria[idx] = new_team_name
         
         # Salva le squadre
-        salva_squadre(squadre)
+        salva_squadre(squadre_per_categoria)
         
         return jsonify({"success": True, "message": "Squadra aggiornata con successo"})
     except Exception as e:
@@ -699,18 +732,34 @@ def delete_team():
     
     try:
         team_index = int(team_index)
-        squadre = carica_squadre()
+        squadre_per_categoria = carica_squadre()
         
-        if team_index < 0 or team_index >= len(squadre):
+        # Estrai tutte le squadre in una lista unica
+        tutte_le_squadre = []
+        for categoria, squadre_categoria in squadre_per_categoria.items():
+            tutte_le_squadre.extend(squadre_categoria)
+        
+        # Ordina alfabeticamente (come nella route teams())
+        tutte_le_squadre = sorted(list(set(tutte_le_squadre)))
+        
+        if team_index < 0 or team_index >= len(tutte_le_squadre):
             return jsonify({"success": False, "message": "Indice squadra non valido"}), 400
         
-        # Rimuovi la squadra
-        squadra_rimossa = squadre.pop(team_index)
+        # Ottieni il nome della squadra da eliminare
+        team_name = tutte_le_squadre[team_index]
+        
+        # Rimuovi la squadra da tutte le categorie
+        for categoria, squadre_categoria in list(squadre_per_categoria.items()):
+            if team_name in squadre_categoria:
+                squadre_categoria.remove(team_name)
+                # Se la categoria è vuota, rimuovila
+                if not squadre_categoria:
+                    del squadre_per_categoria[categoria]
         
         # Salva le squadre
-        salva_squadre(squadre)
+        salva_squadre(squadre_per_categoria)
         
-        return jsonify({"success": True, "message": f"Squadra '{squadra_rimossa}' eliminata con successo"})
+        return jsonify({"success": True, "message": f"Squadra '{team_name}' eliminata con successo"})
     except Exception as e:
         return jsonify({"success": False, "message": f"Errore: {str(e)}"}), 500
 
