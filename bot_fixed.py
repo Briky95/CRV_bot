@@ -3278,29 +3278,50 @@ async def cerca_utente_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 def check_single_instance():
     """
     Verifica che solo un'istanza del bot sia in esecuzione.
-    Utilizza un socket per creare un lock.
+    Utilizza un file di lock per maggiore affidabilità in ambienti cloud.
     """
-    # Porta per il lock (diversa dalla porta HTTP)
-    lock_port = 12345
-    
-    # Crea un socket
-    lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Percorso del file di lock
+    lock_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot.lock')
     
     try:
-        # Prova a bindare il socket alla porta di lock
-        lock_socket.bind(('localhost', lock_port))
+        # Verifica se il file di lock esiste
+        if os.path.exists(lock_file):
+            # Controlla se il processo è ancora attivo
+            with open(lock_file, 'r') as f:
+                try:
+                    pid = int(f.read().strip())
+                    # Verifica se il processo è ancora in esecuzione
+                    try:
+                        # In Unix/Linux
+                        os.kill(pid, 0)
+                        # Se arriviamo qui, il processo esiste ancora
+                        logger.error(f"Un'altra istanza del bot è già in esecuzione (PID: {pid}). Uscita in corso...")
+                        return False
+                    except OSError:
+                        # Il processo non esiste più, possiamo sovrascrivere il file di lock
+                        logger.warning(f"File di lock trovato, ma il processo {pid} non esiste più. Sovrascrittura...")
+                except (ValueError, TypeError):
+                    # Il file di lock è corrotto, possiamo sovrascriverlo
+                    logger.warning("File di lock corrotto. Sovrascrittura...")
         
-        # Registra una funzione per chiudere il socket all'uscita
+        # Crea o sovrascrive il file di lock con il PID corrente
+        with open(lock_file, 'w') as f:
+            f.write(str(os.getpid()))
+        
+        # Registra una funzione per rimuovere il file di lock all'uscita
         def cleanup():
-            lock_socket.close()
+            try:
+                if os.path.exists(lock_file):
+                    os.remove(lock_file)
+            except Exception as e:
+                logger.error(f"Errore nella rimozione del file di lock: {e}")
         
         atexit.register(cleanup)
         
-        logger.info("Nessun'altra istanza del bot in esecuzione. Procedendo...")
+        logger.info(f"Nessun'altra istanza del bot in esecuzione. Lock creato (PID: {os.getpid()}).")
         return True
-    except socket.error:
-        # Se il binding fallisce, un'altra istanza è già in esecuzione
-        logger.error("Un'altra istanza del bot è già in esecuzione. Uscita in corso...")
+    except Exception as e:
+        logger.error(f"Errore nel controllo/creazione del file di lock: {e}")
         return False
 
 # Funzione principale per avviare il bot
@@ -3417,10 +3438,36 @@ def main() -> None:
     
     # Configurazioni ottimizzate per il polling
     logger.info("Avvio del bot con configurazioni ottimizzate...")
-    application.run_polling(
-        drop_pending_updates=True,  # Ignora gli aggiornamenti in sospeso
-        allowed_updates=["message", "callback_query", "inline_query"]  # Limita gli aggiornamenti da processare
-    )
+    
+    # Prova a cancellare eventuali webhook configurati
+    try:
+        from telegram.ext import Updater
+        bot = application.bot
+        bot.delete_webhook()
+        logger.info("Webhook cancellato con successo.")
+    except Exception as e:
+        logger.warning(f"Errore nella cancellazione del webhook: {e}")
+    
+    # Avvia il polling con timeout esplicito e gestione degli errori
+    try:
+        application.run_polling(
+            drop_pending_updates=True,  # Ignora gli aggiornamenti in sospeso
+            allowed_updates=["message", "callback_query", "inline_query"],  # Limita gli aggiornamenti da processare
+            poll_interval=1.0,  # Intervallo tra le richieste di polling
+            timeout=30,  # Timeout per le richieste HTTP
+            read_timeout=30,  # Timeout per la lettura delle risposte
+            write_timeout=30,  # Timeout per l'invio delle richieste
+            connect_timeout=30,  # Timeout per la connessione
+            pool_timeout=30,  # Timeout per il pool di connessioni
+        )
+    except Exception as e:
+        logger.error(f"Errore nell'avvio del polling: {e}")
+        # Se siamo su Render, non uscire ma continua con il server HTTP
+        if os.environ.get('RENDER'):
+            logger.warning("Errore nell'avvio del bot, ma continuando con il server HTTP per soddisfare i requisiti di Render...")
+            return
+        else:
+            raise
 
 # Classe per gestire le richieste HTTP
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -3448,14 +3495,35 @@ if __name__ == "__main__":
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
     
-    # Avvia il bot
-    main()
+    # Verifica se siamo su Render
+    is_render = os.environ.get('RENDER') is not None
     
-    # Se siamo su Render e il bot non è stato avviato (a causa del lock),
-    # mantieni comunque il processo in esecuzione per il server HTTP
-    if os.environ.get('RENDER') and not check_single_instance():
+    # Verifica se possiamo avviare il bot (nessun'altra istanza in esecuzione)
+    can_start_bot = check_single_instance()
+    
+    if can_start_bot:
+        # Avvia il bot
+        try:
+            main()
+        except Exception as e:
+            logger.error(f"Errore nell'avvio del bot: {e}")
+            # Se siamo su Render, continua con il server HTTP
+            if not is_render:
+                sys.exit(1)
+    else:
+        logger.warning("Non è possibile avviare il bot a causa di un'altra istanza in esecuzione.")
+        # Se non siamo su Render, esci
+        if not is_render:
+            sys.exit(1)
+    
+    # Se siamo su Render, mantieni comunque il processo in esecuzione per il server HTTP
+    if is_render:
         logger.info("Mantenendo attivo il server HTTP...")
         # Mantieni il processo principale in esecuzione
-        while True:
-            time.sleep(60)  # Controlla ogni minuto
-            logger.info("Server HTTP ancora attivo...")
+        try:
+            while True:
+                time.sleep(60)  # Controlla ogni minuto
+                logger.info("Server HTTP ancora attivo...")
+        except KeyboardInterrupt:
+            logger.info("Interruzione rilevata. Uscita in corso...")
+            sys.exit(0)
