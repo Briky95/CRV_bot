@@ -100,10 +100,10 @@
         <tbody>
             {% for partita in partite_recenti %}
             <tr>
-                <td>{{ partita.data_partita }}</td>
-                <td>{{ partita.categoria }} {{ partita.genere }}</td>
-                <td>{{ partita.squadra1 }} vs {{ partita.squadra2 }}</td>
-                <td>{{ partita.punteggio1 }} - {{ partita.punteggio2 }}</td>
+                <td>{{ partita.get('data_partita', 'N/D') }}</td>
+                <td>{{ partita.get('categoria', 'N/D') }} {{ partita.get('genere', '') }}</td>
+                <td>{{ partita.get('squadra1', 'N/D') }} vs {{ partita.get('squadra2', 'N/D') }}</td>
+                <td>{{ partita.get('punteggio1', 'N/D') }} - {{ partita.get('punteggio2', 'N/D') }}</td>
                 <td>
                     <a href="{{ url_for('match_details', match_id=loop.index0) }}" class="btn btn-sm btn-info">
                         <i class="fas fa-eye"></i>
@@ -145,104 +145,121 @@
 
 {% block extra_js %}
 <script>
+    // Funzione per verificare se un elemento esiste nel DOM
+    function elementExists(id) {
+        return document.getElementById(id) !== null;
+    }
+
     // Grafico distribuzione partite per categoria
-    var ctx = document.getElementById('categorieChart').getContext('2d');
-    var categorieChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['Serie A Elite', 'Serie A', 'Serie B', 'Serie C1', 'U18', 'U16', 'U14'],
-            datasets: [{
-                data: [12, 19, 8, 15, 10, 7, 5],
-                backgroundColor: [
-                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'
-                ],
-                hoverBackgroundColor: [
-                    '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#373840'
-                ],
-                hoverBorderColor: "rgba(234, 236, 244, 1)",
-            }],
-        },
-        options: {
-            maintainAspectRatio: false,
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                caretPadding: 10,
-            },
-            legend: {
-                display: true,
-                position: 'bottom'
-            },
-            cutoutPercentage: 0,
-        },
-    });
+    if (elementExists('categorieChart')) {
+        try {
+            var ctx = document.getElementById('categorieChart').getContext('2d');
+            var categorieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Serie A Elite', 'Serie A', 'Serie B', 'Serie C1', 'U18', 'U16', 'U14'],
+                    datasets: [{
+                        data: [12, 19, 8, 15, 10, 7, 5],
+                        backgroundColor: [
+                            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'
+                        ],
+                        hoverBackgroundColor: [
+                            '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#373840'
+                        ],
+                        hoverBorderColor: "rgba(234, 236, 244, 1)",
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                    },
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    cutoutPercentage: 0,
+                },
+            });
+        } catch (e) {
+            console.error("Errore nel caricamento del grafico categorie:", e);
+        }
+    }
 
     // Grafico attività utenti
-    var ctx2 = document.getElementById('utentiChart').getContext('2d');
-    var utentiChart = new Chart(ctx2, {
-        type: 'bar',
-        data: {
-            labels: ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno'],
-            datasets: [{
-                label: 'Nuovi Utenti',
-                backgroundColor: '#4e73df',
-                data: [5, 8, 12, 7, 10, 15],
-            }, {
-                label: 'Partite Inserite',
-                backgroundColor: '#1cc88a',
-                data: [10, 15, 20, 12, 18, 25],
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            scales: {
-                xAxes: [{
-                    gridLines: {
-                        display: false,
-                        drawBorder: false
+    if (elementExists('utentiChart')) {
+        try {
+            var ctx2 = document.getElementById('utentiChart').getContext('2d');
+            var utentiChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno'],
+                    datasets: [{
+                        label: 'Nuovi Utenti',
+                        backgroundColor: '#4e73df',
+                        data: [5, 8, 12, 7, 10, 15],
+                    }, {
+                        label: 'Partite Inserite',
+                        backgroundColor: '#1cc88a',
+                        data: [10, 15, 20, 12, 18, 25],
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        xAxes: [{
+                            gridLines: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6
+                            }
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                min: 0,
+                                maxTicksLimit: 5,
+                                padding: 10,
+                            },
+                            gridLines: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }],
                     },
-                    ticks: {
-                        maxTicksLimit: 6
-                    }
-                }],
-                yAxes: [{
-                    ticks: {
-                        min: 0,
-                        maxTicksLimit: 5,
-                        padding: 10,
+                    legend: {
+                        display: true,
+                        position: 'bottom'
                     },
-                    gridLines: {
-                        color: "rgb(234, 236, 244)",
-                        zeroLineColor: "rgb(234, 236, 244)",
-                        drawBorder: false,
-                        borderDash: [2],
-                        zeroLineBorderDash: [2]
-                    }
-                }],
-            },
-            legend: {
-                display: true,
-                position: 'bottom'
-            },
-            tooltips: {
-                titleMarginBottom: 10,
-                titleFontColor: '#6e707e',
-                titleFontSize: 14,
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                caretPadding: 10,
-            },
+                    tooltips: {
+                        titleMarginBottom: 10,
+                        titleFontColor: '#6e707e',
+                        titleFontSize: 14,
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                    },
+                }
+            });
+        } catch (e) {
+            console.error("Errore nel caricamento del grafico utenti:", e);
         }
-    });
+    }
 </script>
 {% endblock %}

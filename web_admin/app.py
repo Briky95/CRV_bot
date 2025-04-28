@@ -194,39 +194,62 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Carica i dati per la dashboard
-    risultati = carica_risultati()
-    utenti_data = carica_utenti()
-    
-    # Calcola alcune statistiche
-    num_partite = len(risultati)
-    num_utenti_autorizzati = len(utenti_data["autorizzati"])
-    num_utenti_in_attesa = len(utenti_data["in_attesa"])
-    
-    # Calcola le partite recenti (ultimi 7 giorni)
-    oggi = datetime.now()
-    sette_giorni_fa = oggi - timedelta(days=7)
-    partite_recenti = []
-    
-    for risultato in risultati:
+    try:
+        # Carica i dati per la dashboard
         try:
-            data_partita = datetime.strptime(risultato.get('data_partita', '01/01/2000'), '%d/%m/%Y')
-            if data_partita >= sette_giorni_fa:
-                partite_recenti.append(risultato)
-        except ValueError:
-            continue
-    
-    # Ordina le partite recenti per data (più recenti prima)
-    partite_recenti.sort(key=lambda x: datetime.strptime(x.get('data_partita', '01/01/2000'), '%d/%m/%Y'), reverse=True)
-    
-    # Limita a 5 partite
-    partite_recenti = partite_recenti[:5]
-    
-    return render_template('dashboard.html', 
-                          num_partite=num_partite,
-                          num_utenti_autorizzati=num_utenti_autorizzati,
-                          num_utenti_in_attesa=num_utenti_in_attesa,
-                          partite_recenti=partite_recenti)
+            risultati = carica_risultati()
+        except Exception as e:
+            app.logger.error(f"Errore nel caricamento dei risultati: {e}")
+            risultati = []
+        
+        try:
+            utenti_data = carica_utenti()
+        except Exception as e:
+            app.logger.error(f"Errore nel caricamento degli utenti: {e}")
+            utenti_data = {"autorizzati": [], "in_attesa": []}
+        
+        # Calcola alcune statistiche
+        num_partite = len(risultati)
+        num_utenti_autorizzati = len(utenti_data.get("autorizzati", []))
+        num_utenti_in_attesa = len(utenti_data.get("in_attesa", []))
+        
+        # Calcola le partite recenti (ultimi 7 giorni)
+        oggi = datetime.now()
+        sette_giorni_fa = oggi - timedelta(days=7)
+        partite_recenti = []
+        
+        for risultato in risultati:
+            try:
+                data_partita = datetime.strptime(risultato.get('data_partita', '01/01/2000'), '%d/%m/%Y')
+                if data_partita >= sette_giorni_fa:
+                    partite_recenti.append(risultato)
+            except (ValueError, TypeError) as e:
+                app.logger.warning(f"Errore nella conversione della data: {e}")
+                continue
+        
+        # Ordina le partite recenti per data (più recenti prima)
+        try:
+            partite_recenti.sort(key=lambda x: datetime.strptime(x.get('data_partita', '01/01/2000'), '%d/%m/%Y'), reverse=True)
+        except Exception as e:
+            app.logger.error(f"Errore nell'ordinamento delle partite: {e}")
+        
+        # Limita a 5 partite
+        partite_recenti = partite_recenti[:5]
+        
+        return render_template('dashboard.html', 
+                              num_partite=num_partite,
+                              num_utenti_autorizzati=num_utenti_autorizzati,
+                              num_utenti_in_attesa=num_utenti_in_attesa,
+                              partite_recenti=partite_recenti)
+    except Exception as e:
+        app.logger.error(f"Errore nella dashboard: {e}")
+        flash(f"Si è verificato un errore nel caricamento della dashboard: {str(e)}", "danger")
+        # Renderizza una dashboard vuota in caso di errore
+        return render_template('dashboard.html', 
+                              num_partite=0,
+                              num_utenti_autorizzati=0,
+                              num_utenti_in_attesa=0,
+                              partite_recenti=[])
 
 # Rotta per la gestione utenti
 @app.route('/users')
