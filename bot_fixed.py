@@ -7,6 +7,9 @@ import os
 import time
 import pandas as pd
 import threading
+import socket
+import sys
+import atexit
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -3271,9 +3274,47 @@ async def cerca_utente_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=reply_markup
         )
 
+# Funzione per verificare se un'altra istanza del bot è in esecuzione
+def check_single_instance():
+    """
+    Verifica che solo un'istanza del bot sia in esecuzione.
+    Utilizza un socket per creare un lock.
+    """
+    # Porta per il lock (diversa dalla porta HTTP)
+    lock_port = 12345
+    
+    # Crea un socket
+    lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    try:
+        # Prova a bindare il socket alla porta di lock
+        lock_socket.bind(('localhost', lock_port))
+        
+        # Registra una funzione per chiudere il socket all'uscita
+        def cleanup():
+            lock_socket.close()
+        
+        atexit.register(cleanup)
+        
+        logger.info("Nessun'altra istanza del bot in esecuzione. Procedendo...")
+        return True
+    except socket.error:
+        # Se il binding fallisce, un'altra istanza è già in esecuzione
+        logger.error("Un'altra istanza del bot è già in esecuzione. Uscita in corso...")
+        return False
+
 # Funzione principale per avviare il bot
 def main() -> None:
     """Avvia il bot."""
+    # Verifica che solo un'istanza sia in esecuzione
+    if not check_single_instance():
+        # Se è in esecuzione su Render, non uscire ma continua con il server HTTP
+        if os.environ.get('RENDER'):
+            logger.warning("Continuando solo con il server HTTP per soddisfare i requisiti di Render...")
+            return
+        else:
+            sys.exit(1)
+    
     # Crea l'applicazione con configurazioni ottimizzate
     application = Application.builder().token(TOKEN).build()
 
@@ -3409,3 +3450,12 @@ if __name__ == "__main__":
     
     # Avvia il bot
     main()
+    
+    # Se siamo su Render e il bot non è stato avviato (a causa del lock),
+    # mantieni comunque il processo in esecuzione per il server HTTP
+    if os.environ.get('RENDER') and not check_single_instance():
+        logger.info("Mantenendo attivo il server HTTP...")
+        # Mantieni il processo principale in esecuzione
+        while True:
+            time.sleep(60)  # Controlla ogni minuto
+            logger.info("Server HTTP ancora attivo...")
