@@ -821,11 +821,9 @@ def stats():
 def genera_riepilogo_weekend():
     """Genera un riepilogo delle partite del weekend."""
     try:
-        try:
         # Ottieni i risultati del weekend
-         eekend = ottieni_risultati_weekend()
+        risultati_weekend = ottieni_risultati_weekend()
         
-        # Calcola le date del weekend corren
         # Calcola le date del weekend corrente
         oggi = datetime.now()
         # Trova il venerdì precedente
@@ -838,39 +836,31 @@ def genera_riepilogo_weekend():
         
         if not risultati_weekend:
             # Se non ci sono risultati, restituisci solo le date
-            app.logger.warning(f"Nessun risultato trovato per il weekend{{inizio_weekend_str} - {fine_weekend_str}")
-             []
-        
-        # Crea il messaggio di riepilogo
-            messaggio = f"📊 *RIEPILOGO WEEKEND {inizio_weekend_str} - {fine_weekend_str}")
+            app.logger.warning(f"Nessun risultato trovato per il weekend {inizio_weekend_str} - {fine_weekend_str}")
             return inizio_weekend_str, fine_weekend_str, "", []
         
-    } - {fine_weekend_str}*\n\n"
+        # Crea il messaggio di riepilogo
+        messaggio = f"📊 *RIEPILOGO WEEKEND {inizio_weekend_str} - {fine_weekend_str}*\n\n"
             
-      #   Raggruppa i risultati per categoria
-                risultati_per_chiave] = []
-            
-                for risultato in risultati_weekend', 'Altra categoria')
+        # Raggruppa i risultati per categoria
+        risultati_per_categoria = {}
+        
+        for risultato in risultati_weekend:
+            categoria = risultato.get('categoria', 'Altra categoria')
             genere = risultato.get('genere', '')
             chiave = f"{categoria} {genere}".strip()
             
-            if chiave = risultato.get('categoria',     'Altra categoria')
-            genere = risultato.get('genere', '')
-        
-          chiave = f"{categoria} {genere}".strip()
-            
             if chiave not in risultati_per_categoria:
-                    risultati_per_categoria[chiave] = []
-            
+                risultati_per_categoria[chiave] = []
+                
             risultati_per_categoria[chiave].append(risultato)
         
         # Aggiungi i risultati al messaggio, raggruppati per categoria
         for categoria, risultati in risultati_per_categoria.items():
-                messaggio += f"🏆 *{categoria, 'N/D')} ({risultato.get('data_partita', 'N/D')})\n"
-                for risultato in risultati:
+            messaggio += f"🏆 *{categoria}*\n"
+            for risultato in risultati:
                 messaggio += f"• {risultato.get('squadra1', 'N/D')} {risultato.get('punteggio1', 0)} - {risultato.get('punteggio2', 0)} {risultato.get('squadra2', 'N/D')} ({risultato.get('data_partita', 'N/D')})\n"
             messaggio += "\n"
-        
         
         return inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend
     except Exception as e:
@@ -879,24 +869,12 @@ def genera_riepilogo_weekend():
         # Calcola le date del weekend corrente come fallback
         oggi = datetime.now()
         inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
-        fine_weekend     = inizio_weekend + timedelta(days=2)
+        fine_weekend = inizio_weekend + timedelta(days=2)
         
         inizio_weekend_str = inizio_weekend.strftime("%d/%m/%Y")
         fine_weekend_str = fine_weekend.strftime("%d/%m/%Y")
         
         return inizio_weekend_str, fine_weekend_str, "", []
-    except Exception as e:
-        app.logger.error(f"Errore nella generazione del riepilogo weekend: {e}")
-            
-            # Calcola le date del weekend corrente come fallback
-        oggi = datetime.now()
-        inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
-        fine_weekend = inizio_weekend + timedelta(days=2)
-        
-        inizio_weekend_str = inizio_weekend.strftime("%d/%m/%Y")
-        fine_weekend_str = fine_weekend.strftime("%d/%m/%Y")
-            
-            return inizio_weekend_str, fine_weekend_str, "", []
 
 # Rotta per la pagina del riepilogo del weekend
 @app.route('/weekend_summary')
@@ -905,8 +883,8 @@ def weekend_summary():
     try:
         # Genera il riepilogo del weekend
         inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend = genera_riepilogo_weekend()
-            
-            if not risultati_weekend:
+        
+        if not risultati_weekend:
             flash(f'Non ci sono risultati per il weekend {inizio_weekend_str} - {fine_weekend_str}.', 'warning')
             return redirect(url_for('dashboard'))
         
@@ -928,12 +906,12 @@ def weekend_summary():
         totale_mete = sum(int(r.get('mete1', 0)) + int(r.get('mete2', 0)) for r in risultati_weekend)
           
         # Calcola la media di punti e mete per partita
-        media_punti = round(totale_punti / totale_partite, 1) if   totale_partite > 0 else 0
-        media_mete = round(totale_mete / totale_partite, 1) if totale_partite   > 0 else 0
+        media_punti = round(totale_punti / totale_partite, 1) if totale_partite > 0 else 0
+        media_mete = round(totale_mete / totale_partite, 1) if totale_partite > 0 else 0
           
-        #   Converti le date in oggetti datetime per la formattazione
+        # Converti le date in oggetti datetime per la formattazione
         try:
-              inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
+            inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
             fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
         except ValueError as e:
             app.logger.error(f"Errore nella conversione delle date: {e}")
@@ -1109,31 +1087,6 @@ def send_weekend_pdf():
         
         # Crea la didascalia per il file
         caption = f"📄 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato PDF"
-        
-        # Funzione per inviare un file al canale Telegram
-        async def invia_file_telegram(file_buffer, filename, caption):
-            try:
-                # Usa il token dell'interfaccia web se disponibile, altrimenti usa il token del bot principale
-                token = TOKEN_WEB or os.environ.get('BOT_TOKEN', '')
-                channel = CHANNEL_ID_WEB or CHANNEL_ID
-                
-                # Crea un'istanza del bot con un client HTTP separato per evitare conflitti
-                bot = telegram.Bot(token=token)
-                
-                # Invia il file al canale con timeout più brevi
-                file_buffer.seek(0)
-                message = await bot.send_document(
-                    chat_id=channel,
-                    document=file_buffer,
-                    filename=filename,
-                    caption=caption,
-                    read_timeout=5,
-                    write_timeout=5,
-                    connect_timeout=5
-                )
-                return True, "File inviato con successo"
-            except Exception as e:
-                return False, str(e)
         
         # Invia il file al canale Telegram
         success, message = asyncio.run(invia_file_telegram(pdf_buffer, filename, caption))

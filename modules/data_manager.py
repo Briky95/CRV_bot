@@ -177,27 +177,6 @@ def ottieni_risultati_weekend():
     # Log per debug
     logger.info(f"Inizio weekend: {inizio_weekend}, Fine weekend: {fine_weekend}, Oggi: {oggi}")
     
-    # Calcola la fine del weekend (domenica)
-    # Se oggi è venerdì (4) o sabato (5), la fine del weekend è domenica
-    # Se oggi è domenica (6) o un altro giorno, la fine del weekend è la domenica appena passata
-    if oggi.weekday() < 4:  # Lunedì-Giovedì
-        fine_weekend = inizio_weekend + timedelta(days=2)  # Domenica
-    elif oggi.weekday() == 4:  # Vener as edì
-        fine_weekend = inizio_weekend + timedelta(days=2)  # Domenica
-    elif oggi.weekday() == 5:  # Log per debug
-            logger.warning(f"Errore nel parsing della data: {e}, risultato: {risultato}")
-            # Ignora risultati con date non valide
-            pass
-    
-    # Ordina i risultati per data
-    risultati_weekend.sort(key=lambda x: datetime.strptime(x.get('data_partita', '01/01/2000'), '%d/%m/%Y'))
-        fine_weekend = inizio_weekend + timedelta(days=2)  # Domenica
-    else:  # Domenica
-        fine_weekend = oggi  # Oggi stesso (domenica)
-    
-    # Log per debug
-    logger.info(f"Inizio weekend: {inizio_weekend}, Fine weekend: {fine_weekend}, Oggi: {oggi}")
-    
     # Filtra i risultati del weekend
     risultati_weekend = []
     for risultato in risultati:
