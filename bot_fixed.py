@@ -2335,10 +2335,10 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Crea una tastiera con le squadre (2 per riga)
             keyboard = []
             for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                keyboard.append(row
+                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
+                keyboard.append(row)
                 if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2379,10 +2379,10 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # Crea una tastiera con le squadre (2 per riga)
         keyboard = []
         for i in range(0, len(squadre), 2):
-            row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-            keyboard.append(row
+            row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
+            keyboard.append(row)
             if i + 1 < len(squadre):
-                row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
         
         # Aggiungi un pulsante per inserire manualmente una squadra
         keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2437,10 +2437,10 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # Crea una tastiera con le squadre rimanenti (2 per riga)
             keyboard = []
             for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                keyboard.append(row
+                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
                 if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row)
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2468,10 +2468,10 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # Crea una tastiera con le squadre rimanenti (2 per riga)
             keyboard = []
             for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                keyboard.append(row
+                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
                 if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row)
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2545,10 +2545,10 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 # Crea una tastiera con le squadre rimanenti (2 per riga)
                 keyboard = []
                 for i in range(0, len(squadre), 2):
-                    row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                    keyboard.append(row
-                    if i + 1 < len(squadre):
-                        row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                    row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
+                if i + 1 < len(squadre):
+                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row)
                 
                 # Aggiungi un pulsante per inserire manualmente una squadra
                 keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2598,10 +2598,10 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 # Crea una tastiera con le squadre rimanenti (2 per riga)
                 keyboard = []
                 for i in range(0, len(squadre), 2):
-                    row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                    keyboard.append(row
-                    if i + 1 < len(squadre):
-                        row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                    row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
+                if i + 1 < len(squadre):
+                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row)
                 
                 # Aggiungi un pulsante per inserire manualmente una squadra
                 keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
