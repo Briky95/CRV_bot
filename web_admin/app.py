@@ -472,13 +472,10 @@ def add_match():
         # Ottieni i dati dal form
         categoria = request.form.get('categoria')
         genere = request.form.get('genere')
+        tipo_partita = request.form.get('tipo_partita', 'normale')
         data_partita_raw = request.form.get('data_partita')  # Formato YYYY-MM-DD
         squadra1 = request.form.get('squadra1')
         squadra2 = request.form.get('squadra2')
-        punteggio1 = int(request.form.get('punteggio1'))
-        punteggio2 = int(request.form.get('punteggio2'))
-        mete1 = int(request.form.get('mete1'))
-        mete2 = int(request.form.get('mete2'))
         arbitro = request.form.get('arbitro')
         
         # Converti la data nel formato DD/MM/YYYY
@@ -487,21 +484,87 @@ def add_match():
         # Carica i risultati esistenti
         risultati = carica_risultati()
         
-        # Crea il nuovo risultato
+        # Crea il nuovo risultato con i campi comuni
         nuovo_risultato = {
             'categoria': categoria,
             'genere': genere,
+            'tipo_partita': tipo_partita,
             'data_partita': data_partita,
             'squadra1': squadra1,
             'squadra2': squadra2,
-            'punteggio1': punteggio1,
-            'punteggio2': punteggio2,
-            'mete1': mete1,
-            'mete2': mete2,
             'arbitro': arbitro,
             'inserito_da': current_user.username,
             'timestamp_inserimento': datetime.now().isoformat()
         }
+        
+        # Gestione diversa per partite normali e triangolari
+        if tipo_partita == 'triangolare':
+            # Aggiungi la terza squadra
+            squadra3 = request.form.get('squadra3')
+            nuovo_risultato['squadra3'] = squadra3
+            
+            # Aggiungi i punteggi e le mete per ogni partita del triangolare
+            # Partita 1: squadra1 vs squadra2
+            partita1_punteggio1 = int(request.form.get('partita1_punteggio1', 0))
+            partita1_punteggio2 = int(request.form.get('partita1_punteggio2', 0))
+            partita1_mete1 = int(request.form.get('partita1_mete1', 0))
+            partita1_mete2 = int(request.form.get('partita1_mete2', 0))
+            
+            # Partita 2: squadra1 vs squadra3
+            partita2_punteggio1 = int(request.form.get('partita2_punteggio1', 0))
+            partita2_punteggio2 = int(request.form.get('partita2_punteggio2', 0))
+            partita2_mete1 = int(request.form.get('partita2_mete1', 0))
+            partita2_mete2 = int(request.form.get('partita2_mete2', 0))
+            
+            # Partita 3: squadra2 vs squadra3
+            partita3_punteggio1 = int(request.form.get('partita3_punteggio1', 0))
+            partita3_punteggio2 = int(request.form.get('partita3_punteggio2', 0))
+            partita3_mete1 = int(request.form.get('partita3_mete1', 0))
+            partita3_mete2 = int(request.form.get('partita3_mete2', 0))
+            
+            # Aggiungi i dati delle partite al risultato
+            nuovo_risultato.update({
+                'partita1_punteggio1': partita1_punteggio1,
+                'partita1_punteggio2': partita1_punteggio2,
+                'partita1_mete1': partita1_mete1,
+                'partita1_mete2': partita1_mete2,
+                
+                'partita2_punteggio1': partita2_punteggio1,
+                'partita2_punteggio2': partita2_punteggio2,
+                'partita2_mete1': partita2_mete1,
+                'partita2_mete2': partita2_mete2,
+                
+                'partita3_punteggio1': partita3_punteggio1,
+                'partita3_punteggio2': partita3_punteggio2,
+                'partita3_mete1': partita3_mete1,
+                'partita3_mete2': partita3_mete2
+            })
+            
+            # Calcola i totali per ogni squadra
+            nuovo_risultato['punteggio1'] = partita1_punteggio1 + partita2_punteggio1
+            nuovo_risultato['punteggio2'] = partita1_punteggio2 + partita3_punteggio1
+            nuovo_risultato['punteggio3'] = partita2_punteggio2 + partita3_punteggio2
+            
+            nuovo_risultato['mete1'] = partita1_mete1 + partita2_mete1
+            nuovo_risultato['mete2'] = partita1_mete2 + partita3_mete1
+            nuovo_risultato['mete3'] = partita2_mete2 + partita3_mete2
+            
+            app.logger.info(f"Aggiunta partita triangolare: {squadra1} vs {squadra2} vs {squadra3}")
+        else:
+            # Per le partite normali, aggiungi i punteggi e le mete standard
+            punteggio1 = int(request.form.get('punteggio1', 0))
+            punteggio2 = int(request.form.get('punteggio2', 0))
+            mete1 = int(request.form.get('mete1', 0))
+            mete2 = int(request.form.get('mete2', 0))
+            
+            nuovo_risultato.update({
+                'punteggio1': punteggio1,
+                'punteggio2': punteggio2,
+                'mete1': mete1,
+                'mete2': mete2
+            })
+            
+            app.logger.info(f"Aggiunta partita normale: {squadra1} vs {squadra2}")
         
         # Aggiungi il nuovo risultato
         risultati.append(nuovo_risultato)
