@@ -324,7 +324,8 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
     
     if is_supabase_configured():
         try:
-            # Per semplicità, non eliminiamo i risultati esistenti
+            # Elimina tutti i risultati esistenti
+            supabase.table('risultati').delete().neq('id', 0).execute()
             
             # Inserisci i nuovi risultati
             for i, risultato in enumerate(risultati):
