@@ -51,8 +51,12 @@
                             <label for="squadra1" class="form-label">Squadra 1</label>
                             <select class="form-select" id="squadra1" name="squadra1" required>
                                 <option value="" selected disabled>Seleziona squadra</option>
-                                {% for squadra in squadre %}
-                                <option value="{{ squadra }}">{{ squadra }}</option>
+                                {% for categoria, lista_squadre in squadre.items() %}
+                                <optgroup label="{{ categoria }}">
+                                    {% for squadra in lista_squadre %}
+                                    <option value="{{ squadra }}">{{ squadra }}</option>
+                                    {% endfor %}
+                                </optgroup>
                                 {% endfor %}
                             </select>
                         </div>
@@ -60,8 +64,12 @@
                             <label for="squadra2" class="form-label">Squadra 2</label>
                             <select class="form-select" id="squadra2" name="squadra2" required>
                                 <option value="" selected disabled>Seleziona squadra</option>
-                                {% for squadra in squadre %}
-                                <option value="{{ squadra }}">{{ squadra }}</option>
+                                {% for categoria, lista_squadre in squadre.items() %}
+                                <optgroup label="{{ categoria }}">
+                                    {% for squadra in lista_squadre %}
+                                    <option value="{{ squadra }}">{{ squadra }}</option>
+                                    {% endfor %}
+                                </optgroup>
                                 {% endfor %}
                             </select>
                         </div>
