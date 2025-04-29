@@ -2332,10 +2332,13 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Carica le squadre disponibili
             squadre = get_squadre_list()
             
-            # Crea una tastiera con le squadre
+            # Crea una tastiera con le squadre (2 per riga)
             keyboard = []
-            for i in range(0, len(squadre), 1):
-                keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+            for i in range(0, len(squadre), 2):
+                row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row
+                if i + 1 < len(squadre):
+                    row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2373,10 +2376,13 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # Carica le squadre disponibili
         squadre = get_squadre_list()
         
-        # Crea una tastiera con le squadre
+        # Crea una tastiera con le squadre (2 per riga)
         keyboard = []
-        for i in range(0, len(squadre), 1):
-            keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+        for i in range(0, len(squadre), 2):
+            row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+            keyboard.append(row
+            if i + 1 < len(squadre):
+                row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
         
         # Aggiungi un pulsante per inserire manualmente una squadra
         keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2428,10 +2434,13 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             if squadra in squadre:
                 squadre.remove(squadra)
             
-            # Crea una tastiera con le squadre rimanenti
+            # Crea una tastiera con le squadre rimanenti (2 per riga)
             keyboard = []
-            for i in range(0, len(squadre), 1):
-                keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+            for i in range(0, len(squadre), 2):
+                row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row
+                if i + 1 < len(squadre):
+                    row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2456,10 +2465,13 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             if squadra in squadre:
                 squadre.remove(squadra)
             
-            # Crea una tastiera con le squadre rimanenti
+            # Crea una tastiera con le squadre rimanenti (2 per riga)
             keyboard = []
-            for i in range(0, len(squadre), 1):
-                keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+            for i in range(0, len(squadre), 2):
+                row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row
+                if i + 1 < len(squadre):
+                    row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2530,10 +2542,13 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 if squadra in squadre:
                     squadre.remove(squadra)
                 
-                # Crea una tastiera con le squadre rimanenti
+                # Crea una tastiera con le squadre rimanenti (2 per riga)
                 keyboard = []
-                for i in range(0, len(squadre), 1):
-                    keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                for i in range(0, len(squadre), 2):
+                    row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                    keyboard.append(row
+                    if i + 1 < len(squadre):
+                        row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
                 
                 # Aggiungi un pulsante per inserire manualmente una squadra
                 keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2580,10 +2595,13 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 if squadra in squadre:
                     squadre.remove(squadra)
                 
-                # Crea una tastiera con le squadre rimanenti
+                # Crea una tastiera con le squadre rimanenti (2 per riga)
                 keyboard = []
-                for i in range(0, len(squadre), 1):
-                    keyboard.append([InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
+                for i in range(0, len(squadre), 2):
+                    row = [InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                    keyboard.append(row
+                    if i + 1 < len(squadre):
+                        row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i])])
                 
                 # Aggiungi un pulsante per inserire manualmente una squadra
                 keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2966,18 +2984,49 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "data_partita": context.user_data['data_partita'],
             "squadra1": context.user_data['squadra1'],
             "squadra2": context.user_data['squadra2'],
-            "punteggio1": int(context.user_data['punteggio1']),
-            "punteggio2": int(context.user_data['punteggio2']),
-            "mete1": int(context.user_data['mete1']),
-            "mete2": int(context.user_data['mete2']),
             "arbitro": context.user_data['arbitro'],
             "inserito_da": update.effective_user.full_name,
             "timestamp": datetime.now().isoformat()
         }
         
-        # Aggiungi la terza squadra e i relativi punteggi/mete se è un triangolare
+        # Gestione diversa per partite normali e triangolari
         if context.user_data.get('tipo_partita') == 'triangolare':
+            # Aggiungi la terza squadra
             nuovo_risultato["squadra3"] = context.user_data.get('squadra3', '')
+            
+            # Aggiungi i punteggi e le mete per ogni partita del triangolare
+            # Partita 1: squadra1 vs squadra2
+            nuovo_risultato["partita1_punteggio1"] = int(context.user_data.get('punteggio1', 0))
+            nuovo_risultato["partita1_punteggio2"] = int(context.user_data.get('punteggio2', 0))
+            nuovo_risultato["partita1_mete1"] = int(context.user_data.get('mete1', 0))
+            nuovo_risultato["partita1_mete2"] = int(context.user_data.get('mete2', 0))
+            
+            # Partita 2: squadra1 vs squadra3
+            nuovo_risultato["partita2_punteggio1"] = int(context.user_data.get('punteggio1_vs_3', 0))
+            nuovo_risultato["partita2_punteggio2"] = int(context.user_data.get('punteggio3_vs_1', 0))
+            nuovo_risultato["partita2_mete1"] = int(context.user_data.get('mete1_vs_3', 0))
+            nuovo_risultato["partita2_mete2"] = int(context.user_data.get('mete3_vs_1', 0))
+            
+            # Partita 3: squadra2 vs squadra3
+            nuovo_risultato["partita3_punteggio1"] = int(context.user_data.get('punteggio2_vs_3', 0))
+            nuovo_risultato["partita3_punteggio2"] = int(context.user_data.get('punteggio3_vs_2', 0))
+            nuovo_risultato["partita3_mete1"] = int(context.user_data.get('mete2_vs_3', 0))
+            nuovo_risultato["partita3_mete2"] = int(context.user_data.get('mete3_vs_2', 0))
+            
+            # Calcola i totali per ogni squadra
+            nuovo_risultato["punteggio1"] = nuovo_risultato["partita1_punteggio1"] + nuovo_risultato["partita2_punteggio1"]
+            nuovo_risultato["punteggio2"] = nuovo_risultato["partita1_punteggio2"] + nuovo_risultato["partita3_punteggio1"]
+            nuovo_risultato["punteggio3"] = nuovo_risultato["partita2_punteggio2"] + nuovo_risultato["partita3_punteggio2"]
+            
+            nuovo_risultato["mete1"] = nuovo_risultato["partita1_mete1"] + nuovo_risultato["partita2_mete1"]
+            nuovo_risultato["mete2"] = nuovo_risultato["partita1_mete2"] + nuovo_risultato["partita3_mete1"]
+            nuovo_risultato["mete3"] = nuovo_risultato["partita2_mete2"] + nuovo_risultato["partita3_mete2"]
+        else:
+            # Per le partite normali, aggiungi i punteggi e le mete standard
+            nuovo_risultato["punteggio1"] = int(context.user_data['punteggio1'])
+            nuovo_risultato["punteggio2"] = int(context.user_data['punteggio2'])
+            nuovo_risultato["mete1"] = int(context.user_data['mete1'])
+            nuovo_risultato["mete2"] = int(context.user_data['mete2'])
         
         # Carica i risultati esistenti
         risultati = carica_risultati()
