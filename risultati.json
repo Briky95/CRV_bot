@@ -430,5 +430,19 @@
     "modificato_da": null,
     "timestamp_modifica": "2025-04-26T08:21:20.436434+00:00",
     "message_id": null
+  },
+  {
+    "id": 25,
+    "categoria": "Serie A",
+    "squadra1": "Petrarca Rugby",
+    "squadra2": "Rugby Vicenza",
+    "punteggio1": 30,
+    "punteggio2": 15,
+    "mete1": 4,
+    "mete2": 2,
+    "arbitro": "Test",
+    "inserito_da": "Test",
+    "genere": "Maschile",
+    "data_partita": "27/04/2025"
   }
 ]
