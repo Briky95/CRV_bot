@@ -444,5 +444,19 @@
     "inserito_da": "Test",
     "genere": "Maschile",
     "data_partita": "27/04/2025"
+  },
+  {
+    "id": 26,
+    "categoria": "Serie B",
+    "squadra1": "Rugby Feltre",
+    "squadra2": "Rugby Trento",
+    "punteggio1": 22,
+    "punteggio2": 22,
+    "mete1": 3,
+    "mete2": 3,
+    "arbitro": "Test",
+    "inserito_da": "Test",
+    "genere": "Maschile",
+    "data_partita": "26/04/2025"
   }
 ]
