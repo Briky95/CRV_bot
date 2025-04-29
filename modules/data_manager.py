@@ -158,21 +158,11 @@ def ottieni_risultati_weekend():
     # Ottieni la data di oggi
     oggi = datetime.now().date()
     
-    # Calcola l'inizio del weekend (venerdì)
-    giorni_da_venerdi = (oggi.weekday() - 4) % 7
-    inizio_weekend = oggi - timedelta(days=giorni_da_venerdi)
+    # Trova il venerdì precedente (inizio weekend)
+    inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
     
-    # Calcola la fine del weekend (domenica)
-    # Se oggi è venerdì (4) o sabato (5), la fine del weekend è domenica
-    # Se oggi è domenica (6) o un altro giorno, la fine del weekend è la domenica appena passata
-    if oggi.weekday() < 4:  # Lunedì-Giovedì
-        fine_weekend = inizio_weekend + timedelta(days=2)  # Domenica
-    elif oggi.weekday() == 4:  # Venerdì
-        fine_weekend = inizio_weekend + timedelta(days=2)  # Domenica
-    elif oggi.weekday() == 5:  # Sabato
-        fine_weekend = inizio_weekend + timedelta(days=2)  # Domenica
-    else:  # Domenica
-        fine_weekend = oggi  # Oggi stesso (domenica)
+    # Trova la domenica successiva (fine weekend)
+    fine_weekend = inizio_weekend + timedelta(days=2)
     
     # Log per debug
     logger.info(f"Inizio weekend: {inizio_weekend}, Fine weekend: {fine_weekend}, Oggi: {oggi}")
@@ -181,10 +171,14 @@ def ottieni_risultati_weekend():
     risultati_weekend = []
     for risultato in risultati:
         try:
-            data_partita = datetime.strptime(risultato.get('data_partita', ''), '%d/%m/%Y').date()
+            data_str = risultato.get('data_partita')
+            if not data_str:
+                continue  # Salta i risultati senza data
+                
+            data_partita = datetime.strptime(data_str, '%d/%m/%Y').date()
             if data_partita >= inizio_weekend and data_partita <= fine_weekend:
                 risultati_weekend.append(risultato)
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError, TypeError) as e:
             # Log per debug
             logger.warning(f"Errore nel parsing della data: {e}, risultato: {risultato}")
             # Ignora risultati con date non valide
