@@ -820,11 +820,13 @@ def stats():
 # Funzione per generare il riepilogo del weekend
 def genera_riepilogo_weekend():
     """Genera un riepilogo delle partite del weekend."""
-    # Ottieni i risultati del weekend
-    risultati_weekend = ottieni_risultati_weekend()
-    
-    if not risultati_weekend:
-        # Se non ci sono risultati, restituisci solo le date
+    try:
+        try:
+        # Ottieni i risultati del weekend
+         eekend = ottieni_risultati_weekend()
+        
+        # Calcola le date del weekend corren
+        # Calcola le date del weekend corrente
         oggi = datetime.now()
         # Trova il venerdì precedente
         inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
@@ -834,77 +836,125 @@ def genera_riepilogo_weekend():
         inizio_weekend_str = inizio_weekend.strftime("%d/%m/%Y")
         fine_weekend_str = fine_weekend.strftime("%d/%m/%Y")
         
+        if not risultati_weekend:
+            # Se non ci sono risultati, restituisci solo le date
+            app.logger.warning(f"Nessun risultato trovato per il weekend{{inizio_weekend_str} - {fine_weekend_str}")
+             []
+        
+        # Crea il messaggio di riepilogo
+            messaggio = f"📊 *RIEPILOGO WEEKEND {inizio_weekend_str} - {fine_weekend_str}")
+            return inizio_weekend_str, fine_weekend_str, "", []
+        
+    } - {fine_weekend_str}*\n\n"
+            
+      #   Raggruppa i risultati per categoria
+                risultati_per_chiave] = []
+            
+                for risultato in risultati_weekend', 'Altra categoria')
+            genere = risultato.get('genere', '')
+            chiave = f"{categoria} {genere}".strip()
+            
+            if chiave = risultato.get('categoria',     'Altra categoria')
+            genere = risultato.get('genere', '')
+        
+          chiave = f"{categoria} {genere}".strip()
+            
+            if chiave not in risultati_per_categoria:
+                    risultati_per_categoria[chiave] = []
+            
+            risultati_per_categoria[chiave].append(risultato)
+        
+        # Aggiungi i risultati al messaggio, raggruppati per categoria
+        for categoria, risultati in risultati_per_categoria.items():
+                messaggio += f"🏆 *{categoria, 'N/D')} ({risultato.get('data_partita', 'N/D')})\n"
+                for risultato in risultati:
+                messaggio += f"• {risultato.get('squadra1', 'N/D')} {risultato.get('punteggio1', 0)} - {risultato.get('punteggio2', 0)} {risultato.get('squadra2', 'N/D')} ({risultato.get('data_partita', 'N/D')})\n"
+            messaggio += "\n"
+        
+        
+        return inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend
+    except Exception as e:
+        app.logger.error(f"Errore nella generazione del riepilogo weekend: {e}")
+        
+        # Calcola le date del weekend corrente come fallback
+        oggi = datetime.now()
+        inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
+        fine_weekend     = inizio_weekend + timedelta(days=2)
+        
+        inizio_weekend_str = inizio_weekend.strftime("%d/%m/%Y")
+        fine_weekend_str = fine_weekend.strftime("%d/%m/%Y")
+        
         return inizio_weekend_str, fine_weekend_str, "", []
-    
-    # Ottieni le date del weekend
-    inizio_weekend_str = risultati_weekend[0]["data_partita"]
-    fine_weekend_str = risultati_weekend[-1]["data_partita"]
-    
-    # Crea il messaggio di riepilogo
-    messaggio = f"📊 *RIEPILOGO WEEKEND {inizio_weekend_str} - {fine_weekend_str}*\n\n"
-    
-    # Raggruppa i risultati per categoria
-    risultati_per_categoria = {}
-    for risultato in risultati_weekend:
-        categoria = risultato["categoria"]
-        if categoria not in risultati_per_categoria:
-            risultati_per_categoria[categoria] = []
-        risultati_per_categoria[categoria].append(risultato)
-    
-    # Aggiungi i risultati al messaggio, raggruppati per categoria
-    for categoria, risultati in risultati_per_categoria.items():
-        messaggio += f"🏆 *{categoria}*\n"
-        for risultato in risultati:
-            messaggio += f"• {risultato['squadra1']} {risultato['punteggio1']} - {risultato['punteggio2']} {risultato['squadra2']}\n"
-        messaggio += "\n"
-    
-    return inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend
+    except Exception as e:
+        app.logger.error(f"Errore nella generazione del riepilogo weekend: {e}")
+            
+            # Calcola le date del weekend corrente come fallback
+        oggi = datetime.now()
+        inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
+        fine_weekend = inizio_weekend + timedelta(days=2)
+        
+        inizio_weekend_str = inizio_weekend.strftime("%d/%m/%Y")
+        fine_weekend_str = fine_weekend.strftime("%d/%m/%Y")
+            
+            return inizio_weekend_str, fine_weekend_str, "", []
 
 # Rotta per la pagina del riepilogo del weekend
 @app.route('/weekend_summary')
 @login_required
 def weekend_summary():
-    # Genera il riepilogo del weekend
-    inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend = genera_riepilogo_weekend()
-    
-    if not messaggio:
-        flash(f'Non ci sono risultati per il weekend {inizio_weekend_str} - {fine_weekend_str}.', 'warning')
+    try:
+        # Genera il riepilogo del weekend
+        inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend = genera_riepilogo_weekend()
+            
+            if not risultati_weekend:
+            flash(f'Non ci sono risultati per il weekend {inizio_weekend_str} - {fine_weekend_str}.', 'warning')
+            return redirect(url_for('dashboard'))
+        
+        # Raggruppa i risultati per categoria
+        risultati_per_categoria = {}
+        for r in risultati_weekend:
+            categoria = r.get('categoria', 'Altra categoria')
+            genere = r.get('genere', '')
+            key = f"{categoria} {genere}".strip()
+            
+            if key not in risultati_per_categoria:
+                risultati_per_categoria[key] = []
+              
+            risultati_per_categoria[key].append(r)
+        
+        # Calcola le statistiche
+        totale_partite = len(risultati_weekend)
+        totale_punti = sum(int(r.get('punteggio1', 0)) + int(r.get('punteggio2', 0)) for r in risultati_weekend)
+        totale_mete = sum(int(r.get('mete1', 0)) + int(r.get('mete2', 0)) for r in risultati_weekend)
+          
+        # Calcola la media di punti e mete per partita
+        media_punti = round(totale_punti / totale_partite, 1) if   totale_partite > 0 else 0
+        media_mete = round(totale_mete / totale_partite, 1) if totale_partite   > 0 else 0
+          
+        #   Converti le date in oggetti datetime per la formattazione
+        try:
+              inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
+            fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
+        except ValueError as e:
+            app.logger.error(f"Errore nella conversione delle date: {e}")
+            # Usa date di fallback
+            oggi = datetime.now()
+            inizio_weekend = oggi - timedelta(days=(oggi.weekday() + 3) % 7)
+            fine_weekend = inizio_weekend + timedelta(days=2)
+        
+        return render_template('weekend_summary.html',
+                            inizio_weekend=inizio_weekend,
+                            fine_weekend=fine_weekend,
+                            risultati_per_categoria=risultati_per_categoria,
+                            totale_partite=totale_partite,
+                            totale_punti=totale_punti,
+                            totale_mete=totale_mete,
+                            media_punti=media_punti,
+                            media_mete=media_mete)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina del riepilogo weekend: {e}")
+        flash(f'Si è verificato un errore durante la generazione del riepilogo weekend: {str(e)}', 'danger')
         return redirect(url_for('dashboard'))
-    
-    # Raggruppa i risultati per categoria
-    risultati_per_categoria = {}
-    for r in risultati_weekend:
-        categoria = r.get('categoria', 'Altra categoria')
-        genere = r.get('genere', '')
-        key = f"{categoria} {genere}".strip()
-        
-        if key not in risultati_per_categoria:
-            risultati_per_categoria[key] = []
-        
-        risultati_per_categoria[key].append(r)
-    
-    # Calcola le statistiche
-    totale_partite = len(risultati_weekend)
-    totale_punti = sum(int(r.get('punteggio1', 0)) + int(r.get('punteggio2', 0)) for r in risultati_weekend)
-    totale_mete = sum(int(r.get('mete1', 0)) + int(r.get('mete2', 0)) for r in risultati_weekend)
-    
-    # Calcola la media di punti e mete per partita
-    media_punti = round(totale_punti / totale_partite, 1) if totale_partite > 0 else 0
-    media_mete = round(totale_mete / totale_partite, 1) if totale_partite > 0 else 0
-    
-    # Converti le date in oggetti datetime per la formattazione
-    inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
-    fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
-    
-    return render_template('weekend_summary.html',
-                          inizio_weekend=inizio_weekend,
-                          fine_weekend=fine_weekend,
-                          risultati_per_categoria=risultati_per_categoria,
-                          totale_partite=totale_partite,
-                          totale_punti=totale_punti,
-                          totale_mete=totale_mete,
-                          media_punti=media_punti,
-                          media_mete=media_mete)
 
 # Funzione asincrona per inviare un file al canale Telegram
 async def invia_file_telegram(file_buffer, filename, caption):
