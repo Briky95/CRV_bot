@@ -293,20 +293,24 @@ def salva_utenti(utenti_data: Dict[str, List]) -> bool:
 
 # Funzioni per la gestione dei risultati
 def carica_risultati() -> List[Dict[str, Any]]:
-    """Carica i risultati dal database o dal file JSON."""
+    """Carica i risultati dal database."""
     if is_supabase_configured():
         try:
             risultati = supabase.table('risultati').select('*').execute().data
             return risultati
         except Exception as e:
             print(f"Errore nel caricamento dei risultati da Supabase: {e}")
-            # Fallback al file JSON
-            return _carica_risultati_da_file()
+            # In caso di errore, restituisci una lista vuota
+            return []
     else:
-        return _carica_risultati_da_file()
+        print("Supabase non configurato. Impossibile caricare i risultati.")
+        return []
 
 def _carica_risultati_da_file() -> List[Dict[str, Any]]:
-    """Carica i risultati dal file JSON."""
+    """
+    Funzione di supporto per la migrazione da file JSON a database.
+    Carica i risultati dal file JSON.
+    """
     if os.path.exists(RISULTATI_FILE):
         with open(RISULTATI_FILE, 'r', encoding='utf-8') as file:
             try:
@@ -316,65 +320,80 @@ def _carica_risultati_da_file() -> List[Dict[str, Any]]:
     else:
         return []
 
+def migra_risultati_da_file_a_db() -> bool:
+    """
+    Migra i risultati dal file JSON al database.
+    Questa funzione dovrebbe essere chiamata una sola volta durante la migrazione.
+    """
+    if not is_supabase_configured():
+        print("Supabase non configurato. Impossibile migrare i risultati.")
+        return False
+    
+    # Carica i risultati dal file JSON
+    risultati = _carica_risultati_da_file()
+    if not risultati:
+        print("Nessun risultato da migrare.")
+        return True
+    
+    # Salva i risultati nel database
+    return salva_risultati(risultati)
+
 def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
-    """Salva i risultati nel database e nel file JSON."""
-    # Salva sempre nel file JSON per compatibilità
-    with open(RISULTATI_FILE, 'w', encoding='utf-8') as file:
-        json.dump(risultati, file, indent=2, ensure_ascii=False)
+    """Salva i risultati nel database."""
+    if not is_supabase_configured():
+        print("Supabase non configurato. Impossibile salvare i risultati.")
+        return False
     
-    if is_supabase_configured():
-        try:
-            # Elimina tutti i risultati esistenti
-            supabase.table('risultati').delete().neq('id', 0).execute()
+    try:
+        # Elimina tutti i risultati esistenti
+        supabase.table('risultati').delete().neq('id', 0).execute()
+        
+        # Inserisci i nuovi risultati
+        for i, risultato in enumerate(risultati):
+            # Crea una copia del risultato per non modificare l'originale
+            risultato_db = risultato.copy()
             
-            # Inserisci i nuovi risultati
-            for i, risultato in enumerate(risultati):
-                # Crea una copia del risultato per non modificare l'originale
-                risultato_db = risultato.copy()
-                
-                # Aggiungi un ID se non esiste
-                if 'id' not in risultato_db:
-                    risultato_db['id'] = i + 1
-                
-                # Converti le date nel formato ISO
-                if 'data_partita' in risultato_db and risultato_db['data_partita']:
-                    try:
-                        data = datetime.strptime(risultato_db['data_partita'], '%d/%m/%Y')
-                        risultato_db['data_partita_iso'] = data.isoformat()
-                    except ValueError:
-                        risultato_db['data_partita_iso'] = None
-                
-                # Rimuovi il campo timestamp_modifica e lascia che il database usi il valore predefinito
-                if 'timestamp_modifica' in risultato_db:
-                    del risultato_db['timestamp_modifica']
-                
-                # Mantieni solo i campi che sappiamo esistere nella tabella
-                campi_validi = ['id', 'categoria', 'squadra1', 'squadra2', 'punteggio1', 'punteggio2', 
-                               'mete1', 'mete2', 'arbitro', 'inserito_da', 'genere', 'data_partita', 
-                               'data_partita_iso', 'modificato_da', 'message_id']
-                
-                # Crea un nuovo dizionario con solo i campi validi
-                risultato_filtrato = {}
-                for campo in campi_validi:
-                    if campo in risultato_db:
-                        risultato_filtrato[campo] = risultato_db[campo]
-                
-                # Usa il dizionario filtrato
-                risultato_db = risultato_filtrato
-                
-                # Inserisci il risultato
-                supabase.table('risultati').insert(risultato_db).execute()
+            # Aggiungi un ID se non esiste
+            if 'id' not in risultato_db:
+                risultato_db['id'] = i + 1
             
-            return True
-        except Exception as e:
-            print(f"Errore nel salvataggio dei risultati su Supabase: {e}")
-            return False
-    
-    return True
+            # Converti le date nel formato ISO
+            if 'data_partita' in risultato_db and risultato_db['data_partita']:
+                try:
+                    data = datetime.strptime(risultato_db['data_partita'], '%d/%m/%Y')
+                    risultato_db['data_partita_iso'] = data.isoformat()
+                except ValueError:
+                    risultato_db['data_partita_iso'] = None
+            
+            # Rimuovi il campo timestamp_modifica e lascia che il database usi il valore predefinito
+            if 'timestamp_modifica' in risultato_db:
+                del risultato_db['timestamp_modifica']
+            
+            # Mantieni solo i campi che sappiamo esistere nella tabella
+            campi_validi = ['id', 'categoria', 'squadra1', 'squadra2', 'punteggio1', 'punteggio2', 
+                           'mete1', 'mete2', 'arbitro', 'inserito_da', 'genere', 'data_partita', 
+                           'data_partita_iso', 'modificato_da', 'message_id']
+            
+            # Crea un nuovo dizionario con solo i campi validi
+            risultato_filtrato = {}
+            for campo in campi_validi:
+                if campo in risultato_db:
+                    risultato_filtrato[campo] = risultato_db[campo]
+            
+            # Usa il dizionario filtrato
+            risultato_db = risultato_filtrato
+            
+            # Inserisci il risultato
+            supabase.table('risultati').insert(risultato_db).execute()
+        
+        return True
+    except Exception as e:
+        print(f"Errore nel salvataggio dei risultati su Supabase: {e}")
+        return False
 
 # Funzioni per la gestione delle squadre
 def carica_squadre() -> Dict[str, List[str]]:
-    """Carica le squadre dal database o dal file JSON."""
+    """Carica le squadre dal database."""
     if is_supabase_configured():
         try:
             squadre = supabase.table('squadre').select('*').execute().data
@@ -391,13 +410,16 @@ def carica_squadre() -> Dict[str, List[str]]:
             return squadre_per_categoria
         except Exception as e:
             print(f"Errore nel caricamento delle squadre da Supabase: {e}")
-            # Fallback al file JSON
-            return _carica_squadre_da_file()
+            return {}
     else:
-        return _carica_squadre_da_file()
+        print("Supabase non configurato. Impossibile caricare le squadre.")
+        return {}
 
 def _carica_squadre_da_file() -> Dict[str, List[str]]:
-    """Carica le squadre dal file JSON."""
+    """
+    Funzione di supporto per la migrazione da file JSON a database.
+    Carica le squadre dal file JSON.
+    """
     if os.path.exists(SQUADRE_FILE):
         with open(SQUADRE_FILE, 'r', encoding='utf-8') as file:
             try:
@@ -407,31 +429,46 @@ def _carica_squadre_da_file() -> Dict[str, List[str]]:
     else:
         return {}
 
+def migra_squadre_da_file_a_db() -> bool:
+    """
+    Migra le squadre dal file JSON al database.
+    Questa funzione dovrebbe essere chiamata una sola volta durante la migrazione.
+    """
+    if not is_supabase_configured():
+        print("Supabase non configurato. Impossibile migrare le squadre.")
+        return False
+    
+    # Carica le squadre dal file JSON
+    squadre = _carica_squadre_da_file()
+    if not squadre:
+        print("Nessuna squadra da migrare.")
+        return True
+    
+    # Salva le squadre nel database
+    return salva_squadre(squadre)
+
 def salva_squadre(squadre: Dict[str, List[str]]) -> bool:
-    """Salva le squadre nel database e nel file JSON."""
-    # Salva sempre nel file JSON per compatibilità
-    with open(SQUADRE_FILE, 'w', encoding='utf-8') as file:
-        json.dump(squadre, file, indent=2, ensure_ascii=False)
+    """Salva le squadre nel database."""
+    if not is_supabase_configured():
+        print("Supabase non configurato. Impossibile salvare le squadre.")
+        return False
     
-    if is_supabase_configured():
-        try:
-            # Elimina tutte le squadre esistenti
-            supabase.table('squadre').delete().neq('id', 0).execute()
-            
-            # Inserisci le nuove squadre
-            for categoria, nomi_squadre in squadre.items():
-                for nome in nomi_squadre:
-                    supabase.table('squadre').insert({
-                        'nome': nome,
-                        'categoria': categoria
-                    }).execute()
-            
-            return True
-        except Exception as e:
-            print(f"Errore nel salvataggio delle squadre su Supabase: {e}")
-            return False
-    
-    return True
+    try:
+        # Elimina tutte le squadre esistenti
+        supabase.table('squadre').delete().neq('id', 0).execute()
+        
+        # Inserisci le nuove squadre
+        for categoria, nomi_squadre in squadre.items():
+            for nome in nomi_squadre:
+                supabase.table('squadre').insert({
+                    'nome': nome,
+                    'categoria': categoria
+                }).execute()
+        
+        return True
+    except Exception as e:
+        print(f"Errore nel salvataggio delle squadre su Supabase: {e}")
+        return False
 
 # Funzioni per la gestione degli amministratori
 def carica_admin_users() -> List[Dict[str, Any]]:
