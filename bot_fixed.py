@@ -3460,18 +3460,41 @@ def main() -> None:
     except Exception as e:
         logger.warning(f"Errore nella cancellazione del webhook: {e}")
     
-    # Avvia il polling con timeout esplicito e gestione degli errori
+    # Avvia il polling con configurazioni ottimizzate
     try:
-        application.run_polling(
-            drop_pending_updates=True,  # Ignora gli aggiornamenti in sospeso
-            allowed_updates=["message", "callback_query", "inline_query"],  # Limita gli aggiornamenti da processare
-            poll_interval=1.0,  # Intervallo tra le richieste di polling
-            timeout=30,  # Timeout per le richieste HTTP
-            read_timeout=30,  # Timeout per la lettura delle risposte
-            write_timeout=30,  # Timeout per l'invio delle richieste
-            connect_timeout=30,  # Timeout per la connessione
-            pool_timeout=30,  # Timeout per il pool di connessioni
-        )
+        # Verifica la versione della libreria python-telegram-bot
+        import telegram
+        version = telegram.__version__
+        logger.info(f"Versione di python-telegram-bot: {version}")
+        
+        # Configurazioni di base supportate in tutte le versioni
+        polling_config = {
+            "drop_pending_updates": True,  # Ignora gli aggiornamenti in sospeso
+            "allowed_updates": ["message", "callback_query", "inline_query"],  # Limita gli aggiornamenti da processare
+        }
+        
+        # Aggiungi configurazioni specifiche per la versione 20+
+        if version.startswith("20.") or version.startswith("21.") or version.startswith("22."):
+            # Nella versione 20+ alcuni parametri sono stati rinominati o rimossi
+            polling_config["poll_interval"] = 1.0  # Intervallo tra le richieste di polling
+            
+            # Nella versione 20+ i timeout sono gestiti internamente
+            # Non possiamo configurarli direttamente come parametri di run_polling
+            
+            logger.info("Avvio del polling con configurazioni per python-telegram-bot 20+")
+        else:
+            # Per versioni precedenti, usa i parametri diretti
+            polling_config.update({
+                "timeout": 30,
+                "read_timeout": 30,
+                "write_timeout": 30,
+                "connect_timeout": 30,
+                "pool_timeout": 30,
+            })
+            logger.info("Avvio del polling con configurazioni per python-telegram-bot <20")
+        
+        # Avvia il polling con le configurazioni appropriate
+        application.run_polling(**polling_config)
     except Exception as e:
         logger.error(f"Errore nell'avvio del polling: {e}")
         # Se siamo su Render, non uscire ma continua con il server HTTP
@@ -3479,6 +3502,9 @@ def main() -> None:
             logger.warning("Errore nell'avvio del bot, ma continuando con il server HTTP per soddisfare i requisiti di Render...")
             return
         else:
+            # In ambiente di sviluppo, mostra l'errore completo
+            import traceback
+            logger.error(f"Traceback completo: {traceback.format_exc()}")
             raise
 
 # Classe per gestire le richieste HTTP
