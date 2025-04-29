@@ -3280,6 +3280,15 @@ def check_single_instance():
     Verifica che solo un'istanza del bot sia in esecuzione.
     Utilizza un file di lock per maggiore affidabilità in ambienti cloud.
     """
+    # Verifica se siamo su Render
+    is_render = os.environ.get('RENDER') is not None
+    
+    # Se siamo su Render, ignora il controllo delle istanze multiple
+    # Render gestisce già i processi e garantisce che ci sia solo un'istanza
+    if is_render:
+        logger.info("Ambiente Render rilevato. Ignorando il controllo delle istanze multiple.")
+        return True
+    
     # Percorso del file di lock
     lock_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot.lock')
     
@@ -3322,19 +3331,22 @@ def check_single_instance():
         return True
     except Exception as e:
         logger.error(f"Errore nel controllo/creazione del file di lock: {e}")
-        return False
+        # In caso di errore, permettiamo comunque l'avvio del bot
+        logger.warning("Ignorando l'errore e continuando con l'avvio del bot...")
+        return True
 
 # Funzione principale per avviare il bot
 def main() -> None:
     """Avvia il bot."""
     # Verifica che solo un'istanza sia in esecuzione
+    # Su Render, questa verifica viene ignorata
     if not check_single_instance():
-        # Se è in esecuzione su Render, non uscire ma continua con il server HTTP
-        if os.environ.get('RENDER'):
-            logger.warning("Continuando solo con il server HTTP per soddisfare i requisiti di Render...")
-            return
-        else:
+        # Se non siamo su Render, esci
+        if not os.environ.get('RENDER'):
             sys.exit(1)
+        else:
+            # Su Render, continuiamo comunque
+            logger.warning("Continuando con l'avvio del bot nonostante il rilevamento di un'altra istanza...")
     
     # Crea l'applicazione con configurazioni ottimizzate
     application = Application.builder().token(TOKEN).build()
@@ -3518,23 +3530,27 @@ if __name__ == "__main__":
         logger.info("Ambiente Render rilevato. Avvio del meccanismo di keep-alive...")
         keep_alive_thread = start_keep_alive()
     
-    # Verifica se possiamo avviare il bot (nessun'altra istanza in esecuzione)
-    can_start_bot = check_single_instance()
-    
-    if can_start_bot:
-        # Avvia il bot
-        try:
+    # Su Render, avviamo sempre il bot
+    try:
+        if is_render:
+            logger.info("Avvio del bot in ambiente Render...")
             main()
-        except Exception as e:
-            logger.error(f"Errore nell'avvio del bot: {e}")
-            # Se siamo su Render, continua con il server HTTP
-            if not is_render:
+        else:
+            # In ambiente locale, verifichiamo che non ci siano altre istanze
+            can_start_bot = check_single_instance()
+            if can_start_bot:
+                logger.info("Avvio del bot in ambiente locale...")
+                main()
+            else:
+                logger.warning("Non è possibile avviare il bot a causa di un'altra istanza in esecuzione.")
                 sys.exit(1)
-    else:
-        logger.warning("Non è possibile avviare il bot a causa di un'altra istanza in esecuzione.")
+    except Exception as e:
+        logger.error(f"Errore nell'avvio del bot: {e}")
         # Se non siamo su Render, esci
         if not is_render:
             sys.exit(1)
+        else:
+            logger.warning("Continuando con il server HTTP nonostante l'errore nell'avvio del bot...")
     
     # Se siamo su Render, mantieni comunque il processo in esecuzione per il server HTTP
     if is_render:
@@ -3545,8 +3561,8 @@ if __name__ == "__main__":
                 time.sleep(60)  # Controlla ogni minuto
                 logger.info("Server HTTP ancora attivo...")
                 
-                # Verifica se il bot è ancora in esecuzione
-                if can_start_bot and not keep_alive_thread:
+                # Verifica se il meccanismo di keep-alive è attivo
+                if not keep_alive_thread:
                     logger.info("Riavvio del meccanismo di keep-alive...")
                     keep_alive_thread = start_keep_alive()
         except KeyboardInterrupt:
