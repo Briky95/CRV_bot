@@ -16,6 +16,10 @@ services:
         sync: false
       - key: CHANNEL_ID
         value: "@CRV_Rugby_Risultati_Partite"
+      - key: RENDER
+        value: "true"
+      - key: RENDER_URL
+        value: "https://crv-rugby-bot.onrender.com"
 
   # Servizio per l'interfaccia web
   - type: web

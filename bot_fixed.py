@@ -3490,6 +3490,20 @@ def run_http_server():
     logger.info(f"Avvio server HTTP sulla porta {port}...")
     httpd.serve_forever()
 
+def start_keep_alive():
+    """Avvia il meccanismo di keep-alive per mantenere attivo il bot su Render."""
+    try:
+        from keep_alive import start_ping_thread
+        keep_alive_thread = start_ping_thread()
+        logger.info("Meccanismo di keep-alive avviato con successo.")
+        return keep_alive_thread
+    except ImportError:
+        logger.warning("Modulo keep_alive non trovato. Il bot potrebbe essere disattivato dopo 15 minuti di inattività.")
+        return None
+    except Exception as e:
+        logger.error(f"Errore nell'avvio del meccanismo di keep-alive: {e}")
+        return None
+
 if __name__ == "__main__":
     # Avvia il server HTTP in un thread separato
     http_thread = threading.Thread(target=run_http_server, daemon=True)
@@ -3497,6 +3511,12 @@ if __name__ == "__main__":
     
     # Verifica se siamo su Render
     is_render = os.environ.get('RENDER') is not None
+    
+    # Se siamo su Render, avvia il meccanismo di keep-alive
+    keep_alive_thread = None
+    if is_render:
+        logger.info("Ambiente Render rilevato. Avvio del meccanismo di keep-alive...")
+        keep_alive_thread = start_keep_alive()
     
     # Verifica se possiamo avviare il bot (nessun'altra istanza in esecuzione)
     can_start_bot = check_single_instance()
@@ -3524,6 +3544,11 @@ if __name__ == "__main__":
             while True:
                 time.sleep(60)  # Controlla ogni minuto
                 logger.info("Server HTTP ancora attivo...")
+                
+                # Verifica se il bot è ancora in esecuzione
+                if can_start_bot and not keep_alive_thread:
+                    logger.info("Riavvio del meccanismo di keep-alive...")
+                    keep_alive_thread = start_keep_alive()
         except KeyboardInterrupt:
             logger.info("Interruzione rilevata. Uscita in corso...")
             sys.exit(0)
