@@ -2335,8 +2335,8 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Crea una tastiera con le squadre (2 per riga)
             keyboard = []
             for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1]))
-                keyboard.append(row
+                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
+                keyboard.append(row)
                 if i + 1 < len(squadre):
                     row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
             
@@ -2379,8 +2379,8 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # Crea una tastiera con le squadre (2 per riga)
         keyboard = []
         for i in range(0, len(squadre), 2):
-            row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1]))
-            keyboard.append(row
+            row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
+            keyboard.append(row)
             if i + 1 < len(squadre):
                 row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
         
@@ -2792,20 +2792,39 @@ async def punteggio1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return PUNTEGGIO1
         
-        context.user_data['punteggio1'] = punteggio
-        
-        # Chiedi il punteggio della seconda squadra
-        await update.message.reply_text(
-            f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-            f"<b>Data:</b> {context.user_data['data_partita']}\n"
-            f"<b>{context.user_data['squadra1']} {punteggio} - ? {context.user_data['squadra2']}</b>\n\n"
-            f"<b>Inserisci il punteggio di {context.user_data['squadra2']}:</b>\n\n"
-            "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-            parse_mode='HTML'
-        )
-        
-        context.user_data['stato_corrente'] = PUNTEGGIO2
-        return PUNTEGGIO2
+        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
+        if context.user_data.get('tipo_partita') == 'triangolare' and 'punteggio1_vs_2' in context.user_data:
+            # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
+            context.user_data['punteggio1_vs_3'] = punteggio
+            
+            # Chiedi il punteggio della terza squadra contro la prima
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} {punteggio} - ? {context.user_data['squadra3']}\n\n"
+                f"<b>Inserisci il punteggio di {context.user_data['squadra3']} contro {context.user_data['squadra1']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = PUNTEGGIO2
+            return PUNTEGGIO2
+        else:
+            # Prima partita normale o prima partita di un triangolare
+            context.user_data['punteggio1'] = punteggio
+            
+            # Chiedi il punteggio della seconda squadra
+            await update.message.reply_text(
+                f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n"
+                f"<b>{context.user_data['squadra1']} {punteggio} - ? {context.user_data['squadra2']}</b>\n\n"
+                f"<b>Inserisci il punteggio di {context.user_data['squadra2']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = PUNTEGGIO2
+            return PUNTEGGIO2
     except Exception as e:
         logger.error(f"Errore nell'inserimento del punteggio: {e}")
         await update.message.reply_text(
@@ -2830,20 +2849,39 @@ async def punteggio2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return PUNTEGGIO2
         
-        context.user_data['punteggio2'] = punteggio
-        
-        # Chiedi le mete della prima squadra
-        await update.message.reply_text(
-            f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-            f"<b>Data:</b> {context.user_data['data_partita']}\n"
-            f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {punteggio} {context.user_data['squadra2']}</b>\n\n"
-            f"<b>Inserisci il numero di mete di {context.user_data['squadra1']}:</b>\n\n"
-            "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-            parse_mode='HTML'
-        )
-        
-        context.user_data['stato_corrente'] = METE1
-        return METE1
+        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
+        if context.user_data.get('tipo_partita') == 'triangolare' and 'punteggio1_vs_2' in context.user_data:
+            # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
+            context.user_data['punteggio3_vs_1'] = punteggio
+            
+            # Chiedi le mete della prima squadra contro la terza
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1_vs_3']} - {punteggio} {context.user_data['squadra3']}\n\n"
+                f"<b>Inserisci il numero di mete di {context.user_data['squadra1']} contro {context.user_data['squadra3']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = METE1
+            return METE1
+        else:
+            # Prima partita normale o prima partita di un triangolare
+            context.user_data['punteggio2'] = punteggio
+            
+            # Chiedi le mete della prima squadra
+            await update.message.reply_text(
+                f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n"
+                f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {punteggio} {context.user_data['squadra2']}</b>\n\n"
+                f"<b>Inserisci il numero di mete di {context.user_data['squadra1']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = METE1
+            return METE1
     except Exception as e:
         logger.error(f"Errore nell'inserimento del punteggio: {e}")
         await update.message.reply_text(
@@ -2868,21 +2906,41 @@ async def mete1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return METE1
         
-        context.user_data['mete1'] = mete
-        
-        # Chiedi le mete della seconda squadra
-        await update.message.reply_text(
-            f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-            f"<b>Data:</b> {context.user_data['data_partita']}\n"
-            f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
-            f"<b>Mete:</b> {mete} - ?\n\n"
-            f"<b>Inserisci il numero di mete di {context.user_data['squadra2']}:</b>\n\n"
-            "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-            parse_mode='HTML'
-        )
-        
-        context.user_data['stato_corrente'] = METE2
-        return METE2
+        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
+        if context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_2' in context.user_data:
+            # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
+            context.user_data['mete1_vs_3'] = mete
+            
+            # Chiedi le mete della terza squadra contro la prima
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1_vs_3']} - {context.user_data['punteggio3_vs_1']} {context.user_data['squadra3']}\n"
+                f"<b>Mete:</b> {mete} - ?\n\n"
+                f"<b>Inserisci il numero di mete di {context.user_data['squadra3']} contro {context.user_data['squadra1']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = METE2
+            return METE2
+        else:
+            # Prima partita normale o prima partita di un triangolare
+            context.user_data['mete1'] = mete
+            
+            # Chiedi le mete della seconda squadra
+            await update.message.reply_text(
+                f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n"
+                f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
+                f"<b>Mete:</b> {mete} - ?\n\n"
+                f"<b>Inserisci il numero di mete di {context.user_data['squadra2']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = METE2
+            return METE2
     except Exception as e:
         logger.error(f"Errore nell'inserimento delle mete: {e}")
         await update.message.reply_text(
@@ -2907,21 +2965,70 @@ async def mete2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return METE2
         
-        context.user_data['mete2'] = mete
-        
-        # Chiedi il nome dell'arbitro
-        await update.message.reply_text(
-            f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-            f"<b>Data:</b> {context.user_data['data_partita']}\n"
-            f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
-            f"<b>Mete:</b> {context.user_data['mete1']} - {mete}\n\n"
-            "<b>Inserisci il nome dell'arbitro:</b>\n\n"
-            "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-            parse_mode='HTML'
-        )
-        
-        context.user_data['stato_corrente'] = ARBITRO
-        return ARBITRO
+        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
+        if context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_3' in context.user_data:
+            # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
+            context.user_data['mete3_vs_1'] = mete
+            
+            # Chiedi i punteggi della terza partita (squadra2 vs squadra3)
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Prima partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1_vs_3']} - {context.user_data['punteggio3_vs_1']} {context.user_data['squadra3']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1_vs_3']} - {mete}\n\n"
+                f"<b>Terza partita:</b> {context.user_data['squadra2']} vs {context.user_data['squadra3']}\n\n"
+                f"<b>Inserisci il punteggio di {context.user_data['squadra2']} contro {context.user_data['squadra3']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            # Chiedi il punteggio della squadra2 contro squadra3
+            context.user_data['stato_corrente'] = PUNTEGGIO1
+            return PUNTEGGIO1
+        elif context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_2' in context.user_data:
+            # Stiamo inserendo la prima partita di un triangolare
+            context.user_data['mete2'] = mete
+            
+            # Chiedi i punteggi della seconda partita (squadra1 vs squadra3)
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Prima partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1']} - {mete}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} vs {context.user_data['squadra3']}\n\n"
+                f"<b>Inserisci il punteggio di {context.user_data['squadra1']} contro {context.user_data['squadra3']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            # Salva i punteggi della prima partita con nomi specifici
+            context.user_data['punteggio1_vs_2'] = context.user_data['punteggio1']
+            context.user_data['punteggio2_vs_1'] = context.user_data['punteggio2']
+            context.user_data['mete1_vs_2'] = context.user_data['mete1']
+            context.user_data['mete2_vs_1'] = context.user_data['mete2']
+            
+            # Chiedi il punteggio della squadra1 contro squadra3
+            context.user_data['stato_corrente'] = PUNTEGGIO1
+            return PUNTEGGIO1
+        else:
+            # Partita normale
+            context.user_data['mete2'] = mete
+            
+            # Chiedi l'arbitro
+            await update.message.reply_text(
+                f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n"
+                f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
+                f"<b>Mete:</b> {context.user_data['mete1']} - {mete}\n\n"
+                "<b>Inserisci il nome dell'arbitro:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = ARBITRO
+            return ARBITRO
     except Exception as e:
         logger.error(f"Errore nell'inserimento delle mete: {e}")
         await update.message.reply_text(
@@ -3332,10 +3439,11 @@ def check_single_instance():
     # Verifica se siamo su Render
     is_render = os.environ.get('RENDER') is not None
     
-    # Anche su Render, controlliamo le istanze multiple
-    # Questo aiuta a prevenire conflitti con getUpdates
+    # Se siamo su Render, ignora il controllo delle istanze multiple
+    # Render gestisce già i processi e garantisce che ci sia solo un'istanza
     if is_render:
-        logger.info("Ambiente Render rilevato. Controllando comunque le istanze multiple.")
+        logger.info("Ambiente Render rilevato. Ignorando il controllo delle istanze multiple.")
+        return True
     
     # Percorso del file di lock
     lock_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot.lock')
@@ -3387,11 +3495,14 @@ def check_single_instance():
 def main() -> None:
     """Avvia il bot."""
     # Verifica che solo un'istanza sia in esecuzione
-    # Questo controllo è importante anche su Render
+    # Su Render, questa verifica viene ignorata
     if not check_single_instance():
-        # Esci in ogni caso se c'è già un'istanza in esecuzione
-        logger.error("Rilevata un'altra istanza del bot in esecuzione. Uscita in corso...")
-        sys.exit(1)
+        # Se non siamo su Render, esci
+        if not os.environ.get('RENDER'):
+            sys.exit(1)
+        else:
+            # Su Render, continuiamo comunque
+            logger.warning("Continuando con l'avvio del bot nonostante il rilevamento di un'altra istanza...")
     
     # Crea l'applicazione con configurazioni ottimizzate
     application = Application.builder().token(TOKEN).build()
@@ -3601,14 +3712,20 @@ if __name__ == "__main__":
         logger.info("Ambiente Render rilevato. Avvio del meccanismo di keep-alive...")
         keep_alive_thread = start_keep_alive()
     
-    # Avvia il bot (il controllo delle istanze multiple è gestito all'interno di main())
+    # Su Render, avviamo sempre il bot
     try:
         if is_render:
             logger.info("Avvio del bot in ambiente Render...")
-    else:
+            main()
+        else:
+            # In ambiente locale, verifichiamo che non ci siano altre istanze
+            can_start_bot = check_single_instance()
+            if can_start_bot:
                 logger.info("Avvio del bot in ambiente locale...")
-        
-        main()
+                main()
+            else:
+                logger.warning("Non è possibile avviare il bot a causa di un'altra istanza in esecuzione.")
+                sys.exit(1)
     except Exception as e:
         logger.error(f"Errore nell'avvio del bot: {e}")
         # Se non siamo su Render, esci
