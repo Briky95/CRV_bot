@@ -2335,8 +2335,8 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Crea una tastiera con le squadre (2 per riga)
             keyboard = []
             for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
-                keyboard.append(row)
+                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1]))
+                keyboard.append(row
                 if i + 1 < len(squadre):
                     row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
             
@@ -2379,8 +2379,8 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # Crea una tastiera con le squadre (2 per riga)
         keyboard = []
         for i in range(0, len(squadre), 2):
-            row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
-            keyboard.append(row)
+            row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1]))
+            keyboard.append(row
             if i + 1 < len(squadre):
                 row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
         
@@ -3332,11 +3332,10 @@ def check_single_instance():
     # Verifica se siamo su Render
     is_render = os.environ.get('RENDER') is not None
     
-    # Se siamo su Render, ignora il controllo delle istanze multiple
-    # Render gestisce già i processi e garantisce che ci sia solo un'istanza
+    # Anche su Render, controlliamo le istanze multiple
+    # Questo aiuta a prevenire conflitti con getUpdates
     if is_render:
-        logger.info("Ambiente Render rilevato. Ignorando il controllo delle istanze multiple.")
-        return True
+        logger.info("Ambiente Render rilevato. Controllando comunque le istanze multiple.")
     
     # Percorso del file di lock
     lock_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot.lock')
@@ -3388,14 +3387,11 @@ def check_single_instance():
 def main() -> None:
     """Avvia il bot."""
     # Verifica che solo un'istanza sia in esecuzione
-    # Su Render, questa verifica viene ignorata
+    # Questo controllo è importante anche su Render
     if not check_single_instance():
-        # Se non siamo su Render, esci
-        if not os.environ.get('RENDER'):
-            sys.exit(1)
-        else:
-            # Su Render, continuiamo comunque
-            logger.warning("Continuando con l'avvio del bot nonostante il rilevamento di un'altra istanza...")
+        # Esci in ogni caso se c'è già un'istanza in esecuzione
+        logger.error("Rilevata un'altra istanza del bot in esecuzione. Uscita in corso...")
+        sys.exit(1)
     
     # Crea l'applicazione con configurazioni ottimizzate
     application = Application.builder().token(TOKEN).build()
@@ -3605,20 +3601,14 @@ if __name__ == "__main__":
         logger.info("Ambiente Render rilevato. Avvio del meccanismo di keep-alive...")
         keep_alive_thread = start_keep_alive()
     
-    # Su Render, avviamo sempre il bot
+    # Avvia il bot (il controllo delle istanze multiple è gestito all'interno di main())
     try:
         if is_render:
             logger.info("Avvio del bot in ambiente Render...")
-            main()
-        else:
-            # In ambiente locale, verifichiamo che non ci siano altre istanze
-            can_start_bot = check_single_instance()
-            if can_start_bot:
+    else:
                 logger.info("Avvio del bot in ambiente locale...")
-                main()
-            else:
-                logger.warning("Non è possibile avviare il bot a causa di un'altra istanza in esecuzione.")
-                sys.exit(1)
+        
+        main()
     except Exception as e:
         logger.error(f"Errore nell'avvio del bot: {e}")
         # Se non siamo su Render, esci
