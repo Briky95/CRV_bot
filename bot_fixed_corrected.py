@@ -2510,7 +2510,7 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         
         # Imposta un timeout di 10 minuti per l'inserimento
-        if hasattr(context, 'job_queue'):
+        if hasattr(context, 'job_queue') and context.job_queue is not None:
             # Cancella eventuali job di timeout precedenti per questo utente
             for job in context.job_queue.get_jobs_by_name(f"timeout_{user_id}"):
                 job.schedule_removal()
@@ -2523,6 +2523,41 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 data=user_id
             )
             logger.info(f"Impostato timeout di 10 minuti per l'utente {user_id}")
+        else:
+            # Utilizza il JobManager alternativo
+            try:
+                from modules.job_manager import job_manager
+                
+                # Cancella eventuali job di timeout precedenti per questo utente
+                for job in job_manager.get_jobs_by_name(f"timeout_{user_id}"):
+                    job_manager.remove_job(job)
+                
+                # Wrapper per adattare la funzione al formato richiesto dal JobManager
+                async def timeout_wrapper(user_id_data):
+                    # Crea un contesto fittizio con il job
+                    class FakeJob:
+                        def __init__(self, data):
+                            self.data = data
+                    
+                    class FakeContext:
+                        def __init__(self, bot, job):
+                            self.bot = bot
+                            self.job = job
+                    
+                    fake_job = FakeJob(user_id_data)
+                    fake_context = FakeContext(context.bot, fake_job)
+                    await timeout_callback(update, fake_context)
+                
+                # Crea un nuovo job di timeout
+                job_manager.run_once(
+                    timeout_wrapper,
+                    600,  # 10 minuti in secondi
+                    data=user_id,
+                    name=f"timeout_{user_id}"
+                )
+                logger.info(f"Impostato timeout di 10 minuti per l'utente {user_id} (JobManager alternativo)")
+            except Exception as e:
+                logger.error(f"Errore nell'impostazione del timeout con JobManager alternativo: {e}")
         
         return CATEGORIA
     except Exception as e:
@@ -2675,10 +2710,18 @@ async def annulla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Annulla la conversazione corrente."""
     user_id = update.effective_user.id
     
-    # Cancella eventuali job di timeout
-    if hasattr(context, 'job_queue'):
+    # Cancella eventuali job di timeout con job_queue standard
+    if hasattr(context, 'job_queue') and context.job_queue is not None:
         for job in context.job_queue.get_jobs_by_name(f"timeout_{user_id}"):
             job.schedule_removal()
+    
+    # Cancella eventuali job di timeout con JobManager alternativo
+    try:
+        from modules.job_manager import job_manager
+        for job in job_manager.get_jobs_by_name(f"timeout_{user_id}"):
+            job_manager.remove_job(job)
+    except Exception as e:
+        logger.error(f"Errore nella cancellazione dei job di timeout con JobManager alternativo: {e}")
     
     # Pulisci i dati utente
     context.user_data.clear()
@@ -2882,6 +2925,15 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         tipo_partita = query.data
         context.user_data['tipo_partita'] = tipo_partita
         
+        # Aggiorna lo stato corrente
+        context.user_data['stato_corrente'] = SQUADRA1
+        
+        # Genera la barra di avanzamento
+        barra_avanzamento = genera_barra_avanzamento(SQUADRA1, tipo_partita)
+        
+        # Genera il riepilogo dei dati inseriti finora
+        riepilogo = genera_riepilogo_dati(context)
+        
         # Carica le squadre disponibili
         squadre = get_squadre_list()
         
@@ -2891,27 +2943,31 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
             row = []
             # Aggiungi la prima squadra della riga
             row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i]))
-            keyboard.append(row)
-            # Aggiungi la seconda squadra della riga se esiste
             if i + 1 < len(squadre):
                 row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+            keyboard.append(row)
         
         # Aggiungi un pulsante per inserire manualmente una squadra
-        keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+        keyboard.append([InlineKeyboardButton("Altra squadra", callback_data="altra_squadra")])
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        # Crea un messaggio per la selezione della squadra
+        # Prepara il messaggio con barra di avanzamento e riepilogo
+        messaggio = f"{barra_avanzamento}\n\n"
+        messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+        
+        if riepilogo:
+            messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+        
+        messaggio += "<b>Seleziona la prima squadra:</b>\n\n"
+        messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+        
         await query.edit_message_text(
-            f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-            f"<b>Tipo partita:</b> {tipo_partita}\n\n"
-            "<b>Seleziona la prima squadra:</b>\n\n"
-            "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-            parse_mode='HTML',
-            reply_markup=reply_markup
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
         )
         
-        context.user_data['stato_corrente'] = SQUADRA1
         return SQUADRA1
     except Exception as e:
         logger.error(f"Errore nella selezione del tipo di partita: {e}")
@@ -4421,8 +4477,40 @@ def main() -> None:
             # Su Render, continuiamo comunque
             logger.warning("Continuando con l'avvio del bot nonostante il rilevamento di un'altra istanza...")
     
-    # Crea l'applicazione con configurazioni ottimizzate
-    application = Application.builder().token(TOKEN).build()
+    # Crea l'applicazione con configurazioni ottimizzate e job_queue abilitata
+    try:
+        # Importa esplicitamente JobQueue
+        from telegram.ext import JobQueue
+        
+        # Crea un builder per l'applicazione
+        builder = Application.builder().token(TOKEN)
+        
+        # Crea l'applicazione
+        application = builder.build()
+        
+        # Verifica se job_queue è disponibile
+        if not hasattr(application, 'job_queue') or application.job_queue is None:
+            logger.warning("job_queue non disponibile nell'applicazione. Tentativo di inizializzazione manuale...")
+            
+            # Tentativo di inizializzazione manuale di JobQueue
+            try:
+                job_queue = JobQueue()
+                # Collega la job_queue all'applicazione
+                job_queue.set_application(application)
+                # Avvia la job_queue
+                job_queue.start()
+                # Assegna la job_queue all'applicazione
+                application.job_queue = job_queue
+                
+                logger.info("job_queue inizializzata manualmente con successo.")
+            except Exception as job_error:
+                logger.error(f"Errore nell'inizializzazione manuale di job_queue: {job_error}")
+        else:
+            logger.info("job_queue inizializzata correttamente.")
+    except Exception as e:
+        logger.error(f"Errore nella creazione dell'applicazione: {e}")
+        # Fallback: crea l'applicazione senza opzioni aggiuntive
+        application = Application.builder().token(TOKEN).build()
 
     # Precarica i dati in cache all'avvio
     logger.info("Precaricamento dati in cache...")
@@ -4526,10 +4614,38 @@ def main() -> None:
     application.add_error_handler(error)
     
     # Configura il job per inviare automaticamente il riepilogo ogni domenica alle 18:00
-    from datetime import time as dt_time
-    job_time = dt_time(hour=18, minute=0, second=0)  # 18:00:00
-    application.job_queue.run_daily(invia_riepilogo_automatico, time=job_time, days=[6])  # 6 = domenica (0 = lunedì, 6 = domenica)
-    logger.info("Job scheduler configurato per inviare il riepilogo ogni domenica alle 18:00")
+    try:
+        from datetime import time as dt_time
+        job_time = dt_time(hour=18, minute=0, second=0)  # 18:00:00
+        
+        # Verifica che job_queue sia disponibile
+        if hasattr(application, 'job_queue') and application.job_queue is not None:
+            application.job_queue.run_daily(invia_riepilogo_automatico, time=job_time, days=[6])  # 6 = domenica (0 = lunedì, 6 = domenica)
+            logger.info("Job scheduler configurato per inviare il riepilogo ogni domenica alle 18:00")
+        else:
+            logger.warning("Job queue non disponibile. Utilizzo del JobManager alternativo...")
+            
+            # Importa il JobManager alternativo
+            try:
+                from modules.job_manager import job_manager
+                
+                # Wrapper per adattare la funzione al formato richiesto dal JobManager
+                async def job_wrapper(context_data):
+                    # Crea un contesto fittizio con il bot
+                    class FakeContext:
+                        def __init__(self, bot):
+                            self.bot = bot
+                    
+                    fake_context = FakeContext(application.bot)
+                    await invia_riepilogo_automatico(fake_context)
+                
+                # Pianifica il job con il JobManager alternativo
+                job_manager.run_daily(job_wrapper, job_time, days=[6], name="riepilogo_automatico")
+                logger.info("Job scheduler alternativo configurato per inviare il riepilogo ogni domenica alle 18:00")
+            except Exception as alt_error:
+                logger.error(f"Errore nella configurazione del job scheduler alternativo: {alt_error}")
+    except Exception as e:
+        logger.error(f"Errore nella configurazione del job scheduler: {e}")
     
     # Configurazioni ottimizzate per il polling
     logger.info("Avvio del bot con configurazioni ottimizzate...")
