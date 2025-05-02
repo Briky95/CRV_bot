@@ -58,11 +58,7 @@ _squadre_last_load = 0
 
 # Carica le squadre all'avvio del bot
 def get_squadre_list():
-    squadre_dict = carica_squadre()
-    # Appiattisci il dizionario in una lista di tutte le squadre
-    squadre_list = []
-    for categoria, squadre in squadre_dict.items():
-        squadre_list.extend(squadre)
+    squadre_list = carica_squadre()
     
     # Se non ci sono squadre, usa quelle di default
     if not squadre_list:
@@ -2861,8 +2857,29 @@ async def punteggio1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return PUNTEGGIO1
         
-        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
-        if context.user_data.get('tipo_partita') == 'triangolare' and 'punteggio1_vs_2' in context.user_data:
+        # Verifica se stiamo inserendo la terza partita di un triangolare
+        if context.user_data.get('inserendo_terza_partita'):
+            # Stiamo inserendo la terza partita (squadra2 vs squadra3)
+            context.user_data['punteggio2_vs_3'] = punteggio
+            
+            # Chiedi il punteggio della terza squadra contro la seconda
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Prima partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1_vs_3']} - {context.user_data['punteggio3_vs_1']} {context.user_data['squadra3']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1_vs_3']} - {context.user_data['mete3_vs_1']}\n\n"
+                f"<b>Terza partita:</b> {context.user_data['squadra2']} {punteggio} - ? {context.user_data['squadra3']}\n\n"
+                f"<b>Inserisci il punteggio di {context.user_data['squadra3']} contro {context.user_data['squadra2']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = PUNTEGGIO2
+            return PUNTEGGIO2
+        # Verifica se stiamo inserendo la seconda partita di un triangolare
+        elif context.user_data.get('tipo_partita') == 'triangolare' and 'punteggio1_vs_2' in context.user_data:
             # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
             context.user_data['punteggio1_vs_3'] = punteggio
             
@@ -2918,8 +2935,25 @@ async def punteggio2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return PUNTEGGIO2
         
-        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
-        if context.user_data.get('tipo_partita') == 'triangolare' and 'punteggio1_vs_2' in context.user_data:
+        # Verifica se stiamo inserendo la terza partita di un triangolare
+        if context.user_data.get('inserendo_terza_partita'):
+            # Stiamo inserendo la terza partita (squadra2 vs squadra3)
+            context.user_data['punteggio3_vs_2'] = punteggio
+            
+            # Chiedi le mete della seconda squadra contro la terza
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Terza partita:</b> {context.user_data['squadra2']} {context.user_data['punteggio2_vs_3']} - {punteggio} {context.user_data['squadra3']}\n\n"
+                f"<b>Inserisci il numero di mete di {context.user_data['squadra2']} contro {context.user_data['squadra3']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = METE1
+            return METE1
+        # Verifica se stiamo inserendo la seconda partita di un triangolare
+        elif context.user_data.get('tipo_partita') == 'triangolare' and 'punteggio1_vs_2' in context.user_data:
             # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
             context.user_data['punteggio3_vs_1'] = punteggio
             
@@ -2975,8 +3009,26 @@ async def mete1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return METE1
         
-        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
-        if context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_2' in context.user_data:
+        # Verifica se stiamo inserendo la terza partita di un triangolare
+        if context.user_data.get('inserendo_terza_partita'):
+            # Stiamo inserendo la terza partita (squadra2 vs squadra3)
+            context.user_data['mete2_vs_3'] = mete
+            
+            # Chiedi le mete della terza squadra contro la seconda
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Terza partita:</b> {context.user_data['squadra2']} {context.user_data['punteggio2_vs_3']} - {context.user_data['punteggio3_vs_2']} {context.user_data['squadra3']}\n"
+                f"<b>Mete:</b> {mete} - ?\n\n"
+                f"<b>Inserisci il numero di mete di {context.user_data['squadra3']} contro {context.user_data['squadra2']}:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = METE2
+            return METE2
+        # Verifica se stiamo inserendo la seconda partita di un triangolare
+        elif context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_2' in context.user_data:
             # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
             context.user_data['mete1_vs_3'] = mete
             
@@ -3034,8 +3086,30 @@ async def mete2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return METE2
         
-        # Verifica se stiamo inserendo la prima partita o la seconda partita di un triangolare
-        if context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_3' in context.user_data:
+        # Verifica se stiamo inserendo la terza partita di un triangolare
+        if context.user_data.get('inserendo_terza_partita'):
+            # Stiamo inserendo la terza partita (squadra2 vs squadra3)
+            context.user_data['mete3_vs_2'] = mete
+            
+            # Chiedi il nome dell'arbitro
+            await update.message.reply_text(
+                f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+                f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+                f"<b>Prima partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n\n"
+                f"<b>Seconda partita:</b> {context.user_data['squadra1']} {context.user_data['punteggio1_vs_3']} - {context.user_data['punteggio3_vs_1']} {context.user_data['squadra3']}\n"
+                f"<b>Mete:</b> {context.user_data['mete1_vs_3']} - {context.user_data['mete3_vs_1']}\n\n"
+                f"<b>Terza partita:</b> {context.user_data['squadra2']} {context.user_data['punteggio2_vs_3']} - {context.user_data['punteggio3_vs_2']} {context.user_data['squadra3']}\n"
+                f"<b>Mete:</b> {context.user_data['mete2_vs_3']} - {mete}\n\n"
+                "<b>Inserisci il nome dell'arbitro:</b>\n\n"
+                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                parse_mode='HTML'
+            )
+            
+            context.user_data['stato_corrente'] = ARBITRO
+            return ARBITRO
+        # Verifica se stiamo inserendo la seconda partita di un triangolare
+        elif context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_3' in context.user_data:
             # Stiamo inserendo la seconda partita (squadra1 vs squadra3)
             context.user_data['mete3_vs_1'] = mete
             
@@ -3052,6 +3126,9 @@ async def mete2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
                 parse_mode='HTML'
             )
+            
+            # Salviamo un flag per indicare che stiamo inserendo la terza partita
+            context.user_data['inserendo_terza_partita'] = True
             
             # Chiedi il punteggio della squadra2 contro squadra3
             context.user_data['stato_corrente'] = PUNTEGGIO1

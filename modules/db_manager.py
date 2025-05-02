@@ -392,30 +392,29 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
         return False
 
 # Funzioni per la gestione delle squadre
-def carica_squadre() -> Dict[str, List[str]]:
-    """Carica le squadre dal database."""
+def carica_squadre() -> List[str]:
+    """Carica le squadre dal database come lista semplice."""
     if is_supabase_configured():
         try:
             squadre = supabase.table('squadre').select('*').execute().data
             
-            # Organizza le squadre per categoria
-            squadre_per_categoria = {}
+            # Estrai solo i nomi delle squadre in una lista semplice
+            squadre_list = []
             for squadra in squadre:
-                categoria = squadra.get('categoria', 'Altra categoria')
-                if categoria not in squadre_per_categoria:
-                    squadre_per_categoria[categoria] = []
-                
-                squadre_per_categoria[categoria].append(squadra.get('nome'))
+                squadre_list.append(squadra.get('nome'))
             
-            return squadre_per_categoria
+            # Ordina le squadre alfabeticamente
+            squadre_list.sort()
+            
+            return squadre_list
         except Exception as e:
             print(f"Errore nel caricamento delle squadre da Supabase: {e}")
-            return {}
+            return []
     else:
         print("Supabase non configurato. Impossibile caricare le squadre.")
-        return {}
+        return []
 
-def _carica_squadre_da_file() -> Dict[str, List[str]]:
+def _carica_squadre_da_file() -> List[str]:
     """
     Funzione di supporto per la migrazione da file JSON a database.
     Carica le squadre dal file JSON.
@@ -423,11 +422,22 @@ def _carica_squadre_da_file() -> Dict[str, List[str]]:
     if os.path.exists(SQUADRE_FILE):
         with open(SQUADRE_FILE, 'r', encoding='utf-8') as file:
             try:
-                return json.load(file)
+                data = json.load(file)
+                # Se il file contiene un dizionario (vecchio formato), estrai tutte le squadre
+                if isinstance(data, dict):
+                    squadre_list = []
+                    for categoria, squadre in data.items():
+                        squadre_list.extend(squadre)
+                    return squadre_list
+                # Se il file contiene già una lista (nuovo formato), usala direttamente
+                elif isinstance(data, list):
+                    return data
+                else:
+                    return []
             except json.JSONDecodeError:
-                return {}
+                return []
     else:
-        return {}
+        return []
 
 def migra_squadre_da_file_a_db() -> bool:
     """
@@ -447,7 +457,7 @@ def migra_squadre_da_file_a_db() -> bool:
     # Salva le squadre nel database
     return salva_squadre(squadre)
 
-def salva_squadre(squadre: Dict[str, List[str]]) -> bool:
+def salva_squadre(squadre: List[str]) -> bool:
     """Salva le squadre nel database."""
     if not is_supabase_configured():
         print("Supabase non configurato. Impossibile salvare le squadre.")
@@ -458,12 +468,15 @@ def salva_squadre(squadre: Dict[str, List[str]]) -> bool:
         supabase.table('squadre').delete().neq('id', 0).execute()
         
         # Inserisci le nuove squadre
-        for categoria, nomi_squadre in squadre.items():
-            for nome in nomi_squadre:
-                supabase.table('squadre').insert({
-                    'nome': nome,
-                    'categoria': categoria
-                }).execute()
+        for nome in squadre:
+            supabase.table('squadre').insert({
+                'nome': nome,
+                'categoria': 'Generale'  # Manteniamo il campo categoria per compatibilità, ma usiamo un valore generico
+            }).execute()
+        
+        # Salva anche nel file JSON per compatibilità
+        with open(SQUADRE_FILE, 'w', encoding='utf-8') as file:
+            json.dump(squadre, file, indent=2, ensure_ascii=False)
         
         return True
     except Exception as e:
