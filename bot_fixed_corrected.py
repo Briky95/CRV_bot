@@ -3114,11 +3114,63 @@ async def arbitro_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
         # Mostra il riepilogo e chiedi conferma
         messaggio = f"🏉 <b>RIEPILOGO PARTITA</b> 🏉\n\n"
-        messaggio += f"<b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']}\n"
+        
+        # Gestione diversa per partite normali e triangolari
+        if context.user_data.get('tipo_partita') == 'triangolare':
+            messaggio += f"<b>TRIANGOLARE</b>\n\n"
+            messaggio += f"<b>Squadre partecipanti:</b>\n"
+            messaggio += f"• {context.user_data['squadra1']}\n"
+            messaggio += f"• {context.user_data['squadra2']}\n"
+            messaggio += f"• {context.user_data['squadra3']}\n\n"
+            
+            messaggio += f"<b>Risultati:</b>\n"
+            
+            # Partita 1: Squadra1 vs Squadra2
+            punteggio1 = int(context.user_data.get('punteggio1_vs_2', 0))
+            punteggio2 = int(context.user_data.get('punteggio2_vs_1', 0))
+            mete1 = int(context.user_data.get('mete1_vs_2', 0))
+            mete2 = int(context.user_data.get('mete2_vs_1', 0))
+            
+            if punteggio1 > punteggio2:
+                messaggio += f"• <b>{context.user_data['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {context.user_data['squadra2']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"• {context.user_data['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{context.user_data['squadra2']}</b> 🏆\n"
+            else:
+                messaggio += f"• {context.user_data['squadra1']} <code>{punteggio1}:{punteggio2}</code> {context.user_data['squadra2']} 🤝\n"
+            
+            # Partita 2: Squadra1 vs Squadra3
+            punteggio1 = int(context.user_data.get('punteggio1_vs_3', 0))
+            punteggio2 = int(context.user_data.get('punteggio3_vs_1', 0))
+            mete1 = int(context.user_data.get('mete1_vs_3', 0))
+            mete2 = int(context.user_data.get('mete3_vs_1', 0))
+            
+            if punteggio1 > punteggio2:
+                messaggio += f"• <b>{context.user_data['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {context.user_data['squadra3']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"• {context.user_data['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{context.user_data['squadra3']}</b> 🏆\n"
+            else:
+                messaggio += f"• {context.user_data['squadra1']} <code>{punteggio1}:{punteggio2}</code> {context.user_data['squadra3']} 🤝\n"
+            
+            # Partita 3: Squadra2 vs Squadra3
+            punteggio1 = int(context.user_data.get('punteggio2_vs_3', 0))
+            punteggio2 = int(context.user_data.get('punteggio3_vs_2', 0))
+            mete1 = int(context.user_data.get('mete2_vs_3', 0))
+            mete2 = int(context.user_data.get('mete3_vs_2', 0))
+            
+            if punteggio1 > punteggio2:
+                messaggio += f"• <b>{context.user_data['squadra2']}</b> <code>{punteggio1}:{punteggio2}</code> {context.user_data['squadra3']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"• {context.user_data['squadra2']} <code>{punteggio1}:{punteggio2}</code> <b>{context.user_data['squadra3']}</b> 🏆\n"
+            else:
+                messaggio += f"• {context.user_data['squadra2']} <code>{punteggio1}:{punteggio2}</code> {context.user_data['squadra3']} 🤝\n"
+        else:
+            # Partita normale
+            messaggio += f"<b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']}\n"
         messaggio += f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
-        messaggio += f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
+            messaggio += f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
         messaggio += f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n"
-        messaggio += f"<b>Arbitro:</b> {arbitro}\n\n"
+        
+        messaggio += f"\n<b>Arbitro:</b> {arbitro}\n\n"
         messaggio += "Confermi l'inserimento di questa partita?"
         
         # Crea i pulsanti per la conferma
