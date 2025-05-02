@@ -293,6 +293,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if is_admin(user_id):
         keyboard.extend([
             [InlineKeyboardButton("👥 Gestione utenti", callback_data="menu_utenti")],
+            [InlineKeyboardButton("🏉 Gestione squadre", callback_data="menu_squadre")],
             [InlineKeyboardButton("🔄 Test canale", callback_data="menu_test_canale")]
         ])
     
@@ -1339,6 +1340,47 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             parse_mode='HTML'
         )
     
+    elif azione == "squadre":
+        # Verifica che l'utente sia un amministratore
+        if not is_admin(query.from_user.id):
+            await query.edit_message_text(
+                "⚠️ Solo gli amministratori possono gestire le squadre.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna al menu", callback_data="menu_torna")]])
+            )
+            return
+        
+        # Carica le squadre
+        squadre = get_squadre_list()
+        
+        # Crea il messaggio
+        messaggio = "<b>🏉 GESTIONE SQUADRE</b>\n\n"
+        
+        if squadre:
+            messaggio += "Squadre attualmente registrate:\n\n"
+            # Mostra solo le prime 20 squadre per non rendere il messaggio troppo lungo
+            for i, squadra in enumerate(squadre[:20], 1):
+                messaggio += f"{i}. {squadra}\n"
+            
+            if len(squadre) > 20:
+                messaggio += f"\n<i>... e altre {len(squadre) - 20} squadre. Usa /squadre per vedere l'elenco completo.</i>"
+        else:
+            messaggio += "Non ci sono squadre registrate."
+        
+        messaggio += "\n\n<i>Per aggiungere una nuova squadra, usa il comando /aggiungi_squadra seguito dal nome della squadra.</i>"
+        
+        # Crea i pulsanti per tornare al menu
+        keyboard = [
+            [InlineKeyboardButton("◀️ Torna al menu", callback_data="menu_torna")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
     elif azione == "utenti":
         # Verifica che l'utente sia un amministratore
         if not is_admin(query.from_user.id):
@@ -1556,6 +1598,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if is_admin(query.from_user.id):
             keyboard.extend([
                 [InlineKeyboardButton("👥 Gestione utenti", callback_data="menu_utenti")],
+                [InlineKeyboardButton("🏉 Gestione squadre", callback_data="menu_squadre")],
                 [InlineKeyboardButton("🔄 Test canale", callback_data="menu_test_canale")]
             ])
         
@@ -2400,10 +2443,13 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Crea una tastiera con le squadre (2 per riga)
             keyboard = []
             for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
+                row = []
+                # Aggiungi la prima squadra della riga
+                row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i]))
                 keyboard.append(row)
+                # Aggiungi la seconda squadra della riga se esiste
                 if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
+                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
             
             # Aggiungi un pulsante per inserire manualmente una squadra
             keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2444,10 +2490,13 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # Crea una tastiera con le squadre (2 per riga)
         keyboard = []
         for i in range(0, len(squadre), 2):
-            row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i + 1])]
+            row = []
+            # Aggiungi la prima squadra della riga
+            row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i]))
             keyboard.append(row)
+            # Aggiungi la seconda squadra della riga se esiste
             if i + 1 < len(squadre):
-                row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i]))
+                row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
         
         # Aggiungi un pulsante per inserire manualmente una squadra
         keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
@@ -2522,6 +2571,19 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
         else:
             squadra = update.message.text
+            
+            # Aggiungi la squadra al database solo se l'utente è un amministratore
+            from modules.db_manager import aggiungi_squadra
+            user_id = update.effective_user.id
+            
+            # Informa l'utente se non è un amministratore
+            if not is_admin(user_id):
+                await update.message.reply_text(
+                    "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
+                    "La squadra inserita sarà utilizzata solo per questa partita."
+                )
+            
+            aggiungi_squadra(squadra, user_id)
             
             # Carica le squadre disponibili per la seconda squadra
             squadre = get_squadre_list()
@@ -2642,6 +2704,19 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         else:
             squadra = update.message.text
             
+            # Aggiungi la squadra al database solo se l'utente è un amministratore
+            from modules.db_manager import aggiungi_squadra
+            user_id = update.effective_user.id
+            
+            # Informa l'utente se non è un amministratore
+            if not is_admin(user_id):
+                await update.message.reply_text(
+                    "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
+                    "La squadra inserita sarà utilizzata solo per questa partita."
+                )
+            
+            aggiungi_squadra(squadra, user_id)
+            
             # Verifica che la seconda squadra sia diversa dalla prima
             if squadra == context.user_data['squadra1']:
                 await update.message.reply_text(
@@ -2757,6 +2832,19 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
         else:
             squadra = update.message.text
+            
+            # Aggiungi la squadra al database solo se l'utente è un amministratore
+            from modules.db_manager import aggiungi_squadra
+            user_id = update.effective_user.id
+            
+            # Informa l'utente se non è un amministratore
+            if not is_admin(user_id):
+                await update.message.reply_text(
+                    "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
+                    "La squadra inserita sarà utilizzata solo per questa partita."
+                )
+            
+            aggiungi_squadra(squadra, user_id)
             
             # Verifica che la terza squadra sia diversa dalle altre
             if squadra == context.user_data['squadra1'] or squadra == context.user_data['squadra2']:
@@ -3664,6 +3752,74 @@ async def cerca_utente_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=reply_markup
         )
 
+# Comando /squadre per gestire le squadre
+async def squadre_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce le squadre (solo per amministratori)."""
+    user_id = update.effective_user.id
+    
+    # Verifica che l'utente sia un amministratore
+    if not is_admin(user_id):
+        await update.message.reply_html(
+            "⚠️ <b>Accesso non autorizzato</b>\n\n"
+            "Solo gli amministratori possono gestire le squadre."
+        )
+        return
+    
+    # Carica le squadre
+    squadre = get_squadre_list()
+    
+    # Crea il messaggio
+    messaggio = "<b>🏉 GESTIONE SQUADRE</b>\n\n"
+    
+    if squadre:
+        messaggio += "Squadre attualmente registrate:\n\n"
+        for i, squadra in enumerate(squadre, 1):
+            messaggio += f"{i}. {squadra}\n"
+    else:
+        messaggio += "Non ci sono squadre registrate."
+    
+    messaggio += "\n<i>Per aggiungere una nuova squadra, usa il comando /aggiungi_squadra seguito dal nome della squadra.</i>"
+    
+    await update.message.reply_html(messaggio)
+
+# Comando /aggiungi_squadra per aggiungere una nuova squadra
+async def aggiungi_squadra_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Aggiunge una nuova squadra (solo per amministratori)."""
+    user_id = update.effective_user.id
+    
+    # Verifica che l'utente sia un amministratore
+    if not is_admin(user_id):
+        await update.message.reply_html(
+            "⚠️ <b>Accesso non autorizzato</b>\n\n"
+            "Solo gli amministratori possono aggiungere squadre."
+        )
+        return
+    
+    # Verifica che sia stato fornito un nome per la squadra
+    if not context.args:
+        await update.message.reply_html(
+            "⚠️ <b>Nome squadra mancante</b>\n\n"
+            "Devi specificare il nome della squadra da aggiungere.\n"
+            "Esempio: /aggiungi_squadra \"Nome Squadra\""
+        )
+        return
+    
+    # Estrai il nome della squadra
+    nome_squadra = " ".join(context.args)
+    
+    # Aggiungi la squadra
+    from modules.db_manager import aggiungi_squadra
+    if aggiungi_squadra(nome_squadra, user_id):
+        await update.message.reply_html(
+            f"✅ <b>Squadra aggiunta</b>\n\n"
+            f"La squadra <b>{nome_squadra}</b> è stata aggiunta con successo."
+        )
+    else:
+        await update.message.reply_html(
+            f"❌ <b>Errore</b>\n\n"
+            f"Si è verificato un errore durante l'aggiunta della squadra <b>{nome_squadra}</b>."
+        )
+
 # Funzione per verificare se un'altra istanza del bot è in esecuzione
 def check_single_instance():
     """
@@ -3753,6 +3909,8 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("menu", menu_command))
+    application.add_handler(CommandHandler("squadre", squadre_command))
+    application.add_handler(CommandHandler("aggiungi_squadra", aggiungi_squadra_command))
     
     # Aggiungi il gestore per i callback delle query inline
     application.add_handler(CallbackQueryHandler(reaction_callback, pattern=r"^(reaction:|view_reactions:)"))

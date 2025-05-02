@@ -401,23 +401,27 @@ def carica_squadre() -> List[str]:
     """Carica le squadre dal database come lista semplice."""
     if is_supabase_configured():
         try:
-            squadre = supabase.table('squadre').select('*').execute().data
+            # Carica le squadre dalla tabella 'squadre' di Supabase
+            squadre = supabase.table('squadre').select('nome').execute().data
             
             # Estrai solo i nomi delle squadre in una lista semplice
-            squadre_list = []
-            for squadra in squadre:
-                squadre_list.append(squadra.get('nome'))
+            squadre_list = [squadra.get('nome') for squadra in squadre if squadra.get('nome')]
             
             # Ordina le squadre alfabeticamente
             squadre_list.sort()
             
+            # Se non ci sono squadre nel database, prova a caricarle dal file
+            if not squadre_list:
+                squadre_list = _carica_squadre_da_file()
+            
             return squadre_list
         except Exception as e:
             print(f"Errore nel caricamento delle squadre da Supabase: {e}")
-            return []
+            # In caso di errore, prova a caricare dal file
+            return _carica_squadre_da_file()
     else:
-        print("Supabase non configurato. Impossibile caricare le squadre.")
-        return []
+        print("Supabase non configurato. Caricamento squadre dal file.")
+        return _carica_squadre_da_file()
 
 def _carica_squadre_da_file() -> List[str]:
     """
@@ -463,30 +467,73 @@ def migra_squadre_da_file_a_db() -> bool:
     return salva_squadre(squadre)
 
 def salva_squadre(squadre: List[str]) -> bool:
-    """Salva le squadre nel database."""
-    if not is_supabase_configured():
-        print("Supabase non configurato. Impossibile salvare le squadre.")
-        return False
-    
+    """Salva le squadre nel database e nel file JSON."""
+    # Salva sempre nel file JSON per compatibilità
     try:
-        # Elimina tutte le squadre esistenti
-        supabase.table('squadre').delete().neq('id', 0).execute()
-        
-        # Inserisci le nuove squadre
-        for nome in squadre:
-            supabase.table('squadre').insert({
-                'nome': nome,
-                'categoria': 'Generale'  # Manteniamo il campo categoria per compatibilità, ma usiamo un valore generico
-            }).execute()
-        
-        # Salva anche nel file JSON per compatibilità
         with open(SQUADRE_FILE, 'w', encoding='utf-8') as file:
             json.dump(squadre, file, indent=2, ensure_ascii=False)
-        
-        return True
     except Exception as e:
-        print(f"Errore nel salvataggio delle squadre su Supabase: {e}")
+        print(f"Errore nel salvataggio delle squadre nel file JSON: {e}")
+    
+    # Se Supabase è configurato, salva anche lì
+    if is_supabase_configured():
+        try:
+            # Elimina tutte le squadre esistenti
+            supabase.table('squadre').delete().neq('id', 0).execute()
+            
+            # Inserisci le nuove squadre
+            for nome in squadre:
+                if nome and isinstance(nome, str):  # Verifica che il nome sia valido
+                    supabase.table('squadre').insert({
+                        'nome': nome
+                    }).execute()
+            
+            return True
+        except Exception as e:
+            print(f"Errore nel salvataggio delle squadre su Supabase: {e}")
+            return False
+    
+    return True
+
+def aggiungi_squadra(nome_squadra: str, user_id: int = None) -> bool:
+    """
+    Aggiunge una nuova squadra all'elenco.
+    
+    Args:
+        nome_squadra: Il nome della squadra da aggiungere
+        user_id: L'ID dell'utente che sta tentando di aggiungere la squadra
+        
+    Returns:
+        bool: True se l'operazione è riuscita, False altrimenti
+    """
+    # Verifica che il nome della squadra sia valido
+    if not nome_squadra or not isinstance(nome_squadra, str):
         return False
+    
+    # Se è specificato un user_id, verifica che sia un amministratore
+    if user_id is not None:
+        from bot_fixed_corrected import is_admin
+        if not is_admin(user_id):
+            print(f"Utente {user_id} non autorizzato ad aggiungere squadre")
+            # Non aggiungiamo la squadra, ma restituiamo True per non interrompere il flusso
+            # La squadra verrà usata solo per questa sessione
+            return True
+    
+    # Carica le squadre esistenti
+    squadre = carica_squadre()
+    
+    # Verifica se la squadra esiste già
+    if nome_squadra in squadre:
+        return True  # La squadra esiste già, non è necessario aggiungerla
+    
+    # Aggiungi la nuova squadra
+    squadre.append(nome_squadra)
+    
+    # Ordina le squadre alfabeticamente
+    squadre.sort()
+    
+    # Salva le squadre aggiornate
+    return salva_squadre(squadre)
 
 # Funzioni per la gestione degli amministratori
 def carica_admin_users() -> List[Dict[str, Any]]:
