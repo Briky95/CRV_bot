@@ -264,6 +264,96 @@ def verifica_congruenza_punteggio_mete(punteggio, mete):
     
     return True, "Punteggio congruente con le mete"
 
+# Comando /dashboard per mostrare la dashboard personalizzata
+async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Mostra la dashboard personalizzata dell'utente."""
+    user_id = update.effective_user.id
+    user_name = update.effective_user.full_name
+    
+    # Verifica che l'utente sia autorizzato
+    if not is_utente_autorizzato(user_id):
+        await update.message.reply_html(
+            "⚠️ <b>Accesso non autorizzato</b>\n\n"
+            "Non sei autorizzato a utilizzare questo comando.\n"
+            "Usa /start per richiedere l'accesso."
+        )
+        return
+    
+    # Carica i risultati
+    risultati = carica_risultati()
+    
+    # Filtra i risultati inseriti dall'utente
+    risultati_utente = [r for r in risultati if r.get('inserito_da') == user_name]
+    
+    # Ordina i risultati per data (più recenti prima)
+    risultati_utente.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    
+    # Prendi solo gli ultimi 5 risultati
+    ultimi_risultati = risultati_utente[:5]
+    
+    # Calcola statistiche dell'utente
+    num_partite_inserite = len(risultati_utente)
+    
+    # Trova le squadre più inserite dall'utente
+    squadre_count = {}
+    for r in risultati_utente:
+        squadra1 = r.get('squadra1', 'N/D')
+        squadra2 = r.get('squadra2', 'N/D')
+        squadre_count[squadra1] = squadre_count.get(squadra1, 0) + 1
+        squadre_count[squadra2] = squadre_count.get(squadra2, 0) + 1
+    
+    # Trova le 3 squadre più inserite
+    top_squadre = sorted(squadre_count.items(), key=lambda x: x[1], reverse=True)[:3]
+    
+    # Calcola la percentuale di contributo dell'utente
+    percentuale_contributo = (num_partite_inserite / len(risultati) * 100) if risultati else 0
+    
+    # Crea il messaggio della dashboard
+    messaggio = f"🏉 <b>DASHBOARD PERSONALE</b> 🏉\n\n"
+    messaggio += f"👋 Ciao <b>{user_name}</b>!\n\n"
+    
+    messaggio += f"📊 <b>LE TUE STATISTICHE</b>\n"
+    messaggio += f"• Partite inserite: <b>{num_partite_inserite}</b>\n"
+    messaggio += f"• Contributo totale: <b>{percentuale_contributo:.1f}%</b>\n\n"
+    
+    if top_squadre:
+        messaggio += "<b>LE TUE SQUADRE PIÙ INSERITE</b>\n"
+        for squadra, count in top_squadre:
+            messaggio += f"• {squadra}: <b>{count}</b> partite\n"
+        messaggio += "\n"
+    
+    if ultimi_risultati:
+        messaggio += "<b>LE TUE ULTIME PARTITE INSERITE</b>\n"
+        for i, r in enumerate(ultimi_risultati, 1):
+            data = r.get('data_partita', 'N/D')
+            if r.get('tipo_partita') == 'triangolare':
+                messaggio += f"{i}. <b>{data}</b> - Triangolare {r.get('categoria')} {r.get('genere')}\n"
+                messaggio += f"   {r.get('squadra1')}, {r.get('squadra2')}, {r.get('squadra3')}\n"
+            else:
+                messaggio += f"{i}. <b>{data}</b> - {r.get('categoria')} {r.get('genere')}\n"
+                messaggio += f"   {r.get('squadra1')} {r.get('punteggio1', 0)}-{r.get('punteggio2', 0)} {r.get('squadra2')}\n"
+    else:
+        messaggio += "<i>Non hai ancora inserito partite.</i>\n\n"
+    
+    # Crea i pulsanti per le azioni rapide
+    keyboard = [
+        [
+            InlineKeyboardButton("🆕 Nuova Partita", callback_data="dashboard_nuova"),
+            InlineKeyboardButton("📋 Risultati", callback_data="dashboard_risultati")
+        ],
+        [
+            InlineKeyboardButton("📊 Statistiche", callback_data="dashboard_statistiche"),
+            InlineKeyboardButton("⚙️ Menu Principale", callback_data="dashboard_menu")
+        ]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_html(
+        messaggio,
+        reply_markup=reply_markup
+    )
+
 # Comando /menu
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Mostra un menu con tutte le funzioni disponibili."""
@@ -627,6 +717,20 @@ async def invia_messaggio_canale(context, risultato):
         # Crea i pulsanti di reazione
         keyboard = crea_pulsanti_reazione()
         reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Verifica che il bot abbia accesso al canale prima di inviare il messaggio
+        try:
+            # Verifica che il canale esista e che il bot abbia i permessi necessari
+            chat = await context.bot.get_chat(CHANNEL_ID)
+            bot_member = await context.bot.get_chat_member(CHANNEL_ID, context.bot.id)
+            
+            if not bot_member.can_post_messages:
+                return False, "Il bot non ha i permessi per inviare messaggi al canale"
+                
+            logger.info(f"Canale verificato: {chat.title}, Bot ha permessi di invio: {bot_member.can_post_messages}")
+        except Exception as e:
+            logger.error(f"Errore nella verifica del canale: {e}")
+            return False, f"Impossibile accedere al canale: {e}"
         
         # Invia il messaggio al canale
         sent_message = await context.bot.send_message(
@@ -1290,6 +1394,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "<b>Comandi disponibili:</b>\n"
         "/start - Avvia il bot e richiedi l'accesso\n"
         "/menu - Mostra il menu principale\n"
+        "/dashboard - Mostra la tua dashboard personalizzata\n"
         "/nuova - Inserisci una nuova partita\n"
         "/risultati - Visualizza gli ultimi risultati\n"
         "/help - Mostra questo messaggio di aiuto\n\n"
@@ -1306,6 +1411,32 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "- Solo gli utenti autorizzati possono inserire nuovi risultati\n"
         "- Per problemi o suggerimenti, contatta un amministratore"
     )
+
+# Callback per le azioni della dashboard
+async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce i callback della dashboard personalizzata."""
+    query = update.callback_query
+    await query.answer()
+    
+    azione = query.data.replace("dashboard_", "")
+    
+    if azione == "nuova":
+        # Reindirizza al comando nuova partita
+        return await nuova_partita(update, context)
+    
+    elif azione == "risultati":
+        # Reindirizza al comando risultati
+        return await risultati_command(update, context)
+    
+    elif azione == "statistiche":
+        # Reindirizza alle statistiche
+        # Modifica il callback_data per usare il gestore del menu
+        query.data = "menu_statistiche"
+        return await menu_callback(update, context)
+    
+    elif azione == "menu":
+        # Reindirizza al menu principale
+        return await menu_command(update, context)
 
 # Callback per gestire le azioni del menu principale
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2311,7 +2442,7 @@ async def gestione_utenti_callback(update: Update, context: ContextTypes.DEFAULT
 
 # Comando /nuova
 async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Avvia il processo di inserimento di una nuova partita."""
+    """Avvia il processo di inserimento di una nuova partita con modalità wizard."""
     user_id = update.effective_user.id
     
     # Pulisci i dati utente precedenti
@@ -2339,6 +2470,12 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     # Carica le squadre
     context.user_data['squadre_disponibili'] = carica_squadre()
     
+    # Imposta lo stato corrente
+    context.user_data['stato_corrente'] = CATEGORIA
+    
+    # Genera la barra di avanzamento
+    barra_avanzamento = genera_barra_avanzamento(CATEGORIA)
+    
     # Crea una tastiera con le categorie
     keyboard = []
     for i in range(0, len(CATEGORIE), 2):
@@ -2351,28 +2488,42 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     try:
+        # Prepara il messaggio con barra di avanzamento
+        messaggio = f"{barra_avanzamento}\n\n"
+        messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+        messaggio += "<b>Seleziona la categoria della partita:</b>\n\n"
+        messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
         # Verifica se è un callback o un comando
         if update.callback_query:
             query = update.callback_query
             await query.answer()
             await query.edit_message_text(
-                "🏉 <b>Nuova Partita</b> 🏉\n\n"
-                "Seleziona la categoria della partita:\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                messaggio,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
         else:
-            await update.message.reply_text(
-                "🏉 <b>Nuova Partita</b> 🏉\n\n"
-                "Seleziona la categoria della partita:\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                reply_markup=reply_markup,
-                parse_mode='HTML'
+            await update.message.reply_html(
+                messaggio,
+                reply_markup=reply_markup
             )
         
-        # Salva lo stato corrente
-        context.user_data['stato_corrente'] = CATEGORIA
+        
+        # Imposta un timeout di 10 minuti per l'inserimento
+        if hasattr(context, 'job_queue'):
+            # Cancella eventuali job di timeout precedenti per questo utente
+            for job in context.job_queue.get_jobs_by_name(f"timeout_{user_id}"):
+                job.schedule_removal()
+                
+            # Crea un nuovo job di timeout
+            context.job_queue.run_once(
+                lambda ctx: timeout_callback(update, ctx),
+                600,  # 10 minuti in secondi
+                name=f"timeout_{user_id}",
+                data=user_id
+            )
+            logger.info(f"Impostato timeout di 10 minuti per l'utente {user_id}")
+        
         return CATEGORIA
     except Exception as e:
         logger.error(f"Errore in nuova_partita: {e}")
@@ -2388,9 +2539,147 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
         return ConversationHandler.END
 
+# Funzione per generare la barra di avanzamento del wizard
+def genera_barra_avanzamento(stato_corrente, tipo_partita='normale'):
+    """
+    Genera una barra di avanzamento visiva per il wizard di inserimento.
+    
+    Args:
+        stato_corrente: Lo stato corrente della conversazione
+        tipo_partita: 'normale' o 'triangolare'
+        
+    Returns:
+        Una stringa con la barra di avanzamento
+    """
+    # Definisci gli stati per ciascun tipo di partita
+    if tipo_partita == 'triangolare':
+        stati = [
+            (CATEGORIA, "Categoria"),
+            (GENERE, "Genere"),
+            (TIPO_PARTITA, "Tipo"),
+            (SQUADRA1, "Squadra 1"),
+            (SQUADRA2, "Squadra 2"),
+            (SQUADRA3, "Squadra 3"),
+            (DATA_PARTITA, "Data"),
+            (PUNTEGGIO1, "Punti 1"),
+            (PUNTEGGIO2, "Punti 2"),
+            (PUNTEGGIO3, "Punti 3"),
+            (METE1, "Mete 1"),
+            (METE2, "Mete 2"),
+            (METE3, "Mete 3"),
+            (ARBITRO, "Arbitro"),
+            (CONFERMA, "Conferma")
+        ]
+    else:
+        stati = [
+            (CATEGORIA, "Categoria"),
+            (GENERE, "Genere"),
+            (TIPO_PARTITA, "Tipo"),
+            (SQUADRA1, "Squadra 1"),
+            (SQUADRA2, "Squadra 2"),
+            (DATA_PARTITA, "Data"),
+            (PUNTEGGIO1, "Punti 1"),
+            (PUNTEGGIO2, "Punti 2"),
+            (METE1, "Mete 1"),
+            (METE2, "Mete 2"),
+            (ARBITRO, "Arbitro"),
+            (CONFERMA, "Conferma")
+        ]
+    
+    # Trova l'indice dello stato corrente
+    indice_corrente = next((i for i, (stato, _) in enumerate(stati) if stato == stato_corrente), 0)
+    
+    # Calcola la percentuale di completamento
+    percentuale = int((indice_corrente / (len(stati) - 1)) * 100)
+    
+    # Genera la barra grafica
+    barra = "🏉 "
+    barra_lunghezza = 10
+    blocchi_pieni = int((percentuale / 100) * barra_lunghezza)
+    
+    for i in range(barra_lunghezza):
+        if i < blocchi_pieni:
+            barra += "■"  # Blocco pieno
+        else:
+            barra += "□"  # Blocco vuoto
+    
+    barra += f" {percentuale}%"
+    
+    # Aggiungi il nome dello stato corrente
+    nome_stato = next((nome for stato, nome in stati if stato == stato_corrente), "")
+    if nome_stato:
+        barra += f" | {nome_stato}"
+    
+    return barra
+
+# Funzione per generare il riepilogo dei dati inseriti
+def genera_riepilogo_dati(context, completo=False):
+    """
+    Genera un riepilogo dei dati inseriti finora.
+    
+    Args:
+        context: Il contesto della conversazione
+        completo: Se True, mostra tutti i campi anche se vuoti
+        
+    Returns:
+        Una stringa con il riepilogo
+    """
+    dati = context.user_data
+    riepilogo = ""
+    
+    # Campi da mostrare in ordine
+    campi = [
+        ("categoria", "Categoria"),
+        ("genere", "Genere"),
+        ("tipo_partita", "Tipo partita"),
+        ("squadra1", "Prima squadra"),
+        ("squadra2", "Seconda squadra")
+    ]
+    
+    # Aggiungi squadra3 solo per triangolari
+    if dati.get('tipo_partita') == 'triangolare':
+        campi.append(("squadra3", "Terza squadra"))
+    
+    # Aggiungi altri campi
+    campi.extend([
+        ("data_partita", "Data"),
+        ("punteggio1", "Punteggio 1"),
+        ("punteggio2", "Punteggio 2"),
+        ("mete1", "Mete 1"),
+        ("mete2", "Mete 2"),
+        ("arbitro", "Arbitro")
+    ])
+    
+    # Aggiungi punteggio3 e mete3 solo per triangolari
+    if dati.get('tipo_partita') == 'triangolare':
+        # Inserisci dopo punteggio2 e mete2
+        indice_punteggio = next((i for i, (campo, _) in enumerate(campi) if campo == "punteggio2"), -1)
+        indice_mete = next((i for i, (campo, _) in enumerate(campi) if campo == "mete2"), -1)
+        
+        if indice_punteggio != -1:
+            campi.insert(indice_punteggio + 1, ("punteggio3", "Punteggio 3"))
+        
+        if indice_mete != -1:
+            campi.insert(indice_mete + 1, ("mete3", "Mete 3"))
+    
+    # Genera il riepilogo
+    for campo, etichetta in campi:
+        valore = dati.get(campo)
+        if valore or completo:
+            riepilogo += f"<b>{etichetta}:</b> {valore or 'Non inserito'}\n"
+    
+    return riepilogo
+
 # Funzione per annullare la conversazione
 async def annulla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Annulla la conversazione corrente."""
+    user_id = update.effective_user.id
+    
+    # Cancella eventuali job di timeout
+    if hasattr(context, 'job_queue'):
+        for job in context.job_queue.get_jobs_by_name(f"timeout_{user_id}"):
+            job.schedule_removal()
+    
     # Pulisci i dati utente
     context.user_data.clear()
     
@@ -2402,6 +2691,31 @@ async def annulla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     return ConversationHandler.END
 
+# Funzione di callback per il timeout
+async def timeout_callback(update: Update, context) -> None:
+    """Gestisce il timeout dell'inserimento."""
+    try:
+        # Ottieni l'ID utente dai dati del job
+        user_id = context.job.data
+        
+        # Verifica se l'utente è ancora in una conversazione
+        if context.user_data.get('stato_corrente'):
+            # Invia un messaggio all'utente
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="⏱️ <b>Tempo scaduto</b>\n\n"
+                     "Il tempo per l'inserimento della partita è scaduto.\n"
+                     "Usa /nuova per iniziare di nuovo.",
+                parse_mode='HTML'
+            )
+            
+            # Pulisci i dati utente
+            context.user_data.clear()
+            
+            logger.info(f"Timeout per l'utente {user_id}")
+    except Exception as e:
+        logger.error(f"Errore nel callback di timeout: {e}")
+
 # Callback per la selezione della categoria
 async def categoria_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gestisce la selezione della categoria."""
@@ -2412,6 +2726,15 @@ async def categoria_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         categoria = query.data
         context.user_data['categoria'] = categoria
         
+        # Aggiorna lo stato corrente
+        context.user_data['stato_corrente'] = GENERE
+        
+        # Genera la barra di avanzamento
+        barra_avanzamento = genera_barra_avanzamento(GENERE)
+        
+        # Genera il riepilogo dei dati inseriti finora
+        riepilogo = genera_riepilogo_dati(context)
+        
         # Crea una tastiera per la selezione del genere
         keyboard = [
             [
@@ -2421,15 +2744,22 @@ async def categoria_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        # Prepara il messaggio con barra di avanzamento e riepilogo
+        messaggio = f"{barra_avanzamento}\n\n"
+        messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+        
+        if riepilogo:
+            messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+        
+        messaggio += "<b>Seleziona il genere:</b>\n\n"
+        messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+        
         await query.edit_message_text(
-            f"🏉 <b>Categoria selezionata:</b> {categoria} 🏉\n\n"
-            "Seleziona il genere:\n\n"
-            "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+            messaggio,
             reply_markup=reply_markup,
             parse_mode='HTML'
         )
         
-        context.user_data['stato_corrente'] = GENERE
         return GENERE
     except Exception as e:
         logger.error(f"Errore nella selezione della categoria: {e}")
@@ -2450,6 +2780,15 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         # Verifica se è una categoria U14, in tal caso chiedi il tipo di partita
         if context.user_data['categoria'] == "U14":
+            # Aggiorna lo stato corrente
+            context.user_data['stato_corrente'] = TIPO_PARTITA
+            
+            # Genera la barra di avanzamento
+            barra_avanzamento = genera_barra_avanzamento(TIPO_PARTITA)
+            
+            # Genera il riepilogo dei dati inseriti finora
+            riepilogo = genera_riepilogo_dati(context)
+            
             # Crea una tastiera per la selezione del tipo di partita
             keyboard = [
                 [
@@ -2459,21 +2798,37 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
+            # Prepara il messaggio con barra di avanzamento e riepilogo
+            messaggio = f"{barra_avanzamento}\n\n"
+            messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+            
+            if riepilogo:
+                messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+            
+            messaggio += "<b>Seleziona il tipo di partita:</b>\n\n"
+            messaggio += "• <b>Partita normale:</b> Due squadre\n"
+            messaggio += "• <b>Triangolare:</b> Tre squadre che si affrontano a rotazione\n\n"
+            messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+            
             await query.edit_message_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {genere} 🏉\n\n"
-                "<b>Seleziona il tipo di partita:</b>\n\n"
-                "• <b>Partita normale:</b> Due squadre\n"
-                "• <b>Triangolare:</b> Tre squadre che si affrontano a rotazione\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                messaggio,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
             
-            context.user_data['stato_corrente'] = TIPO_PARTITA
             return TIPO_PARTITA
         else:
             # Per le altre categorie, procedi direttamente alla selezione della squadra
             context.user_data['tipo_partita'] = 'normale'  # Imposta il tipo di partita come normale per default
+            
+            # Aggiorna lo stato corrente
+            context.user_data['stato_corrente'] = SQUADRA1
+            
+            # Genera la barra di avanzamento
+            barra_avanzamento = genera_barra_avanzamento(SQUADRA1)
+            
+            # Genera il riepilogo dei dati inseriti finora
+            riepilogo = genera_riepilogo_dati(context)
             
             # Carica le squadre disponibili
             squadre = get_squadre_list()
@@ -2484,26 +2839,31 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 row = []
                 # Aggiungi la prima squadra della riga
                 row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i]))
-                keyboard.append(row)
-                # Aggiungi la seconda squadra della riga se esiste
                 if i + 1 < len(squadre):
                     row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
+                keyboard.append(row)
             
             # Aggiungi un pulsante per inserire manualmente una squadra
-            keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
+            keyboard.append([InlineKeyboardButton("Altra squadra", callback_data="altra_squadra")])
             
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            # Crea un messaggio per la selezione della squadra
+            # Prepara il messaggio con barra di avanzamento e riepilogo
+            messaggio = f"{barra_avanzamento}\n\n"
+            messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+            
+            if riepilogo:
+                messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+            
+            messaggio += "<b>Seleziona la prima squadra:</b>\n\n"
+            messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+            
             await query.edit_message_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {genere} 🏉\n\n"
-                "<b>Seleziona la prima squadra:</b>\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML',
-                reply_markup=reply_markup
+                messaggio,
+                reply_markup=reply_markup,
+                parse_mode='HTML'
             )
             
-            context.user_data['stato_corrente'] = SQUADRA1
             return SQUADRA1
     except Exception as e:
         logger.error(f"Errore nella selezione del genere: {e}")
@@ -2685,6 +3045,23 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     parse_mode='HTML'
                 )
                 return SQUADRA2
+                
+            # Se l'utente ha confermato una nuova squadra
+            if squadra.startswith("conferma_"):
+                # Estrai il nome della squadra dalla stringa "conferma_NOME_SQUADRA"
+                squadra = squadra[9:]  # Rimuovi "conferma_" dal callback_data
+                
+                # Aggiungi la nuova squadra alla lista delle squadre
+                squadre_list = get_squadre_list()
+                if squadra not in squadre_list:
+                    squadre_list.append(squadra)
+                    salva_squadre(squadre_list)
+                    logger.info(f"Aggiunta nuova squadra: {squadra}")
+                    
+                    # Aggiorna la cache delle squadre
+                    global _squadre_cache, _squadre_last_load
+                    _squadre_cache = squadre_list
+                    _squadre_last_load = time.time()
             
             # Verifica che la seconda squadra sia diversa dalla prima
             if squadra == context.user_data['squadra1']:
@@ -2693,6 +3070,33 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     "⚠️ La seconda squadra deve essere diversa dalla prima. Seleziona un'altra squadra.\n\n"
                     "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
                     parse_mode='HTML'
+                )
+                return SQUADRA2
+                
+            # Verifica se ci sono squadre con nomi simili
+            from modules.string_utils import find_similar_teams
+            squadre_list = get_squadre_list()
+            squadre_simili = find_similar_teams(squadra, squadre_list, threshold=0.85)
+            
+            # Se ci sono squadre simili, chiedi conferma
+            if squadre_simili and squadra not in squadre_list:
+                # Crea una tastiera con le squadre simili
+                keyboard = []
+                for team, similarity in squadre_simili[:5]:  # Mostra max 5 squadre simili
+                    keyboard.append([InlineKeyboardButton(team, callback_data=team)])
+                
+                # Aggiungi un pulsante per confermare la squadra inserita
+                keyboard.append([InlineKeyboardButton(f"Conferma '{squadra}'", callback_data=f"conferma_{squadra}")])
+                
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
+                    f"⚠️ Hai inserito '{squadra}', ma ci sono squadre simili nel database.\n\n"
+                    "Seleziona una delle squadre esistenti o conferma il nuovo nome:\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
                 )
                 return SQUADRA2
             
@@ -2924,7 +3328,24 @@ async def data_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Verifica che la data sia nel formato corretto
         try:
-            datetime.strptime(data, '%d/%m/%Y')
+            data_partita = datetime.strptime(data, '%d/%m/%Y')
+            
+            # Verifica che la data non sia nel futuro
+            oggi = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            if data_partita > oggi:
+                await update.message.reply_text(
+                    "⚠️ Non è possibile inserire partite con date future. Inserisci una data valida."
+                )
+                return DATA_PARTITA
+                
+            # Verifica che la data non sia troppo nel passato (es. più di 1 anno fa)
+            un_anno_fa = oggi - timedelta(days=365)
+            if data_partita < un_anno_fa:
+                await update.message.reply_text(
+                    "⚠️ La data inserita è troppo lontana nel passato (più di un anno fa). "
+                    "Se stai inserendo una partita storica, contatta un amministratore."
+                )
+                return DATA_PARTITA
         except ValueError:
             await update.message.reply_text(
                 "⚠️ Formato data non valido. Inserisci la data nel formato GG/MM/AAAA (es. 01/01/2023)."
@@ -3129,6 +3550,21 @@ async def mete1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             mete = int(mete)
             if mete < 0:
                 raise ValueError("Il numero di mete non può essere negativo")
+                
+            # Verifica la congruenza tra punteggio e mete per la prima squadra
+            punteggio = context.user_data.get('punteggio1', 0)
+            if context.user_data.get('inserendo_terza_partita'):
+                punteggio = context.user_data.get('punteggio2_vs_3', 0)
+            elif context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_2' in context.user_data:
+                punteggio = context.user_data.get('punteggio1_vs_3', 0)
+                
+            # Verifica che il punteggio sia congruente con le mete
+            congruente, messaggio = verifica_congruenza_punteggio_mete(punteggio, mete)
+            if not congruente:
+                await update.message.reply_text(
+                    f"⚠️ {messaggio}\n\nInserisci nuovamente il numero di mete."
+                )
+                return METE1
         except ValueError:
             await update.message.reply_text(
                 "⚠️ Il numero di mete deve essere un numero intero non negativo. Inserisci nuovamente il numero di mete."
@@ -3206,6 +3642,21 @@ async def mete2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             mete = int(mete)
             if mete < 0:
                 raise ValueError("Il numero di mete non può essere negativo")
+                
+            # Verifica la congruenza tra punteggio e mete per la seconda squadra
+            punteggio = context.user_data.get('punteggio2', 0)
+            if context.user_data.get('inserendo_terza_partita'):
+                punteggio = context.user_data.get('punteggio3_vs_2', 0)
+            elif context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_3' in context.user_data:
+                punteggio = context.user_data.get('punteggio3_vs_1', 0)
+                
+            # Verifica che il punteggio sia congruente con le mete
+            congruente, messaggio = verifica_congruenza_punteggio_mete(punteggio, mete)
+            if not congruente:
+                await update.message.reply_text(
+                    f"⚠️ {messaggio}\n\nInserisci nuovamente il numero di mete."
+                )
+                return METE2
         except ValueError:
             await update.message.reply_text(
                 "⚠️ Il numero di mete deve essere un numero intero non negativo. Inserisci nuovamente il numero di mete."
@@ -3313,6 +3764,14 @@ async def arbitro_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """Gestisce l'inserimento del nome dell'arbitro."""
     try:
         arbitro = update.message.text
+        
+        # Verifica che il nome dell'arbitro sia in un formato valido
+        if len(arbitro) < 3 or len(arbitro) > 50 or not any(c.isalpha() for c in arbitro):
+            await update.message.reply_text(
+                "⚠️ Il nome dell'arbitro non sembra valido. Inserisci un nome completo (min 3 caratteri, max 50)."
+            )
+            return ARBITRO
+            
         context.user_data['arbitro'] = arbitro
         
         # Mostra il riepilogo e chiedi conferma
@@ -3460,6 +3919,10 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             nuovo_risultato["mete1"] = int(context.user_data['mete1'])
             nuovo_risultato["mete2"] = int(context.user_data['mete2'])
         
+        # Verifica che la connessione al database sia attiva
+        from modules.db_manager import is_supabase_configured
+        db_connesso = is_supabase_configured()
+        
         # Carica i risultati esistenti
         risultati = carica_risultati()
         
@@ -3468,6 +3931,17 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
         # Salva i risultati aggiornati
         salva_risultati(risultati)
+        
+        # Avvisa l'utente se il database non è connesso
+        if not db_connesso:
+            logger.warning("Database Supabase non configurato. I dati sono stati salvati solo localmente.")
+            await query.edit_message_text(
+                "⚠️ <b>Attenzione</b>\n\n"
+                "Impossibile connettersi al database remoto. I dati sono stati salvati solo localmente.\n\n"
+                "Contatta un amministratore per risolvere il problema.",
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         # Invia il messaggio al canale Telegram
         invio_riuscito, messaggio_errore = await invia_messaggio_canale(context, nuovo_risultato)
@@ -3962,11 +4436,13 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("menu", menu_command))
+    application.add_handler(CommandHandler("dashboard", dashboard_command))
     application.add_handler(CommandHandler("squadre", squadre_command))
     application.add_handler(CommandHandler("aggiungi_squadra", aggiungi_squadra_command))
     
     # Aggiungi il gestore per i callback delle query inline
     application.add_handler(CallbackQueryHandler(reaction_callback, pattern=r"^(reaction:|view_reactions:)"))
+    application.add_handler(CallbackQueryHandler(dashboard_callback, pattern=r"^dashboard_"))
     application.add_handler(CallbackQueryHandler(menu_callback, pattern=r"^menu_"))
     application.add_handler(CallbackQueryHandler(pubblica_riepilogo_callback, pattern=r"^pubblica_riepilogo$"))
     application.add_handler(CallbackQueryHandler(esporta_excel_riepilogo_callback, pattern=r"^esporta_excel_riepilogo$"))
