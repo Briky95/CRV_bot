@@ -2525,13 +2525,18 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                         self.data = data
             
             class FakeContext:
-                    def __init__(self, bot, job):
-                        self.bot = bot
-                        self.job = job
-                
-                 fake_job = FakeJob(user_id_data)
-                fake_context = FakeContext(context.bot, fake_job)
-                await timeout_callback(update, fake_context)
+                def __init__(self, bot, job):
+                    self.bot = bot
+                    self.job = job
+            
+            # Define the FakeJob class
+            class FakeJob:
+                def __init__(self, data):
+                    self.data = data
+
+            fake_job = FakeJob(user_id)
+            fake_context = FakeContext(context.bot, fake_job)
+            await timeout_callback(update, fake_context)
                 
                # Crea un nuovo job di timeout
             job_manager.run_once(
@@ -4590,8 +4595,8 @@ def main() -> None:
                 class FakeContext:
                     def __init__(self, bot):
                         self.bot = bot
-            
-             fake_context = FakeContext(application.bot)
+                
+                fake_context = FakeContext(application.bot)
                 await invia_riepilogo_automatico(fake_context)
                 
                # Pianifica il job con il JobManager alternativo
