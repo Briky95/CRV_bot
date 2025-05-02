@@ -338,18 +338,18 @@ def salva_utenti(utenti_data: Dict[str, List]) -> bool:
 
 # Funzioni per la gestione dei risultati
 def carica_risultati() -> List[Dict[str, Any]]:
-    """Carica i risultati dal database."""
+    """Carica i risultati dal database o dal file JSON locale."""
     if is_supabase_configured():
         try:
             risultati = supabase.table('risultati').select('*').execute().data
             return risultati
         except Exception as e:
             print(f"Errore nel caricamento dei risultati da Supabase: {e}")
-            # In caso di errore, restituisci una lista vuota
-            return []
+            # In caso di errore, carica dal file locale
+            return _carica_risultati_da_file()
     else:
-        print("Supabase non configurato. Impossibile caricare i risultati.")
-        return []
+        print("Supabase non configurato. Caricamento risultati dal file locale.")
+        return _carica_risultati_da_file()
 
 def _carica_risultati_da_file() -> List[Dict[str, Any]]:
     """

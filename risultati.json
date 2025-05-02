@@ -14,7 +14,7 @@
     "data_partita": "02/05/2025",
     "data_partita_iso": "2025-05-02T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-05-02T13:14:51.273345+00:00",
+    "timestamp_modifica": "2025-05-02T13:34:39.364904+00:00",
     "message_id": null
   },
   {
@@ -32,7 +32,21 @@
     "data_partita": "24/04/2025",
     "data_partita_iso": "2025-04-24T00:00:00+00:00",
     "modificato_da": "admin",
-    "timestamp_modifica": "2025-05-02T13:07:46.52511+00:00",
+    "timestamp_modifica": "2025-05-02T13:34:39.421111+00:00",
     "message_id": 27
+  },
+  {
+    "id": 999,
+    "categoria": "Test",
+    "squadra1": "Test1",
+    "squadra2": "Test2",
+    "punteggio1": 10,
+    "punteggio2": 5,
+    "mete1": 2,
+    "mete2": 1,
+    "arbitro": "Test",
+    "inserito_da": "Test",
+    "genere": "M",
+    "data_partita": "01/01/2025"
   }
 ]

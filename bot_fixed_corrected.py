@@ -16,6 +16,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_riepilogo_weekend
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre
+from conferma_callback import conferma_callback
 
 # Abilita logging
 logging.basicConfig(
@@ -372,7 +373,8 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     keyboard = [
         [InlineKeyboardButton("📝 Inserisci nuova partita", callback_data="menu_nuova")],
         [InlineKeyboardButton("🏁 Ultimi risultati", callback_data="menu_risultati")],
-        [InlineKeyboardButton("📊 Statistiche", callback_data="menu_statistiche")]
+        [InlineKeyboardButton("📊 Statistiche", callback_data="menu_statistiche")],
+        [InlineKeyboardButton("👤 Dashboard personale", callback_data="menu_dashboard")]
     ]
     
     # Aggiungi il pulsante per il riepilogo weekend solo per gli admin
@@ -396,40 +398,8 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 # Funzione per creare i pulsanti di reazione per i messaggi del canale
-def crea_pulsanti_reazione(message_id=None, include_export=False):
-    """Crea i pulsanti di reazione per i messaggi del canale."""
-    # Definisci le reazioni disponibili
-    reazioni = [
-        ("👍", "like"),
-        ("❤️", "love"),
-        ("🔥", "fire"),
-        ("👏", "clap"),
-        ("🏉", "rugby")
-    ]
-    
-    # Crea i pulsanti con i callback_data che includono l'ID del messaggio
-    buttons = []
-    for emoji, reaction_type in reazioni:
-        callback_data = f"reaction:{reaction_type}"
-        if message_id:
-            callback_data += f":{message_id}"
-        buttons.append(InlineKeyboardButton(emoji, callback_data=callback_data))
-    
-    # Aggiungi un pulsante per vedere chi ha reagito
-    if message_id:
-        buttons.append(InlineKeyboardButton("👥 Vedi reazioni", callback_data=f"view_reactions:{message_id}"))
-    
-    keyboard = [buttons]
-    
-    # Aggiungi i pulsanti per l'esportazione se richiesto
-    if include_export and message_id:
-        export_buttons = [
-            InlineKeyboardButton("📊 Esporta Excel", callback_data="esporta_excel_riepilogo"),
-            InlineKeyboardButton("📄 Esporta PDF", callback_data="esporta_pdf_riepilogo")
-        ]
-        keyboard.append(export_buttons)
-    
-    return keyboard
+# Funzione crea_pulsanti_reazione è stata spostata in modules/message_manager.py
+from modules.message_manager import crea_pulsanti_reazione
 
 # Funzione per inviare un risultato di partita (versione asincrona per l'interfaccia web)
 async def invia_risultato_partita(bot, risultato):
@@ -595,181 +565,8 @@ async def invia_risultato_partita(bot, risultato):
         return None
 
 # Funzione per inviare un messaggio al canale Telegram
-async def invia_messaggio_canale(context, risultato):
-    """Invia un messaggio con il risultato della partita al canale Telegram."""
-    try:
-        # Verifica che l'ID del canale sia stato configurato correttamente
-        if CHANNEL_ID == "@nome_canale" or not CHANNEL_ID:
-            logger.error("ID del canale Telegram non configurato correttamente. Modifica la costante CHANNEL_ID nel file bot.py.")
-            return False, "ID del canale non configurato correttamente"
-        
-        # Formatta il messaggio
-        genere = risultato.get('genere', '')
-        categoria = risultato.get('categoria', '')
-        tipo_partita = risultato.get('tipo_partita', 'normale')
-        info_categoria = f"{categoria} {genere}".strip()
-        
-        # Ottieni la data della partita, se disponibile
-        data_partita = risultato.get('data_partita', 'N/D')
-        
-        # Crea il messaggio con un layout più compatto e chiaro
-        messaggio = f"🏉 <b>{info_categoria}</b> 🏉\n"
-        if tipo_partita == 'triangolare':
-            messaggio += f"📅 <i>{data_partita}</i> - <b>TRIANGOLARE</b>\n"
-        else:
-            messaggio += f"📅 <i>{data_partita}</i>\n"
-        messaggio += "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n"
-        
-        # Gestione diversa per triangolari e partite normali
-        if tipo_partita == 'triangolare':
-            # Log per debug
-            logger.info(f"Formattazione messaggio per triangolare: {risultato['squadra1']} vs {risultato['squadra2']} vs {risultato['squadra3']}")
-            
-            # Verifica che tutti i dati necessari siano presenti
-            for key in ['partita1_punteggio1', 'partita1_punteggio2', 'partita2_punteggio1', 'partita2_punteggio2', 
-                       'partita3_punteggio1', 'partita3_punteggio2', 'partita1_mete1', 'partita1_mete2', 
-                       'partita2_mete1', 'partita2_mete2', 'partita3_mete1', 'partita3_mete2']:
-                if key not in risultato:
-                    logger.error(f"Manca il campo {key} nei dati del triangolare")
-                    return False, f"Manca il campo {key} nei dati del triangolare"
-                
-                # Assicurati che i valori siano numeri interi
-                if key.startswith('partita') and key.endswith(('punteggio1', 'punteggio2', 'mete1', 'mete2')):
-                    try:
-                        risultato[key] = int(risultato[key])
-                    except (ValueError, TypeError):
-                        logger.error(f"Il campo {key} non è un numero valido: {risultato[key]}")
-                        return False, f"Il campo {key} non è un numero valido"
-            
-            # Formatta le partite del triangolare
-            messaggio += f"<b>Squadre partecipanti:</b>\n"
-            messaggio += f"• {risultato['squadra1']}\n"
-            messaggio += f"• {risultato['squadra2']}\n"
-            messaggio += f"• {risultato['squadra3']}\n\n"
-            
-            messaggio += f"<b>Risultati:</b>\n"
-            
-            # Partita 1: Squadra1 vs Squadra2
-            punteggio1 = risultato['partita1_punteggio1']
-            punteggio2 = risultato['partita1_punteggio2']
-            mete1 = risultato['partita1_mete1']
-            mete2 = risultato['partita1_mete2']
-            
-            if punteggio1 > punteggio2:
-                messaggio += f"• <b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🏆\n"
-            elif punteggio2 > punteggio1:
-                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra2']}</b> 🏆\n"
-            else:
-                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🤝\n"
-            
-            # Partita 2: Squadra1 vs Squadra3
-            punteggio1 = risultato['partita2_punteggio1']
-            punteggio2 = risultato['partita2_punteggio2']
-            mete1 = risultato['partita2_mete1']
-            mete2 = risultato['partita2_mete2']
-            
-            if punteggio1 > punteggio2:
-                messaggio += f"• <b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🏆\n"
-            elif punteggio2 > punteggio1:
-                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra3']}</b> 🏆\n"
-            else:
-                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🤝\n"
-            
-            # Partita 3: Squadra2 vs Squadra3
-            punteggio1 = risultato['partita3_punteggio1']
-            punteggio2 = risultato['partita3_punteggio2']
-            mete1 = risultato['partita3_mete1']
-            mete2 = risultato['partita3_mete2']
-            
-            if punteggio1 > punteggio2:
-                messaggio += f"• <b>{risultato['squadra2']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🏆\n"
-            elif punteggio2 > punteggio1:
-                messaggio += f"• {risultato['squadra2']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra3']}</b> 🏆\n"
-            else:
-                messaggio += f"• {risultato['squadra2']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🤝\n"
-            
-        else:
-            # Partita normale
-            punteggio1 = int(risultato.get('punteggio1', 0))
-            punteggio2 = int(risultato.get('punteggio2', 0))
-            mete1 = int(risultato.get('mete1', 0))
-            mete2 = int(risultato.get('mete2', 0))
-            
-            # Determina il vincitore
-            if punteggio1 > punteggio2:
-                messaggio += f"<b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🏆\n"
-            elif punteggio2 > punteggio1:
-                messaggio += f"{risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra2']}</b> 🏆\n"
-            else:
-                messaggio += f"{risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🤝\n"
-            
-            # Aggiungi informazioni sulle mete
-            messaggio += f"<i>Mete:</i> {mete1} - {mete2}\n"
-        
-        # Aggiungi informazioni sull'arbitro se disponibili
-        arbitro = risultato.get('arbitro', '')
-        if arbitro:
-            messaggio += f"\n<i>Arbitro:</i> {arbitro}\n"
-        
-        # Aggiungi un disclaimer
-        messaggio += "\n<i>⚠️ Risultato in attesa di omologazione ufficiale</i>"
-        
-        # Crea i pulsanti di reazione
-        keyboard = crea_pulsanti_reazione()
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        # Verifica che il bot abbia accesso al canale prima di inviare il messaggio
-        try:
-            # Verifica che il canale esista e che il bot abbia i permessi necessari
-            chat = await context.bot.get_chat(CHANNEL_ID)
-            bot_member = await context.bot.get_chat_member(CHANNEL_ID, context.bot.id)
-            
-            if not bot_member.can_post_messages:
-                return False, "Il bot non ha i permessi per inviare messaggi al canale"
-                
-            logger.info(f"Canale verificato: {chat.title}, Bot ha permessi di invio: {bot_member.can_post_messages}")
-        except Exception as e:
-            logger.error(f"Errore nella verifica del canale: {e}")
-            return False, f"Impossibile accedere al canale: {e}"
-        
-        # Invia il messaggio al canale
-        sent_message = await context.bot.send_message(
-            chat_id=CHANNEL_ID,
-            text=messaggio,
-            parse_mode='HTML',
-            reply_markup=reply_markup
-        )
-        
-        # Salva l'ID del messaggio e aggiorna i pulsanti con l'ID
-        message_id = sent_message.message_id
-        keyboard = crea_pulsanti_reazione(message_id)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await context.bot.edit_message_reply_markup(
-            chat_id=CHANNEL_ID,
-            message_id=message_id,
-            reply_markup=reply_markup
-        )
-        
-        # Inizializza le reazioni per questo messaggio
-        reazioni = carica_reazioni()
-        message_id_str = str(message_id)
-        if message_id_str not in reazioni:
-            reazioni[message_id_str] = {
-                "like": [],
-                "love": [],
-                "fire": [],
-                "clap": [],
-                "rugby": []
-            }
-            salva_reazioni(reazioni)
-        
-        logger.info(f"Messaggio inviato al canale {CHANNEL_ID} con ID {message_id}")
-        return True, message_id
-    
-    except Exception as e:
-        logger.error(f"Errore nell'invio del messaggio al canale: {e}")
-        return False, str(e)
+# Funzione invia_messaggio_canale è stata spostata in modules/message_manager.py
+from modules.message_manager import invia_messaggio_canale
 
 # Funzione per generare il riepilogo del weekend
 def genera_riepilogo_weekend():
@@ -1307,6 +1104,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"🏉 <b>Benvenuto nel Bot partite del CRV Rugby!</b> 🏉\n\n"
             f"Ciao {user.mention_html()}! Questo bot ti aiuterà a registrare i risultati delle partite di rugby del nostro Comitato.\n\n"
             f"Usa /menu per visualizzare tutte le funzioni disponibili\n"
+            f"Usa /dashboard per accedere alla tua dashboard personale\n"
             f"Usa /nuova per inserire una nuova partita\n"
             f"Usa /risultati per vedere le ultime partite inserite"
         )
@@ -1625,6 +1423,10 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna al menu", callback_data="menu_torna")]])
             )
+    
+    elif azione == "dashboard":
+        # Reindirizza alla dashboard personale
+        return await dashboard_command(update, context)
     
     elif azione == "statistiche":
         # Mostra le statistiche delle partite
@@ -3901,137 +3703,6 @@ async def arbitro_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return ConversationHandler.END
 
 # Callback per la conferma dell'inserimento
-async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Gestisce la conferma dell'inserimento della partita."""
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "conferma":
-        # Prepara il nuovo risultato
-        nuovo_risultato = {
-            "categoria": context.user_data['categoria'],
-            "genere": context.user_data['genere'],
-            "tipo_partita": context.user_data.get('tipo_partita', 'normale'),
-            "data_partita": context.user_data['data_partita'],
-            "squadra1": context.user_data['squadra1'],
-            "squadra2": context.user_data['squadra2'],
-            "arbitro": context.user_data['arbitro'],
-            "inserito_da": update.effective_user.full_name,
-            "timestamp": datetime.now().isoformat(),
-            "id": int(datetime.now().timestamp())  # Genera un ID univoco basato sul timestamp
-        }
-        
-        # Gestione diversa per partite normali e triangolari
-        if context.user_data.get('tipo_partita') == 'triangolare':
-            # Aggiungi la terza squadra
-            nuovo_risultato["squadra3"] = context.user_data.get('squadra3', '')
-            
-            # Aggiungi i punteggi e le mete per ogni partita del triangolare
-            # Partita 1: squadra1 vs squadra2
-            nuovo_risultato["partita1_punteggio1"] = int(context.user_data.get('punteggio1', 0))
-            nuovo_risultato["partita1_punteggio2"] = int(context.user_data.get('punteggio2', 0))
-            nuovo_risultato["partita1_mete1"] = int(context.user_data.get('mete1', 0))
-            nuovo_risultato["partita1_mete2"] = int(context.user_data.get('mete2', 0))
-            
-            # Partita 2: squadra1 vs squadra3
-            nuovo_risultato["partita2_punteggio1"] = int(context.user_data.get('punteggio1_vs_3', 0))
-            nuovo_risultato["partita2_punteggio2"] = int(context.user_data.get('punteggio3_vs_1', 0))
-            nuovo_risultato["partita2_mete1"] = int(context.user_data.get('mete1_vs_3', 0))
-            nuovo_risultato["partita2_mete2"] = int(context.user_data.get('mete3_vs_1', 0))
-            
-            # Partita 3: squadra2 vs squadra3
-            nuovo_risultato["partita3_punteggio1"] = int(context.user_data.get('punteggio2_vs_3', 0))
-            nuovo_risultato["partita3_punteggio2"] = int(context.user_data.get('punteggio3_vs_2', 0))
-            nuovo_risultato["partita3_mete1"] = int(context.user_data.get('mete2_vs_3', 0))
-            nuovo_risultato["partita3_mete2"] = int(context.user_data.get('mete3_vs_2', 0))
-            
-            # Calcola i totali per ogni squadra
-            nuovo_risultato["punteggio1"] = nuovo_risultato["partita1_punteggio1"] + nuovo_risultato["partita2_punteggio1"]
-            nuovo_risultato["punteggio2"] = nuovo_risultato["partita1_punteggio2"] + nuovo_risultato["partita3_punteggio1"]
-            nuovo_risultato["punteggio3"] = nuovo_risultato["partita2_punteggio2"] + nuovo_risultato["partita3_punteggio2"]
-            
-            nuovo_risultato["mete1"] = nuovo_risultato["partita1_mete1"] + nuovo_risultato["partita2_mete1"]
-            nuovo_risultato["mete2"] = nuovo_risultato["partita1_mete2"] + nuovo_risultato["partita3_mete1"]
-            nuovo_risultato["mete3"] = nuovo_risultato["partita2_mete2"] + nuovo_risultato["partita3_mete2"]
-        else:
-            # Per le partite normali, aggiungi i punteggi e le mete standard
-            nuovo_risultato["punteggio1"] = int(context.user_data['punteggio1'])
-            nuovo_risultato["punteggio2"] = int(context.user_data['punteggio2'])
-            nuovo_risultato["mete1"] = int(context.user_data['mete1'])
-            nuovo_risultato["mete2"] = int(context.user_data['mete2'])
-        
-        # Verifica che la connessione al database sia attiva
-        from modules.db_manager import is_supabase_configured
-        db_connesso = is_supabase_configured()
-        
-        # Carica i risultati esistenti
-        risultati = carica_risultati()
-        
-        # Aggiungi il nuovo risultato
-        risultati.append(nuovo_risultato)
-        
-        # Salva i risultati aggiornati
-        salva_risultati(risultati)
-        
-        # Avvisa l'utente se il database non è connesso
-        if not db_connesso:
-            logger.warning("Database Supabase non configurato. I dati sono stati salvati solo localmente.")
-            await query.edit_message_text(
-                "⚠️ <b>Attenzione</b>\n\n"
-                "Impossibile connettersi al database remoto. I dati sono stati salvati solo localmente.\n\n"
-                "Contatta un amministratore per risolvere il problema.",
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        # Invia il messaggio al canale Telegram
-        invio_riuscito, messaggio_errore = await invia_messaggio_canale(context, nuovo_risultato)
-        
-        # Se l'invio è riuscito, aggiorna il risultato con l'ID del messaggio e salva nuovamente
-        if invio_riuscito and isinstance(messaggio_errore, int):  # messaggio_errore contiene l'ID del messaggio
-            # Aggiorna il risultato con l'ID del messaggio
-            nuovo_risultato["message_id"] = messaggio_errore
-            
-            # Aggiorna il risultato nell'elenco
-            for i, r in enumerate(risultati):
-                if r.get('id') == nuovo_risultato.get('id'):
-                    risultati[i] = nuovo_risultato
-                    break
-            
-            # Salva nuovamente i risultati
-            salva_risultati(risultati)
-        
-        messaggio_successo = "✅ <b>Partita registrata con successo!</b>\n\n"
-        
-        if invio_riuscito:
-            messaggio_successo += "✅ Risultato pubblicato anche sul canale Telegram.\n\n"
-        else:
-            messaggio_successo += f"⚠️ Non è stato possibile pubblicare il risultato sul canale Telegram.\n"
-            messaggio_successo += f"<i>Errore: {messaggio_errore}</i>\n\n"
-            messaggio_successo += "Verifica che:\n"
-            messaggio_successo += "1. L'ID del canale sia configurato correttamente\n"
-            messaggio_successo += "2. Il bot sia stato aggiunto come amministratore del canale\n"
-            messaggio_successo += "3. Il bot abbia i permessi per inviare messaggi\n\n"
-        
-        messaggio_successo += "Usa /nuova per inserire un'altra partita o /risultati per vedere le ultime partite."
-        
-        await query.edit_message_text(
-            messaggio_successo,
-            parse_mode='HTML'
-        )
-    else:
-        await query.edit_message_text(
-            "❌ <b>Inserimento annullato.</b>\n\n"
-            "Usa /nuova per iniziare di nuovo.",
-            parse_mode='HTML'
-        )
-    
-    # Pulisci i dati utente
-    context.user_data.clear()
-    
-    return ConversationHandler.END
-
-# Callback per l'inserimento del punteggio della terza squadra (triangolare)
 async def punteggio3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gestisce l'inserimento del punteggio della terza squadra in un triangolare."""
     try:
