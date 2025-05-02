@@ -370,22 +370,91 @@ async def invia_risultato_partita(bot, risultato):
             messaggio += f"📅 <i>{data_partita}</i>\n"
         messaggio += "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n"
         
-        # Partita normale
-        punteggio1 = int(risultato.get('punteggio1', 0))
-        punteggio2 = int(risultato.get('punteggio2', 0))
-        mete1 = int(risultato.get('mete1', 0))
-        mete2 = int(risultato.get('mete2', 0))
-        
-        # Determina il vincitore
-        if punteggio1 > punteggio2:
-            messaggio += f"<b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🏆\n"
-        elif punteggio2 > punteggio1:
-            messaggio += f"{risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra2']}</b> 🏆\n"
+        # Gestione diversa per triangolari e partite normali
+        if tipo_partita == 'triangolare':
+            # Log per debug
+            logger.info(f"Formattazione messaggio per triangolare: {risultato['squadra1']} vs {risultato['squadra2']} vs {risultato['squadra3']}")
+            
+            # Verifica che tutti i dati necessari siano presenti
+            for key in ['partita1_punteggio1', 'partita1_punteggio2', 'partita2_punteggio1', 'partita2_punteggio2', 
+                       'partita3_punteggio1', 'partita3_punteggio2', 'partita1_mete1', 'partita1_mete2', 
+                       'partita2_mete1', 'partita2_mete2', 'partita3_mete1', 'partita3_mete2']:
+                if key not in risultato:
+                    logger.error(f"Manca il campo {key} nei dati del triangolare")
+                    return None
+                
+                # Assicurati che i valori siano numeri interi
+                if key.startswith('partita') and key.endswith(('punteggio1', 'punteggio2', 'mete1', 'mete2')):
+                    try:
+                        risultato[key] = int(risultato[key])
+                    except (ValueError, TypeError):
+                        logger.error(f"Il campo {key} non è un numero valido: {risultato[key]}")
+                        return None
+            
+            # Formatta le partite del triangolare
+            messaggio += f"<b>Squadre partecipanti:</b>\n"
+            messaggio += f"• {risultato['squadra1']}\n"
+            messaggio += f"• {risultato['squadra2']}\n"
+            messaggio += f"• {risultato['squadra3']}\n\n"
+            
+            messaggio += f"<b>Risultati:</b>\n"
+            
+            # Partita 1: Squadra1 vs Squadra2
+            punteggio1 = risultato['partita1_punteggio1']
+            punteggio2 = risultato['partita1_punteggio2']
+            mete1 = risultato['partita1_mete1']
+            mete2 = risultato['partita1_mete2']
+            
+            if punteggio1 > punteggio2:
+                messaggio += f"• <b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra2']}</b> 🏆\n"
+            else:
+                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🤝\n"
+            
+            # Partita 2: Squadra1 vs Squadra3
+            punteggio1 = risultato['partita2_punteggio1']
+            punteggio2 = risultato['partita2_punteggio2']
+            mete1 = risultato['partita2_mete1']
+            mete2 = risultato['partita2_mete2']
+            
+            if punteggio1 > punteggio2:
+                messaggio += f"• <b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra3']}</b> 🏆\n"
+            else:
+                messaggio += f"• {risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🤝\n"
+            
+            # Partita 3: Squadra2 vs Squadra3
+            punteggio1 = risultato['partita3_punteggio1']
+            punteggio2 = risultato['partita3_punteggio2']
+            mete1 = risultato['partita3_mete1']
+            mete2 = risultato['partita3_mete2']
+            
+            if punteggio1 > punteggio2:
+                messaggio += f"• <b>{risultato['squadra2']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"• {risultato['squadra2']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra3']}</b> 🏆\n"
+            else:
+                messaggio += f"• {risultato['squadra2']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra3']} 🤝\n"
+            
         else:
-            messaggio += f"{risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🤝\n"
-        
-        # Aggiungi informazioni sulle mete
-        messaggio += f"<i>Mete:</i> {mete1} - {mete2}\n"
+            # Partita normale
+            punteggio1 = int(risultato.get('punteggio1', 0))
+            punteggio2 = int(risultato.get('punteggio2', 0))
+            mete1 = int(risultato.get('mete1', 0))
+            mete2 = int(risultato.get('mete2', 0))
+            
+            # Determina il vincitore
+            if punteggio1 > punteggio2:
+                messaggio += f"<b>{risultato['squadra1']}</b> <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🏆\n"
+            elif punteggio2 > punteggio1:
+                messaggio += f"{risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> <b>{risultato['squadra2']}</b> 🏆\n"
+            else:
+                messaggio += f"{risultato['squadra1']} <code>{punteggio1}:{punteggio2}</code> {risultato['squadra2']} 🤝\n"
+            
+            # Aggiungi informazioni sulle mete
+            messaggio += f"<i>Mete:</i> {mete1} - {mete2}\n"
         
         # Aggiungi informazioni sull'arbitro se disponibili
         arbitro = risultato.get('arbitro', '')
