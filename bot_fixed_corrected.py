@@ -1067,6 +1067,44 @@ async def invia_riepilogo_automatico(context: ContextTypes.DEFAULT_TYPE) -> None
         )
         
         logger.info(f"Riepilogo del weekend pubblicato automaticamente sul canale {CHANNEL_ID}")
+        
+        # Genera e invia anche i file Excel e PDF
+        try:
+            # Genera il file Excel
+            excel_buffer = genera_excel_riepilogo_weekend(risultati_weekend, inizio_weekend_str, fine_weekend_str)
+            
+            # Crea un nome per il file Excel
+            inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
+            fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
+            excel_filename = f"Riepilogo_Rugby_{inizio_weekend.strftime('%d-%m-%Y')}_{fine_weekend.strftime('%d-%m-%Y')}.xlsx"
+            
+            # Invia il file Excel al canale
+            await context.bot.send_document(
+                chat_id=CHANNEL_ID,
+                document=excel_buffer,
+                filename=excel_filename,
+                caption=f"📊 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato Excel"
+            )
+            
+            logger.info(f"File Excel inviato automaticamente al canale {CHANNEL_ID}")
+            
+            # Genera il file PDF
+            pdf_buffer = genera_pdf_riepilogo_weekend(risultati_weekend, inizio_weekend_str, fine_weekend_str)
+            
+            # Crea un nome per il file PDF
+            pdf_filename = f"Riepilogo_Rugby_{inizio_weekend.strftime('%d-%m-%Y')}_{fine_weekend.strftime('%d-%m-%Y')}.pdf"
+            
+            # Invia il file PDF al canale
+            await context.bot.send_document(
+                chat_id=CHANNEL_ID,
+                document=pdf_buffer,
+                filename=pdf_filename,
+                caption=f"📄 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato PDF"
+            )
+            
+            logger.info(f"File PDF inviato automaticamente al canale {CHANNEL_ID}")
+        except Exception as file_error:
+            logger.error(f"Errore durante l'invio automatico dei file: {file_error}")
     except Exception as e:
         logger.error(f"Errore durante l'invio automatico del riepilogo: {e}")
 
@@ -3379,7 +3417,8 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "squadra2": context.user_data['squadra2'],
             "arbitro": context.user_data['arbitro'],
             "inserito_da": update.effective_user.full_name,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "id": int(datetime.now().timestamp())  # Genera un ID univoco basato sul timestamp
         }
         
         # Gestione diversa per partite normali e triangolari
@@ -3432,6 +3471,20 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
         # Invia il messaggio al canale Telegram
         invio_riuscito, messaggio_errore = await invia_messaggio_canale(context, nuovo_risultato)
+        
+        # Se l'invio è riuscito, aggiorna il risultato con l'ID del messaggio e salva nuovamente
+        if invio_riuscito and isinstance(messaggio_errore, int):  # messaggio_errore contiene l'ID del messaggio
+            # Aggiorna il risultato con l'ID del messaggio
+            nuovo_risultato["message_id"] = messaggio_errore
+            
+            # Aggiorna il risultato nell'elenco
+            for i, r in enumerate(risultati):
+                if r.get('id') == nuovo_risultato.get('id'):
+                    risultati[i] = nuovo_risultato
+                    break
+            
+            # Salva nuovamente i risultati
+            salva_risultati(risultati)
         
         messaggio_successo = "✅ <b>Partita registrata con successo!</b>\n\n"
         
@@ -3995,6 +4048,12 @@ def main() -> None:
     
     # Aggiungi il gestore degli errori
     application.add_error_handler(error)
+    
+    # Configura il job per inviare automaticamente il riepilogo ogni domenica alle 18:00
+    from datetime import time as dt_time
+    job_time = dt_time(hour=18, minute=0, second=0)  # 18:00:00
+    application.job_queue.run_daily(invia_riepilogo_automatico, time=job_time, days=[6])  # 6 = domenica (0 = lunedì, 6 = domenica)
+    logger.info("Job scheduler configurato per inviare il riepilogo ogni domenica alle 18:00")
     
     # Configurazioni ottimizzate per il polling
     logger.info("Avvio del bot con configurazioni ottimizzate...")

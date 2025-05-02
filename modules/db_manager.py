@@ -60,6 +60,10 @@ try:
             if hasattr(self, 'operation') and self.operation == "delete":
                 return self._execute_delete()
             
+            # Se l'operazione è update, esegui l'operazione di aggiornamento
+            if hasattr(self, 'update_data'):
+                return self._execute_update()
+            
             # Altrimenti, esegui l'operazione di selezione (comportamento predefinito)
             url = f"{self.base_url}?select={self.select_columns}"
             if self.filters:
@@ -107,6 +111,47 @@ try:
             
             if response.status_code in [200, 201]:
                 return Response(response.json())
+            return Response(None)
+            
+        def update(self, data):
+            """Aggiorna un record esistente."""
+            self.update_data = data
+            return self
+            
+        def eq(self, column, value):
+            """Aggiunge un filtro di uguaglianza."""
+            self.filters.append(f"{column}=eq.{value}")
+            return self
+            
+        def _execute_update(self):
+            """Esegue l'operazione di aggiornamento."""
+            if not hasattr(self, 'update_data'):
+                raise ValueError("Nessun dato da aggiornare")
+                
+            url = self.base_url
+            if self.filters:
+                url += "?" + "&".join(self.filters)
+            
+            response = requests.patch(
+                url,
+                headers=self.client.headers,
+                json=self.update_data
+            )
+            
+            class Response:
+                def __init__(self, data):
+                    self.data = data
+                
+                def execute(self):
+                    # Questo metodo è necessario per mantenere la compatibilità con il codice esistente
+                    return self
+                
+                def neq(self, column, value):
+                    # Questo metodo è necessario per mantenere la compatibilità con il codice esistente
+                    return self
+            
+            if response.status_code in [200, 201, 204]:
+                return Response(response.json() if response.content else None)
             return Response(None)
         
         def delete(self):
@@ -342,13 +387,33 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
     """Salva i risultati nel database."""
     if not is_supabase_configured():
         print("Supabase non configurato. Impossibile salvare i risultati.")
-        return False
+        # Salva comunque nel file JSON locale
+        try:
+            with open(RISULTATI_FILE, 'w', encoding='utf-8') as file:
+                json.dump(risultati, file, indent=2, ensure_ascii=False)
+            print("Risultati salvati nel file JSON locale.")
+            return True
+        except Exception as e:
+            print(f"Errore nel salvataggio dei risultati nel file JSON: {e}")
+            return False
     
     try:
-        # Elimina tutti i risultati esistenti
-        supabase.table('risultati').delete().neq('id', 0).execute()
+        # Salva nel file JSON locale per sicurezza
+        try:
+            with open(RISULTATI_FILE, 'w', encoding='utf-8') as file:
+                json.dump(risultati, file, indent=2, ensure_ascii=False)
+            print("Risultati salvati nel file JSON locale.")
+        except Exception as e:
+            print(f"Errore nel salvataggio dei risultati nel file JSON: {e}")
         
-        # Inserisci i nuovi risultati
+        # Ottieni gli ID dei risultati esistenti
+        response = supabase.table('risultati').select('id').execute()
+        existing_ids = [item.get('id') for item in response.data]
+        
+        # Prepara i risultati da inserire e aggiornare
+        to_insert = []
+        to_update = []
+        
         for i, risultato in enumerate(risultati):
             # Crea una copia del risultato per non modificare l'originale
             risultato_db = risultato.copy()
@@ -388,12 +453,46 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
             # Usa il dizionario filtrato
             risultato_db = risultato_filtrato
             
-            # Inserisci il risultato
-            supabase.table('risultati').insert(risultato_db).execute()
+            # Determina se il risultato deve essere inserito o aggiornato
+            if risultato_db['id'] in existing_ids:
+                to_update.append(risultato_db)
+            else:
+                to_insert.append(risultato_db)
+        
+        # Inserisci i nuovi risultati
+        if to_insert:
+            for risultato in to_insert:
+                supabase.table('risultati').insert(risultato).execute()
+                print(f"Inserito nuovo risultato con ID {risultato['id']}")
+        
+        # Aggiorna i risultati esistenti
+        if to_update:
+            for risultato in to_update:
+                supabase.table('risultati').update(risultato).eq('id', risultato['id']).execute()
+                print(f"Aggiornato risultato esistente con ID {risultato['id']}")
+        
+        # Trova gli ID da eliminare (quelli che esistono nel database ma non nei risultati)
+        result_ids = [r.get('id') for r in risultati if 'id' in r]
+        to_delete = [id for id in existing_ids if id not in result_ids]
+        
+        # Elimina i risultati che non esistono più
+        if to_delete:
+            for id in to_delete:
+                supabase.table('risultati').delete().eq('id', id).execute()
+                print(f"Eliminato risultato con ID {id}")
         
         return True
     except Exception as e:
         print(f"Errore nel salvataggio dei risultati su Supabase: {e}")
+        # Verifica se i risultati sono stati salvati nel file JSON
+        try:
+            with open(RISULTATI_FILE, 'r', encoding='utf-8') as file:
+                json_data = json.load(file)
+                if len(json_data) == len(risultati):
+                    print("I risultati sono stati salvati nel file JSON ma non su Supabase.")
+                    return True
+        except Exception:
+            pass
         return False
 
 # Funzioni per la gestione delle squadre

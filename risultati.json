@@ -1,0 +1,38 @@
+[
+  {
+    "id": 3,
+    "categoria": "Test",
+    "squadra1": "Squadra Test 1",
+    "squadra2": "Squadra Test 2",
+    "punteggio1": 25,
+    "punteggio2": 18,
+    "mete1": 3,
+    "mete2": 2,
+    "arbitro": "Test",
+    "inserito_da": "Test Script",
+    "genere": "Test",
+    "data_partita": "02/05/2025",
+    "data_partita_iso": "2025-05-02T00:00:00+00:00",
+    "modificato_da": null,
+    "timestamp_modifica": "2025-05-02T13:14:51.273345+00:00",
+    "message_id": null
+  },
+  {
+    "id": 1,
+    "categoria": "Serie A",
+    "squadra1": "ASD AVALON",
+    "squadra2": "BOLZANO RUGBY ASD",
+    "punteggio1": 23,
+    "punteggio2": 45,
+    "mete1": 3,
+    "mete2": 5,
+    "arbitro": "Bonato Riccardo",
+    "inserito_da": "Riccardo Bonato",
+    "genere": "Maschile",
+    "data_partita": "24/04/2025",
+    "data_partita_iso": "2025-04-24T00:00:00+00:00",
+    "modificato_da": "admin",
+    "timestamp_modifica": "2025-05-02T13:07:46.52511+00:00",
+    "message_id": 27
+  }
+]
