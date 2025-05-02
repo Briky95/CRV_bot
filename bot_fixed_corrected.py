@@ -2509,55 +2509,40 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
         
         
-        # Imposta un timeout di 10 minuti per l'inserimento
-        if hasattr(context, 'job_queue') and context.job_queue is not None:
+        # Imposta un timeout di 10 minuti per l'inserimento utilizzando il JobManager alternativo
+        try:
+            from modules.job_manager import job_manager
+            
             # Cancella eventuali job di timeout precedenti per questo utente
-            for job in context.job_queue.get_jobs_by_name(f"timeout_{user_id}"):
-                job.schedule_removal()
+            for job in job_manager.get_jobs_by_name(f"timeout_{user_id}"):
+                job_manager.remove_job(job)
+            
+            # Wrapper per adattare la funzione al formato richiesto dal JobManager
+            async def timeout_wrapper(user_id_data):
+                # Crea un contesto fittizio con il job
+                class FakeJob:
+                    def __init__(self, data):
+                        self.data = data
+            
+            class FakeContext:
+                    def __init__(self, bot, job):
+                        self.bot = bot
+                        self.job = job
                 
-            # Crea un nuovo job di timeout
-            context.job_queue.run_once(
-                lambda ctx: timeout_callback(update, ctx),
+                 fake_job = FakeJob(user_id_data)
+                fake_context = FakeContext(context.bot, fake_job)
+                await timeout_callback(update, fake_context)
+                
+               # Crea un nuovo job di timeout
+            job_manager.run_once(
+                timeout_wrapper,
                 600,  # 10 minuti in secondi
-                name=f"timeout_{user_id}",
-                data=user_id
+                data=user_id,
+                name=f"timeout_{user_id}"
             )
-            logger.info(f"Impostato timeout di 10 minuti per l'utente {user_id}")
-        else:
-            # Utilizza il JobManager alternativo
-            try:
-                from modules.job_manager import job_manager
-                
-                # Cancella eventuali job di timeout precedenti per questo utente
-                for job in job_manager.get_jobs_by_name(f"timeout_{user_id}"):
-                    job_manager.remove_job(job)
-                
-                # Wrapper per adattare la funzione al formato richiesto dal JobManager
-                async def timeout_wrapper(user_id_data):
-                    # Crea un contesto fittizio con il job
-                    class FakeJob:
-                        def __init__(self, data):
-                            self.data = data
-                    
-                    class FakeContext:
-                        def __init__(self, bot, job):
-                            self.bot = bot
-                            self.job = job
-                    
-                    fake_job = FakeJob(user_id_data)
-                    fake_context = FakeContext(context.bot, fake_job)
-                    await timeout_callback(update, fake_context)
-                
-                # Crea un nuovo job di timeout
-                job_manager.run_once(
-                    timeout_wrapper,
-                    600,  # 10 minuti in secondi
-                    data=user_id,
-                    name=f"timeout_{user_id}"
-                )
-                logger.info(f"Impostato timeout di 10 minuti per l'utente {user_id} (JobManager alternativo)")
-            except Exception as e:
-                logger.error(f"Errore nell'impostazione del timeout con JobManager alternativo: {e}")
+            logger.info(f"Impostato timeout di 10 minuti per l'utente {user_id} (JobManager alternativo)")
+        except Exception as e:
+            logger.error(f"Errore nell'impostazione del timeout con JobManager alternativo: {e}")
         
         return CATEGORIA
     except Exception as e:
@@ -2709,11 +2694,6 @@ def genera_riepilogo_dati(context, completo=False):
 async def annulla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Annulla la conversazione corrente."""
     user_id = update.effective_user.id
-    
-    # Cancella eventuali job di timeout con job_queue standard
-    if hasattr(context, 'job_queue') and context.job_queue is not None:
-        for job in context.job_queue.get_jobs_by_name(f"timeout_{user_id}"):
-            job.schedule_removal()
     
     # Cancella eventuali job di timeout con JobManager alternativo
     try:
@@ -4477,36 +4457,18 @@ def main() -> None:
             # Su Render, continuiamo comunque
             logger.warning("Continuando con l'avvio del bot nonostante il rilevamento di un'altra istanza...")
     
-    # Crea l'applicazione con configurazioni ottimizzate e job_queue abilitata
+    # Crea l'applicazione con configurazioni ottimizzate
     try:
-        # Importa esplicitamente JobQueue
-        from telegram.ext import JobQueue
-        
-        # Crea un builder per l'applicazione
-        builder = Application.builder().token(TOKEN)
-        
         # Crea l'applicazione
-        application = builder.build()
+        application = Application.builder().token(TOKEN).build()
         
-        # Verifica se job_queue è disponibile
-        if not hasattr(application, 'job_queue') or application.job_queue is None:
-            logger.warning("job_queue non disponibile nell'applicazione. Tentativo di inizializzazione manuale...")
+        # Importa il JobManager alternativo
+        try:
+            from modules.job_manager import job_manager
+            logger.info("JobManager alternativo importato con successo.")
+        except Exception as job_error:
+            logger.error(f"Errore nell'importazione del JobManager alternativo: {job_error}")
             
-            # Tentativo di inizializzazione manuale di JobQueue
-            try:
-                job_queue = JobQueue()
-                # Collega la job_queue all'applicazione
-                job_queue.set_application(application)
-                # Avvia la job_queue
-                job_queue.start()
-                # Assegna la job_queue all'applicazione
-                application.job_queue = job_queue
-                
-                logger.info("job_queue inizializzata manualmente con successo.")
-            except Exception as job_error:
-                logger.error(f"Errore nell'inizializzazione manuale di job_queue: {job_error}")
-        else:
-            logger.info("job_queue inizializzata correttamente.")
     except Exception as e:
         logger.error(f"Errore nella creazione dell'applicazione: {e}")
         # Fallback: crea l'applicazione senza opzioni aggiuntive
@@ -4618,32 +4580,25 @@ def main() -> None:
         from datetime import time as dt_time
         job_time = dt_time(hour=18, minute=0, second=0)  # 18:00:00
         
-        # Verifica che job_queue sia disponibile
-        if hasattr(application, 'job_queue') and application.job_queue is not None:
-            application.job_queue.run_daily(invia_riepilogo_automatico, time=job_time, days=[6])  # 6 = domenica (0 = lunedì, 6 = domenica)
-            logger.info("Job scheduler configurato per inviare il riepilogo ogni domenica alle 18:00")
-        else:
-            logger.warning("Job queue non disponibile. Utilizzo del JobManager alternativo...")
+        # Utilizza esclusivamente il JobManager alternativo
+        try:
+            from modules.job_manager import job_manager
             
-            # Importa il JobManager alternativo
-            try:
-                from modules.job_manager import job_manager
+            # Wrapper per adattare la funzione al formato richiesto dal JobManager
+            async def job_wrapper(context_data):
+                # Crea un contesto fittizio con il bot
+                class FakeContext:
+                    def __init__(self, bot):
+                        self.bot = bot
+            
+             fake_context = FakeContext(application.bot)
+                await invia_riepilogo_automatico(fake_context)
                 
-                # Wrapper per adattare la funzione al formato richiesto dal JobManager
-                async def job_wrapper(context_data):
-                    # Crea un contesto fittizio con il bot
-                    class FakeContext:
-                        def __init__(self, bot):
-                            self.bot = bot
-                    
-                    fake_context = FakeContext(application.bot)
-                    await invia_riepilogo_automatico(fake_context)
-                
-                # Pianifica il job con il JobManager alternativo
-                job_manager.run_daily(job_wrapper, job_time, days=[6], name="riepilogo_automatico")
-                logger.info("Job scheduler alternativo configurato per inviare il riepilogo ogni domenica alle 18:00")
-            except Exception as alt_error:
-                logger.error(f"Errore nella configurazione del job scheduler alternativo: {alt_error}")
+               # Pianifica il job con il JobManager alternativo
+            job_manager.run_daily(job_wrapper, job_time, days=[6], name="riepilogo_automatico")
+            logger.info("Job scheduler alternativo configurato per inviare il riepilogo ogni domenica alle 18:00")
+        except Exception as alt_error:
+            logger.error(f"Errore nella configurazione del job scheduler alternativo: {alt_error}")
     except Exception as e:
         logger.error(f"Errore nella configurazione del job scheduler: {e}")
     
