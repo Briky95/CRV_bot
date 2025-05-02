@@ -348,6 +348,13 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ]
     ]
     
+    # Aggiungi pulsanti per esportazione solo per gli admin
+    if is_admin(user_id):
+        keyboard.append([
+            InlineKeyboardButton("📊 Esporta Excel", callback_data="dashboard_excel"),
+            InlineKeyboardButton("📄 Esporta PDF", callback_data="dashboard_pdf")
+        ])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_html(
@@ -1210,6 +1217,95 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "- Per problemi o suggerimenti, contatta un amministratore"
     )
 
+# Funzione per mostrare le statistiche
+async def mostra_statistiche(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Mostra le statistiche delle partite."""
+    query = update.callback_query
+    
+    # Carica i risultati
+    risultati = carica_risultati()
+    
+    if not risultati:
+        await query.edit_message_text(
+            "Non ci sono ancora risultati inseriti per generare statistiche.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+        )
+        return
+    
+    # Calcola le statistiche
+    totale_partite = len(risultati)
+    totale_punti = sum(int(r.get('punteggio1', 0)) + int(r.get('punteggio2', 0)) for r in risultati)
+    totale_mete = sum(int(r.get('mete1', 0)) + int(r.get('mete2', 0)) for r in risultati)
+    
+    # Media punti e mete per partita
+    media_punti = totale_punti / totale_partite if totale_partite > 0 else 0
+    media_mete = totale_mete / totale_partite if totale_partite > 0 else 0
+    
+    # Trova la partita con più punti
+    partita_max_punti = max(risultati, key=lambda r: int(r.get('punteggio1', 0)) + int(r.get('punteggio2', 0)), default=None)
+    
+    # Trova la partita con più mete
+    partita_max_mete = max(risultati, key=lambda r: int(r.get('mete1', 0)) + int(r.get('mete2', 0)), default=None)
+    
+    # Conta le partite per categoria
+    categorie = {}
+    for r in risultati:
+        categoria = r.get('categoria', 'N/D')
+        genere = r.get('genere', '')
+        key = f"{categoria} {genere}".strip()
+        categorie[key] = categorie.get(key, 0) + 1
+    
+    # Squadre con più partite
+    squadre_count = {}
+    for r in risultati:
+        squadra1 = r.get('squadra1', 'N/D')
+        squadra2 = r.get('squadra2', 'N/D')
+        squadre_count[squadra1] = squadre_count.get(squadra1, 0) + 1
+        squadre_count[squadra2] = squadre_count.get(squadra2, 0) + 1
+    
+    # Trova le 3 squadre con più partite
+    top_squadre = sorted(squadre_count.items(), key=lambda x: x[1], reverse=True)[:3]
+    
+    # Crea il messaggio con le statistiche
+    messaggio = "<b>📊 STATISTICHE PARTITE</b>\n\n"
+    
+    messaggio += f"<b>Totale partite:</b> {totale_partite}\n"
+    messaggio += f"<b>Totale punti:</b> {totale_punti}\n"
+    messaggio += f"<b>Totale mete:</b> {totale_mete}\n"
+    messaggio += f"<b>Media punti per partita:</b> {media_punti:.1f}\n"
+    messaggio += f"<b>Media mete per partita:</b> {media_mete:.1f}\n\n"
+    
+    if partita_max_punti:
+        punti_max = int(partita_max_punti.get('punteggio1', 0)) + int(partita_max_punti.get('punteggio2', 0))
+        messaggio += f"<b>Partita con più punti:</b>\n"
+        messaggio += f"  {partita_max_punti.get('squadra1')} {partita_max_punti.get('punteggio1')} - {partita_max_punti.get('punteggio2')} {partita_max_punti.get('squadra2')}\n"
+        messaggio += f"  Totale: {punti_max} punti\n\n"
+    
+    if partita_max_mete:
+        mete_max = int(partita_max_mete.get('mete1', 0)) + int(partita_max_mete.get('mete2', 0))
+        messaggio += f"<b>Partita con più mete:</b>\n"
+        messaggio += f"  {partita_max_mete.get('squadra1')} {partita_max_mete.get('mete1')} - {partita_max_mete.get('mete2')} {partita_max_mete.get('squadra2')}\n"
+        messaggio += f"  Totale: {mete_max} mete\n\n"
+    
+    messaggio += "<b>Partite per categoria:</b>\n"
+    for cat, count in sorted(categorie.items(), key=lambda x: x[1], reverse=True):
+        messaggio += f"  {cat}: {count}\n"
+    
+    messaggio += "\n<b>Squadre con più partite:</b>\n"
+    for squadra, count in top_squadre:
+        messaggio += f"  {squadra}: {count}\n"
+    
+    # Aggiungi un pulsante per tornare alla dashboard
+    keyboard = [[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        messaggio,
+        reply_markup=reply_markup,
+        parse_mode='HTML'
+    )
+
 # Callback per le azioni della dashboard
 async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Gestisce i callback della dashboard personalizzata."""
@@ -1223,18 +1319,125 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return await nuova_partita(update, context)
     
     elif azione == "risultati":
-        # Reindirizza al comando risultati
-        return await risultati_command(update, context)
+        # Mostra gli ultimi risultati
+        risultati = carica_risultati()
+        
+        if not risultati:
+            await query.edit_message_text(
+                "Non ci sono ancora risultati inseriti.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+            return
+        
+        # Mostra gli ultimi 5 risultati
+        messaggio = "<b>📋 ULTIMI RISULTATI</b>\n\n"
+        
+        # Ordina i risultati per data (dal più recente)
+        def get_date_key(x):
+            data_partita = x.get('data_partita')
+            if data_partita is None or data_partita == '':
+                return datetime.strptime('01/01/2000', '%d/%m/%Y')
+            try:
+                return datetime.strptime(data_partita, '%d/%m/%Y')
+            except ValueError:
+                # In caso di formato data non valido, usa una data predefinita
+                return datetime.strptime('01/01/2000', '%d/%m/%Y')
+        
+        risultati_ordinati = sorted(
+            risultati, 
+            key=get_date_key,
+            reverse=True
+        )
+        
+        # Prendi gli ultimi 5 risultati
+        ultimi_risultati = risultati_ordinati[:5]
+        
+        for i, risultato in enumerate(ultimi_risultati, 1):
+            categoria = risultato.get('categoria', 'N/D')
+            genere = risultato.get('genere', '')
+            info_categoria = f"{categoria} {genere}".strip()
+            
+            messaggio += f"{i}. <b>{info_categoria}</b> - {risultato.get('data_partita', 'N/D')}\n"
+            messaggio += f"   <b>{risultato['squadra1']}</b> {risultato['punteggio1']} - {risultato['punteggio2']} <b>{risultato['squadra2']}</b>\n"
+            messaggio += f"   Mete: {risultato['mete1']} - {risultato['mete2']}\n\n"
+        
+        # Aggiungi un pulsante per tornare alla dashboard
+        keyboard = [[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
     
     elif azione == "statistiche":
         # Reindirizza alle statistiche
-        # Modifica il callback_data per usare il gestore del menu
-        query.data = "menu_statistiche"
-        return await menu_callback(update, context)
+        # Invece di modificare il callback_data, chiamiamo direttamente la funzione che gestisce le statistiche
+        # Questo è più affidabile che modificare il callback_data
+        return await mostra_statistiche(update, context)
     
     elif azione == "menu":
-        # Reindirizza al menu principale
-        return await menu_command(update, context)
+        # Mostra il menu principale
+        # Crea i pulsanti per le funzioni standard
+        keyboard = [
+            [InlineKeyboardButton("📝 Inserisci nuova partita", callback_data="menu_nuova")],
+            [InlineKeyboardButton("🏁 Ultimi risultati", callback_data="menu_risultati")],
+            [InlineKeyboardButton("📊 Statistiche", callback_data="menu_statistiche")]
+        ]
+        
+        # Aggiungi il pulsante per il riepilogo weekend solo per gli admin
+        if is_admin(query.from_user.id):
+            keyboard.append([InlineKeyboardButton("🗓️ Riepilogo weekend", callback_data="menu_riepilogo_weekend")])
+        
+        # Aggiungi pulsanti per le funzioni amministrative se l'utente è un admin
+        if is_admin(query.from_user.id):
+            keyboard.extend([
+                [InlineKeyboardButton("👥 Gestione utenti", callback_data="menu_utenti")],
+                [InlineKeyboardButton("🔄 Test canale", callback_data="menu_test_canale")]
+            ])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "<b>🏉 MENU PRINCIPALE</b>\n\n"
+            "Seleziona una funzione:",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione == "excel":
+        # Verifica che l'utente sia un amministratore
+        if not is_admin(query.from_user.id):
+            await query.edit_message_text(
+                "⚠️ Solo gli amministratori possono esportare i dati in Excel.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+            return
+        
+        # Reindirizza all'esportazione Excel
+        query.data = "esporta_excel_riepilogo"
+        return await esporta_excel_riepilogo_callback(update, context)
+    
+    elif azione == "pdf":
+        # Verifica che l'utente sia un amministratore
+        if not is_admin(query.from_user.id):
+            await query.edit_message_text(
+                "⚠️ Solo gli amministratori possono esportare i dati in PDF.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+            return
+        
+        # Reindirizza all'esportazione PDF
+        query.data = "esporta_pdf_riepilogo"
+        return await esporta_pdf_riepilogo_callback(update, context)
+    
+    elif azione == "torna":
+        # Torna alla dashboard
+        return await dashboard_command(update, context)
 
 # Callback per gestire le azioni del menu principale
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
