@@ -3166,9 +3166,9 @@ async def arbitro_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         else:
             # Partita normale
             messaggio += f"<b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']}\n"
-        messaggio += f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
+            messaggio += f"<b>Data:</b> {context.user_data['data_partita']}\n\n"
             messaggio += f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
-        messaggio += f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n"
+            messaggio += f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n"
         
         messaggio += f"\n<b>Arbitro:</b> {arbitro}\n\n"
         messaggio += "Confermi l'inserimento di questa partita?"
