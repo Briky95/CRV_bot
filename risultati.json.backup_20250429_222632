@@ -14,7 +14,7 @@
     "data_partita": "24/04/2025",
     "data_partita_iso": "2025-04-24T00:00:00+00:00",
     "modificato_da": "admin",
-    "timestamp_modifica": "2025-04-26T08:21:18.316304+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:05.123183+00:00",
     "message_id": 27
   },
   {
@@ -32,7 +32,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.391788+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:05.365984+00:00",
     "message_id": null
   },
   {
@@ -50,7 +50,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.472315+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:05.656396+00:00",
     "message_id": null
   },
   {
@@ -68,7 +68,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.565012+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:05.872709+00:00",
     "message_id": null
   },
   {
@@ -86,7 +86,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.637938+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:06.069583+00:00",
     "message_id": null
   },
   {
@@ -104,7 +104,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.716026+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:06.280483+00:00",
     "message_id": null
   },
   {
@@ -122,7 +122,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.842588+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:06.521906+00:00",
     "message_id": null
   },
   {
@@ -140,7 +140,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:18.958843+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:06.774601+00:00",
     "message_id": null
   },
   {
@@ -158,7 +158,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.08466+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:07.047057+00:00",
     "message_id": null
   },
   {
@@ -176,7 +176,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.164155+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:07.277801+00:00",
     "message_id": null
   },
   {
@@ -194,7 +194,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.249274+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:07.514702+00:00",
     "message_id": null
   },
   {
@@ -212,7 +212,7 @@
     "data_partita": null,
     "data_partita_iso": null,
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.356747+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:07.711059+00:00",
     "message_id": null
   },
   {
@@ -230,7 +230,7 @@
     "data_partita": "22/04/2025",
     "data_partita_iso": "2025-04-22T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.476192+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:07.932811+00:00",
     "message_id": null
   },
   {
@@ -248,7 +248,7 @@
     "data_partita": "12/03/2025",
     "data_partita_iso": "2025-03-12T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.603117+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:08.133352+00:00",
     "message_id": null
   },
   {
@@ -266,7 +266,7 @@
     "data_partita": "15/04/2025",
     "data_partita_iso": "2025-04-15T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.677315+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:08.359787+00:00",
     "message_id": null
   },
   {
@@ -284,7 +284,7 @@
     "data_partita": "20/04/2025",
     "data_partita_iso": "2025-04-20T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.762026+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:08.609196+00:00",
     "message_id": null
   },
   {
@@ -302,7 +302,7 @@
     "data_partita": "19/04/2025",
     "data_partita_iso": "2025-04-19T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.839344+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:08.838546+00:00",
     "message_id": null
   },
   {
@@ -320,7 +320,7 @@
     "data_partita": "19/04/2025",
     "data_partita_iso": "2025-04-19T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.914008+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:09.08662+00:00",
     "message_id": null
   },
   {
@@ -338,7 +338,7 @@
     "data_partita": "15/04/2025",
     "data_partita_iso": "2025-04-15T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:19.992211+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:09.278291+00:00",
     "message_id": null
   },
   {
@@ -356,7 +356,7 @@
     "data_partita": "23/04/2025",
     "data_partita_iso": "2025-04-23T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:20.062209+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:09.487946+00:00",
     "message_id": null
   },
   {
@@ -374,7 +374,7 @@
     "data_partita": "20/04/2025",
     "data_partita_iso": "2025-04-20T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:20.143803+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:09.735423+00:00",
     "message_id": null
   },
   {
@@ -392,7 +392,7 @@
     "data_partita": "10/03/2025",
     "data_partita_iso": "2025-03-10T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:20.23717+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:10.003841+00:00",
     "message_id": null
   },
   {
@@ -410,7 +410,7 @@
     "data_partita": "23/04/2025",
     "data_partita_iso": "2025-04-23T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:20.355592+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:10.190442+00:00",
     "message_id": null
   },
   {
@@ -428,35 +428,79 @@
     "data_partita": "21/04/2025",
     "data_partita_iso": "2025-04-21T00:00:00+00:00",
     "modificato_da": null,
-    "timestamp_modifica": "2025-04-26T08:21:20.436434+00:00",
+    "timestamp_modifica": "2025-04-29T20:10:10.401833+00:00",
     "message_id": null
   },
   {
-    "id": 25,
-    "categoria": "Serie A",
-    "squadra1": "Petrarca Rugby",
-    "squadra2": "Rugby Vicenza",
-    "punteggio1": 30,
-    "punteggio2": 15,
-    "mete1": 4,
-    "mete2": 2,
-    "arbitro": "Test",
-    "inserito_da": "Test",
-    "genere": "Maschile",
-    "data_partita": "27/04/2025"
+    "id": 999999,
+    "categoria": "Test",
+    "squadra1": "Team A",
+    "squadra2": "Team B",
+    "punteggio1": 10,
+    "punteggio2": 5,
+    "mete1": 2,
+    "mete2": 1,
+    "arbitro": "Test Arbitro",
+    "inserito_da": "Test User",
+    "genere": null,
+    "data_partita": "01/01/2025",
+    "data_partita_iso": "2025-01-01T00:00:00+00:00",
+    "modificato_da": null,
+    "timestamp_modifica": "2025-04-29T20:10:10.591154+00:00",
+    "message_id": null
   },
   {
     "id": 26,
-    "categoria": "Serie B",
-    "squadra1": "Rugby Feltre",
-    "squadra2": "Rugby Trento",
-    "punteggio1": 22,
-    "punteggio2": 22,
-    "mete1": 3,
+    "categoria": "Serie A Elite",
+    "squadra1": "Petrarca Rugby",
+    "squadra2": "Rugby Vicenza",
+    "punteggio1": 71,
+    "punteggio2": 21,
+    "mete1": 11,
     "mete2": 3,
-    "arbitro": "Test",
-    "inserito_da": "Test",
+    "arbitro": "Riccardo Bonato",
+    "inserito_da": "Riccardo Bonato",
     "genere": "Maschile",
-    "data_partita": "26/04/2025"
+    "data_partita": "27/04/2025",
+    "data_partita_iso": "2025-04-27T00:00:00+00:00",
+    "modificato_da": null,
+    "timestamp_modifica": "2025-04-29T20:10:10.778152+00:00",
+    "message_id": null
+  },
+  {
+    "id": 27,
+    "categoria": "Test",
+    "squadra1": "Squadra Test 1",
+    "squadra2": "Squadra Test 2",
+    "punteggio1": 25,
+    "punteggio2": 18,
+    "mete1": 3,
+    "mete2": 2,
+    "arbitro": "Test",
+    "inserito_da": "Test Script",
+    "genere": "Test",
+    "data_partita": "29/04/2025",
+    "data_partita_iso": "2025-04-29T00:00:00+00:00",
+    "modificato_da": null,
+    "timestamp_modifica": "2025-04-29T20:10:10.976706+00:00",
+    "message_id": null
+  },
+  {
+    "id": 28,
+    "categoria": "Test",
+    "squadra1": "Squadra Test 1",
+    "squadra2": "Squadra Test 2",
+    "punteggio1": 25,
+    "punteggio2": 18,
+    "mete1": 3,
+    "mete2": 2,
+    "arbitro": "Test",
+    "inserito_da": "Test Script",
+    "genere": "Test",
+    "data_partita": "29/04/2025",
+    "data_partita_iso": "2025-04-29T00:00:00+00:00",
+    "modificato_da": null,
+    "timestamp_modifica": "2025-04-29T20:10:11.200372+00:00",
+    "message_id": null
   }
 ]
