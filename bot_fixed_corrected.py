@@ -3056,9 +3056,15 @@ async def mete2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             # Chiedi il punteggio della squadra2 contro squadra3
             context.user_data['stato_corrente'] = PUNTEGGIO1
             return PUNTEGGIO1
-        elif context.user_data.get('tipo_partita') == 'triangolare' and 'mete1_vs_2' in context.user_data:
+        elif context.user_data.get('tipo_partita') == 'triangolare':
             # Stiamo inserendo la prima partita di un triangolare
             context.user_data['mete2'] = mete
+            
+            # Salva i punteggi della prima partita con nomi specifici
+            context.user_data['punteggio1_vs_2'] = context.user_data['punteggio1']
+            context.user_data['punteggio2_vs_1'] = context.user_data['punteggio2']
+            context.user_data['mete1_vs_2'] = context.user_data['mete1']
+            context.user_data['mete2_vs_1'] = context.user_data['mete2']
             
             # Chiedi i punteggi della seconda partita (squadra1 vs squadra3)
             await update.message.reply_text(
@@ -3071,12 +3077,6 @@ async def mete2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
                 parse_mode='HTML'
             )
-            
-            # Salva i punteggi della prima partita con nomi specifici
-            context.user_data['punteggio1_vs_2'] = context.user_data['punteggio1']
-            context.user_data['punteggio2_vs_1'] = context.user_data['punteggio2']
-            context.user_data['mete1_vs_2'] = context.user_data['mete1']
-            context.user_data['mete2_vs_1'] = context.user_data['mete2']
             
             # Chiedi il punteggio della squadra1 contro squadra3
             context.user_data['stato_corrente'] = PUNTEGGIO1
