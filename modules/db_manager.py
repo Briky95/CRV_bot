@@ -370,9 +370,14 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
                 del risultato_db['timestamp_modifica']
             
             # Mantieni solo i campi che sappiamo esistere nella tabella
-            campi_validi = ['id', 'categoria', 'squadra1', 'squadra2', 'punteggio1', 'punteggio2', 
-                           'mete1', 'mete2', 'arbitro', 'inserito_da', 'genere', 'data_partita', 
-                           'data_partita_iso', 'modificato_da', 'message_id']
+            campi_validi = ['id', 'categoria', 'squadra1', 'squadra2', 'squadra3', 'punteggio1', 'punteggio2', 'punteggio3',
+                           'mete1', 'mete2', 'mete3', 'arbitro', 'inserito_da', 'genere', 'data_partita', 
+                           'data_partita_iso', 'modificato_da', 'message_id', 'tipo_partita',
+                           # Campi specifici per i triangolari
+                           'partita1_punteggio1', 'partita1_punteggio2', 'partita1_mete1', 'partita1_mete2',
+                           'partita2_punteggio1', 'partita2_punteggio2', 'partita2_mete1', 'partita2_mete2',
+                           'partita3_punteggio1', 'partita3_punteggio2', 'partita3_mete1', 'partita3_mete2',
+                           'timestamp']
             
             # Crea un nuovo dizionario con solo i campi validi
             risultato_filtrato = {}

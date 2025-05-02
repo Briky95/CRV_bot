@@ -3503,10 +3503,46 @@ async def risultati_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         categoria = risultato.get('categoria', 'N/D')
         genere = risultato.get('genere', '')
         info_categoria = f"{categoria} {genere}".strip()
+        tipo_partita = risultato.get('tipo_partita', 'normale')
         
         messaggio += f"{i}. <b>{info_categoria}</b> - {risultato.get('data_partita', 'N/D')}\n"
-        messaggio += f"   <b>{risultato['squadra1']}</b> {risultato['punteggio1']} - {risultato['punteggio2']} <b>{risultato['squadra2']}</b>\n"
-        messaggio += f"   Mete: {risultato['mete1']} - {risultato['mete2']}\n\n"
+        
+        if tipo_partita == 'triangolare':
+            # Mostra i risultati del triangolare
+            messaggio += f"   <b>TRIANGOLARE</b>\n"
+            
+            # Partita 1: Squadra1 vs Squadra2
+            punteggio1 = int(risultato.get('partita1_punteggio1', 0))
+            punteggio2 = int(risultato.get('partita1_punteggio2', 0))
+            mete1 = int(risultato.get('partita1_mete1', 0))
+            mete2 = int(risultato.get('partita1_mete2', 0))
+            
+            messaggio += f"   • <b>{risultato['squadra1']}</b> {punteggio1} - {punteggio2} <b>{risultato['squadra2']}</b>\n"
+            messaggio += f"     Mete: {mete1} - {mete2}\n"
+            
+            # Partita 2: Squadra1 vs Squadra3
+            punteggio1 = int(risultato.get('partita2_punteggio1', 0))
+            punteggio2 = int(risultato.get('partita2_punteggio2', 0))
+            mete1 = int(risultato.get('partita2_mete1', 0))
+            mete2 = int(risultato.get('partita2_mete2', 0))
+            
+            messaggio += f"   • <b>{risultato['squadra1']}</b> {punteggio1} - {punteggio2} <b>{risultato['squadra3']}</b>\n"
+            messaggio += f"     Mete: {mete1} - {mete2}\n"
+            
+            # Partita 3: Squadra2 vs Squadra3
+            punteggio1 = int(risultato.get('partita3_punteggio1', 0))
+            punteggio2 = int(risultato.get('partita3_punteggio2', 0))
+            mete1 = int(risultato.get('partita3_mete1', 0))
+            mete2 = int(risultato.get('partita3_mete2', 0))
+            
+            messaggio += f"   • <b>{risultato['squadra2']}</b> {punteggio1} - {punteggio2} <b>{risultato['squadra3']}</b>\n"
+            messaggio += f"     Mete: {mete1} - {mete2}\n"
+        else:
+            # Mostra i risultati della partita normale
+            messaggio += f"   <b>{risultato['squadra1']}</b> {risultato['punteggio1']} - {risultato['punteggio2']} <b>{risultato['squadra2']}</b>\n"
+            messaggio += f"   Mete: {risultato['mete1']} - {risultato['mete2']}\n"
+        
+        messaggio += "\n"
     
     await update.message.reply_html(messaggio)
 

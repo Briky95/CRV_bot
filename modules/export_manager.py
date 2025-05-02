@@ -32,37 +32,130 @@ def genera_excel_riepilogo_weekend(risultati_weekend, inizio_weekend_str, fine_w
         categoria = r.get('categoria', 'Altra categoria')
         genere = r.get('genere', '')
         categoria_completa = f"{categoria} {genere}".strip()
-        
-        squadra1 = r.get('squadra1', '')
-        squadra2 = r.get('squadra2', '')
-        punteggio1 = int(r.get('punteggio1', 0))
-        punteggio2 = int(r.get('punteggio2', 0))
-        mete1 = int(r.get('mete1', 0))
-        mete2 = int(r.get('mete2', 0))
+        tipo_partita = r.get('tipo_partita', 'normale')
         data_partita = r.get('data_partita', '')
         arbitro = r.get('arbitro', '')
         
-        # Determina il vincitore
-        if punteggio1 > punteggio2:
-            vincitore = squadra1
-        elif punteggio2 > punteggio1:
-            vincitore = squadra2
+        if tipo_partita == 'triangolare':
+            # Partita 1: Squadra1 vs Squadra2
+            squadra1 = r.get('squadra1', '')
+            squadra2 = r.get('squadra2', '')
+            punteggio1 = int(r.get('partita1_punteggio1', 0))
+            punteggio2 = int(r.get('partita1_punteggio2', 0))
+            mete1 = int(r.get('partita1_mete1', 0))
+            mete2 = int(r.get('partita1_mete2', 0))
+            
+            # Determina il vincitore
+            if punteggio1 > punteggio2:
+                vincitore = squadra1
+            elif punteggio2 > punteggio1:
+                vincitore = squadra2
+            else:
+                vincitore = "Pareggio"
+            
+            # Aggiungi i dati alla lista
+            dati.append({
+                'Categoria': categoria_completa + " (Triangolare 1)",
+                'Data': data_partita,
+                'Squadra Casa': squadra1,
+                'Squadra Ospite': squadra2,
+                'Punteggio Casa': punteggio1,
+                'Punteggio Ospite': punteggio2,
+                'Mete Casa': mete1,
+                'Mete Ospite': mete2,
+                'Vincitore': vincitore,
+                'Arbitro': arbitro
+            })
+            
+            # Partita 2: Squadra1 vs Squadra3
+            squadra1 = r.get('squadra1', '')
+            squadra3 = r.get('squadra3', '')
+            punteggio1 = int(r.get('partita2_punteggio1', 0))
+            punteggio2 = int(r.get('partita2_punteggio2', 0))
+            mete1 = int(r.get('partita2_mete1', 0))
+            mete2 = int(r.get('partita2_mete2', 0))
+            
+            # Determina il vincitore
+            if punteggio1 > punteggio2:
+                vincitore = squadra1
+            elif punteggio2 > punteggio1:
+                vincitore = squadra3
+            else:
+                vincitore = "Pareggio"
+            
+            # Aggiungi i dati alla lista
+            dati.append({
+                'Categoria': categoria_completa + " (Triangolare 2)",
+                'Data': data_partita,
+                'Squadra Casa': squadra1,
+                'Squadra Ospite': squadra3,
+                'Punteggio Casa': punteggio1,
+                'Punteggio Ospite': punteggio2,
+                'Mete Casa': mete1,
+                'Mete Ospite': mete2,
+                'Vincitore': vincitore,
+                'Arbitro': arbitro
+            })
+            
+            # Partita 3: Squadra2 vs Squadra3
+            squadra2 = r.get('squadra2', '')
+            squadra3 = r.get('squadra3', '')
+            punteggio1 = int(r.get('partita3_punteggio1', 0))
+            punteggio2 = int(r.get('partita3_punteggio2', 0))
+            mete1 = int(r.get('partita3_mete1', 0))
+            mete2 = int(r.get('partita3_mete2', 0))
+            
+            # Determina il vincitore
+            if punteggio1 > punteggio2:
+                vincitore = squadra2
+            elif punteggio2 > punteggio1:
+                vincitore = squadra3
+            else:
+                vincitore = "Pareggio"
+            
+            # Aggiungi i dati alla lista
+            dati.append({
+                'Categoria': categoria_completa + " (Triangolare 3)",
+                'Data': data_partita,
+                'Squadra Casa': squadra2,
+                'Squadra Ospite': squadra3,
+                'Punteggio Casa': punteggio1,
+                'Punteggio Ospite': punteggio2,
+                'Mete Casa': mete1,
+                'Mete Ospite': mete2,
+                'Vincitore': vincitore,
+                'Arbitro': arbitro
+            })
         else:
-            vincitore = "Pareggio"
-        
-        # Aggiungi i dati alla lista
-        dati.append({
-            'Categoria': categoria_completa,
-            'Data': data_partita,
-            'Squadra Casa': squadra1,
-            'Squadra Ospite': squadra2,
-            'Punteggio Casa': punteggio1,
-            'Punteggio Ospite': punteggio2,
-            'Mete Casa': mete1,
-            'Mete Ospite': mete2,
-            'Vincitore': vincitore,
-            'Arbitro': arbitro
-        })
+            # Partita normale
+            squadra1 = r.get('squadra1', '')
+            squadra2 = r.get('squadra2', '')
+            punteggio1 = int(r.get('punteggio1', 0))
+            punteggio2 = int(r.get('punteggio2', 0))
+            mete1 = int(r.get('mete1', 0))
+            mete2 = int(r.get('mete2', 0))
+            
+            # Determina il vincitore
+            if punteggio1 > punteggio2:
+                vincitore = squadra1
+            elif punteggio2 > punteggio1:
+                vincitore = squadra2
+            else:
+                vincitore = "Pareggio"
+            
+            # Aggiungi i dati alla lista
+            dati.append({
+                'Categoria': categoria_completa,
+                'Data': data_partita,
+                'Squadra Casa': squadra1,
+                'Squadra Ospite': squadra2,
+                'Punteggio Casa': punteggio1,
+                'Punteggio Ospite': punteggio2,
+                'Mete Casa': mete1,
+                'Mete Ospite': mete2,
+                'Vincitore': vincitore,
+                'Arbitro': arbitro
+            })
     
     # Calcola le statistiche
     totale_partite = len(risultati_weekend)
