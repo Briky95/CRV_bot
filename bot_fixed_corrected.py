@@ -16,6 +16,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_riepilogo_weekend
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre
+from modules.data_manager import carica_reazioni, salva_reazioni
 from conferma_callback import conferma_callback
 
 # Abilita logging
@@ -167,35 +168,7 @@ def is_utente_autorizzato(user_id):
 def is_admin(user_id):
     return user_id in ADMIN_IDS
 
-# Funzione per caricare le reazioni
-def carica_reazioni(force_reload=False):
-    current_time = time.time()
-    
-    # Usa la cache se disponibile e non scaduta
-    if not force_reload and _cache['reazioni'] is not None and (current_time - _cache['last_load']['reazioni']) < CACHE_TTL:
-        return _cache['reazioni']
-    
-    if os.path.exists(REAZIONI_FILE):
-        with open(REAZIONI_FILE, 'r', encoding='utf-8') as file:
-            try:
-                reazioni = json.load(file)
-                # Aggiorna la cache
-                _cache['reazioni'] = reazioni
-                _cache['last_load']['reazioni'] = current_time
-                return reazioni
-            except json.JSONDecodeError:
-                logger.error("Errore nel parsing del file delle reazioni")
-                return {}
-    return {}
-
-# Funzione per salvare le reazioni
-def salva_reazioni(reazioni):
-    with open(REAZIONI_FILE, 'w', encoding='utf-8') as file:
-        json.dump(reazioni, file, indent=2, ensure_ascii=False)
-    
-    # Aggiorna la cache
-    _cache['reazioni'] = reazioni
-    _cache['last_load']['reazioni'] = time.time()
+# Le funzioni carica_reazioni e salva_reazioni sono ora importate dal modulo data_manager
 
 # Funzione per aggiungere una reazione
 def aggiungi_reazione(message_id, user_id, user_name, reaction_type):
@@ -1315,8 +1288,8 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     azione = query.data.replace("dashboard_", "")
     
     if azione == "nuova":
-        # Reindirizza al comando nuova partita
-        return await nuova_partita(update, context)
+        # Questo caso è ora gestito direttamente dal ConversationHandler
+        pass
     
     elif azione == "risultati":
         # Mostra gli ultimi risultati
@@ -1373,10 +1346,8 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
     
     elif azione == "statistiche":
-        # Reindirizza alle statistiche
-        # Invece di modificare il callback_data, chiamiamo direttamente la funzione che gestisce le statistiche
-        # Questo è più affidabile che modificare il callback_data
-        return await mostra_statistiche(update, context)
+        # Mostra le statistiche
+        await mostra_statistiche(update, context)
     
     elif azione == "menu":
         # Mostra il menu principale
@@ -1437,7 +1408,91 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     elif azione == "torna":
         # Torna alla dashboard
-        return await dashboard_command(update, context)
+        user_id = query.from_user.id
+        user_name = query.from_user.full_name
+        
+        # Carica i risultati
+        risultati = carica_risultati()
+        
+        # Filtra i risultati inseriti dall'utente
+        risultati_utente = [r for r in risultati if r.get('inserito_da') == user_name]
+        
+        # Ordina i risultati per data (più recenti prima)
+        risultati_utente.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        # Prendi solo gli ultimi 5 risultati
+        ultimi_risultati = risultati_utente[:5]
+        
+        # Calcola statistiche dell'utente
+        num_partite_inserite = len(risultati_utente)
+        
+        # Trova le squadre più inserite dall'utente
+        squadre_count = {}
+        for r in risultati_utente:
+            squadra1 = r.get('squadra1', 'N/D')
+            squadra2 = r.get('squadra2', 'N/D')
+            squadre_count[squadra1] = squadre_count.get(squadra1, 0) + 1
+            squadre_count[squadra2] = squadre_count.get(squadra2, 0) + 1
+        
+        # Trova le 3 squadre più inserite
+        top_squadre = sorted(squadre_count.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # Calcola la percentuale di contributo dell'utente
+        percentuale_contributo = (num_partite_inserite / len(risultati) * 100) if risultati else 0
+        
+        # Crea il messaggio della dashboard
+        messaggio = f"🏉 <b>DASHBOARD PERSONALE</b> 🏉\n\n"
+        messaggio += f"👋 Ciao <b>{user_name}</b>!\n\n"
+        
+        messaggio += f"📊 <b>LE TUE STATISTICHE</b>\n"
+        messaggio += f"• Partite inserite: <b>{num_partite_inserite}</b>\n"
+        messaggio += f"• Contributo totale: <b>{percentuale_contributo:.1f}%</b>\n\n"
+        
+        if top_squadre:
+            messaggio += "<b>LE TUE SQUADRE PIÙ INSERITE</b>\n"
+            for squadra, count in top_squadre:
+                messaggio += f"• {squadra}: <b>{count}</b> partite\n"
+            messaggio += "\n"
+        
+        if ultimi_risultati:
+            messaggio += "<b>LE TUE ULTIME PARTITE INSERITE</b>\n"
+            for i, r in enumerate(ultimi_risultati, 1):
+                data = r.get('data_partita', 'N/D')
+                if r.get('tipo_partita') == 'triangolare':
+                    messaggio += f"{i}. <b>{data}</b> - Triangolare {r.get('categoria')} {r.get('genere')}\n"
+                    messaggio += f"   {r.get('squadra1')}, {r.get('squadra2')}, {r.get('squadra3')}\n"
+                else:
+                    messaggio += f"{i}. <b>{data}</b> - {r.get('categoria')} {r.get('genere')}\n"
+                    messaggio += f"   {r.get('squadra1')} {r.get('punteggio1', 0)}-{r.get('punteggio2', 0)} {r.get('squadra2')}\n"
+        else:
+            messaggio += "<i>Non hai ancora inserito partite.</i>\n\n"
+        
+        # Crea i pulsanti per le azioni rapide
+        keyboard = [
+            [
+                InlineKeyboardButton("🆕 Nuova Partita", callback_data="dashboard_nuova"),
+                InlineKeyboardButton("📋 Risultati", callback_data="dashboard_risultati")
+            ],
+            [
+                InlineKeyboardButton("📊 Statistiche", callback_data="dashboard_statistiche"),
+                InlineKeyboardButton("⚙️ Menu Principale", callback_data="dashboard_menu")
+            ]
+        ]
+        
+        # Aggiungi pulsanti per esportazione solo per gli admin
+        if is_admin(user_id):
+            keyboard.append([
+                InlineKeyboardButton("📊 Esporta Excel", callback_data="dashboard_excel"),
+                InlineKeyboardButton("📄 Esporta PDF", callback_data="dashboard_pdf")
+            ])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
 
 # Callback per gestire le azioni del menu principale
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -4386,7 +4441,8 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler("nuova", nuova_partita),
-            CallbackQueryHandler(nuova_partita, pattern="^menu_nuova$")
+            CallbackQueryHandler(nuova_partita, pattern="^menu_nuova$"),
+            CallbackQueryHandler(nuova_partita, pattern="^dashboard_nuova$")
         ],
         states={
             CATEGORIA: [
