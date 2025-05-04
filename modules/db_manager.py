@@ -4,6 +4,7 @@
 import os
 import json
 import requests
+import traceback
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
 from dotenv import load_dotenv
@@ -433,15 +434,24 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
             # Mantieni solo i campi che sappiamo esistere nella tabella
             campi_validi = ['id', 'categoria', 'squadra1', 'squadra2', 'squadra3', 'punteggio1', 'punteggio2', 'punteggio3',
                            'mete1', 'mete2', 'mete3', 'arbitro', 'inserito_da', 'genere', 'data_partita', 
-                           'data_partita_iso', 'modificato_da', 'message_id', 'tipo_partita',
+                           'data_partita_iso', 'modificato_da', 'message_id',
                            # Campi specifici per i triangolari
                            'partita1_punteggio1', 'partita1_punteggio2', 'partita1_mete1', 'partita1_mete2',
                            'partita2_punteggio1', 'partita2_punteggio2', 'partita2_mete1', 'partita2_mete2',
                            'partita3_punteggio1', 'partita3_punteggio2', 'partita3_mete1', 'partita3_mete2']
             
-            # Rimuovi esplicitamente il campo timestamp se presente
-            if 'timestamp' in risultato_db:
-                del risultato_db['timestamp']
+            # Gestione speciale per la sezione arbitrale
+            if 'sezione_arbitrale' in risultato_db:
+                # Combina arbitro e sezione arbitrale in un unico campo
+                if risultato_db.get('arbitro') and risultato_db.get('sezione_arbitrale'):
+                    risultato_db['arbitro'] = f"{risultato_db['arbitro']} ({risultato_db['sezione_arbitrale']})"
+                # Rimuovi il campo sezione_arbitrale che non esiste nella tabella
+                del risultato_db['sezione_arbitrale']
+            
+            # Rimuovi esplicitamente i campi che non esistono nella tabella
+            for campo in ['timestamp', 'tipo_partita']:
+                if campo in risultato_db:
+                    del risultato_db[campo]
             
             # Crea un nuovo dizionario con solo i campi validi
             risultato_filtrato = {}
@@ -462,8 +472,43 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
         if to_insert:
             for risultato in to_insert:
                 print(f"Inserimento nuovo risultato in Supabase con ID {risultato['id']}")
-                response = supabase.table('risultati').insert(risultato).execute()
-                print(f"Risposta inserimento: {response.data}")
+                try:
+                    # Stampa il risultato che stiamo per inserire
+                    print(f"Dati da inserire: {json.dumps(risultato, indent=2)}")
+                    
+                    # Esegui l'inserimento
+                    response = supabase.table('risultati').insert(risultato).execute()
+                    
+                    # Stampa la risposta completa
+                    print(f"Risposta inserimento: {response.data}")
+                    
+                    # Verifica se l'inserimento è riuscito
+                    if not response.data:
+                        print("Attenzione: Nessun dato restituito dall'inserimento")
+                        
+                        # Verifica se il record è stato effettivamente inserito
+                        check = supabase.table('risultati').select('*').eq('id', risultato['id']).execute()
+                        if check.data:
+                            print(f"Verifica: Record trovato nel database: {check.data}")
+                        else:
+                            print(f"Verifica: Record NON trovato nel database!")
+                            
+                            # Prova a inserire il record con un altro metodo
+                            print("Tentativo di inserimento alternativo...")
+                            url = f"{supabase.url}/rest/v1/risultati"
+                            headers = supabase.headers
+                            response_raw = requests.post(url, headers=headers, json=risultato)
+                            print(f"Status code: {response_raw.status_code}")
+                            print(f"Risposta: {response_raw.text}")
+                            
+                            if response_raw.status_code in [200, 201]:
+                                print("Inserimento alternativo riuscito!")
+                            else:
+                                print(f"Errore nell'inserimento alternativo: {response_raw.text}")
+                except Exception as e:
+                    print(f"Errore durante l'inserimento: {e}")
+                    print("Traceback completo:")
+                    traceback.print_exc()
         
         # Aggiorna i risultati esistenti
         if to_update:

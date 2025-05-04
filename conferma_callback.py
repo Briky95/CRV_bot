@@ -27,6 +27,7 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "squadra1": context.user_data['squadra1'],
                 "squadra2": context.user_data['squadra2'],
                 "arbitro": context.user_data['arbitro'],
+                "sezione_arbitrale": context.user_data.get('sezione_arbitrale', 'Non specificata'),
                 "inserito_da": update.effective_user.full_name,
                 "id": int(datetime.now().timestamp())  # Genera un ID univoco basato sul timestamp
             }

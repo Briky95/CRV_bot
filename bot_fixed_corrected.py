@@ -29,10 +29,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Stati della conversazione
-CATEGORIA, GENERE, TIPO_PARTITA, SQUADRA1, SQUADRA2, SQUADRA3, DATA_PARTITA, PUNTEGGIO1, PUNTEGGIO2, PUNTEGGIO3, METE1, METE2, METE3, ARBITRO, CONFERMA = range(15)
+CATEGORIA, GENERE, TIPO_PARTITA, SQUADRA1, SQUADRA2, SQUADRA3, DATA_PARTITA, PUNTEGGIO1, PUNTEGGIO2, PUNTEGGIO3, METE1, METE2, METE3, ARBITRO, SEZIONE_ARBITRALE, CONFERMA = range(16)
 
 # Categorie di rugby predefinite
 CATEGORIE = ["Serie A Elite", "Serie A", "Serie B", "Serie C1", "U18 Nazionale", "U18", "U16", "U14"]
+
+# Sezioni arbitrali
+SEZIONI_ARBITRALI = [
+    "Padova",
+    "Rovigo",
+    "San Donà",
+    "Treviso",
+    "Verona",
+    "S.U. FVG"
+]
 
 # Squadre di default in caso di errore
 SQUADRE_DEFAULT = [
@@ -4052,6 +4062,81 @@ async def arbitro_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             
         context.user_data['arbitro'] = arbitro
         
+        # Crea i pulsanti per la selezione della sezione arbitrale
+        keyboard = []
+        row = []
+        
+        for i, sezione in enumerate(SEZIONI_ARBITRALI):
+            row.append(InlineKeyboardButton(sezione, callback_data=sezione))
+            
+            # Crea una nuova riga ogni 2 elementi
+            if (i + 1) % 2 == 0 or i == len(SEZIONI_ARBITRALI) - 1:
+                keyboard.append(row)
+                row = []
+        
+        # Aggiungi un pulsante per "Altra sezione"
+        keyboard.append([InlineKeyboardButton("Altra sezione", callback_data="altra_sezione")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Chiedi la sezione arbitrale
+        if context.user_data.get('tipo_partita') == 'triangolare':
+            messaggio = f"🏉 <b>Triangolare:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+        else:
+            messaggio = f"🏉 <b>Partita:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
+            
+        messaggio += f"<b>Data:</b> {context.user_data['data_partita']}\n"
+        messaggio += f"<b>Arbitro:</b> {arbitro}\n\n"
+        messaggio += "<b>Seleziona la sezione arbitrale di appartenenza:</b>\n\n"
+        messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+        
+        await update.message.reply_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        
+        context.user_data['stato_corrente'] = SEZIONE_ARBITRALE
+        return SEZIONE_ARBITRALE
+    except Exception as e:
+        logger.error(f"Errore nell'inserimento dell'arbitro: {e}")
+        await update.message.reply_text(
+            "Si è verificato un errore nell'inserimento dell'arbitro. Riprova con /nuova."
+        )
+        return ConversationHandler.END
+
+# Callback per la selezione della sezione arbitrale
+async def sezione_arbitrale_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Gestisce la selezione della sezione arbitrale."""
+    try:
+        if update.callback_query:
+            query = update.callback_query
+            await query.answer()
+            sezione = query.data
+            
+            # Se l'utente ha selezionato "Altra sezione", chiedi di inserire manualmente
+            if sezione == "altra_sezione":
+                await query.edit_message_text(
+                    f"🏉 <b>Arbitro:</b> {context.user_data['arbitro']} 🏉\n\n"
+                    "<b>Inserisci manualmente la sezione arbitrale:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return SEZIONE_ARBITRALE
+            
+            context.user_data['sezione_arbitrale'] = sezione
+        else:
+            sezione = update.message.text
+            
+            # Verifica che la sezione arbitrale sia in un formato valido
+            if len(sezione) < 2 or len(sezione) > 30 or not any(c.isalpha() for c in sezione):
+                await update.message.reply_text(
+                    "⚠️ La sezione arbitrale non sembra valida. Inserisci un nome valido (min 2 caratteri, max 30)."
+                )
+                return SEZIONE_ARBITRALE
+                
+            context.user_data['sezione_arbitrale'] = sezione
+            
         # Mostra il riepilogo e chiedi conferma
         messaggio = f"🏉 <b>RIEPILOGO PARTITA</b> 🏉\n\n"
         
@@ -4110,7 +4195,7 @@ async def arbitro_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             messaggio += f"<b>{context.user_data['squadra1']} {context.user_data['punteggio1']} - {context.user_data['punteggio2']} {context.user_data['squadra2']}</b>\n"
             messaggio += f"<b>Mete:</b> {context.user_data['mete1']} - {context.user_data['mete2']}\n"
         
-        messaggio += f"\n<b>Arbitro:</b> {arbitro}\n\n"
+        messaggio += f"\n<b>Arbitro:</b> {context.user_data['arbitro']} ({context.user_data['sezione_arbitrale']})\n\n"
         messaggio += "Confermi l'inserimento di questa partita?"
         
         # Crea i pulsanti per la conferma
@@ -4662,6 +4747,10 @@ def main() -> None:
             ],
             METE2: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, mete2_callback)
+            ],
+            SEZIONE_ARBITRALE: [
+                CallbackQueryHandler(sezione_arbitrale_callback),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, sezione_arbitrale_callback)
             ],
             METE3: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, mete3_callback)

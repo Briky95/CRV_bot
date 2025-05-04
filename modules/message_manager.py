@@ -286,7 +286,10 @@ def formatta_messaggio_partita_normale(risultato):
     
     # Informazioni aggiuntive
     if risultato.get('arbitro'):
-        messaggio += f"👨‍⚖️ <b>ARBITRO:</b> {risultato['arbitro']}\n\n"
+        arbitro_text = risultato['arbitro']
+        if risultato.get('sezione_arbitrale'):
+            arbitro_text += f" ({risultato['sezione_arbitrale']})"
+        messaggio += f"👨‍⚖️ <b>ARBITRO:</b> {arbitro_text}\n\n"
     
     # Footer con disclaimer e info
     messaggio += "━━━━━━━━━━━━━━━━━━━━\n"
@@ -404,7 +407,10 @@ def formatta_messaggio_triangolare(risultato):
     # Aggiungi informazioni sull'arbitro se disponibili
     arbitro = risultato.get('arbitro', '')
     if arbitro:
-        messaggio += f"\n👨‍⚖️ <b>ARBITRO:</b> {arbitro}\n"
+        arbitro_text = arbitro
+        if risultato.get('sezione_arbitrale'):
+            arbitro_text += f" ({risultato['sezione_arbitrale']})"
+        messaggio += f"\n👨‍⚖️ <b>ARBITRO:</b> {arbitro_text}\n"
     
     # Footer con disclaimer e info
     messaggio += "\n━━━━━━━━━━━━━━━━━━━━\n"

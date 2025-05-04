@@ -34,5 +34,22 @@
     "modificato_da": null,
     "timestamp_modifica": "2025-05-04T12:42:21.626117+00:00",
     "message_id": null
+  },
+  {
+    "categoria": "Test Sezione Arbitrale",
+    "genere": "Maschile",
+    "tipo_partita": "normale",
+    "data_partita": "05/05/2025",
+    "squadra1": "Squadra Test A",
+    "squadra2": "Squadra Test B",
+    "punteggio1": 25,
+    "punteggio2": 20,
+    "mete1": 3,
+    "mete2": 2,
+    "arbitro": "Arbitro Test",
+    "sezione_arbitrale": "Padova",
+    "inserito_da": "Script Test",
+    "id": 1746364806,
+    "data_partita_iso": "2025-05-05T00:00:00"
   }
 ]
