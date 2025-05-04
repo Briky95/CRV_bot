@@ -385,30 +385,26 @@ def migra_risultati_da_file_a_db() -> bool:
 
 def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
     """Salva i risultati nel database."""
+    # Salva sempre nel file JSON locale per sicurezza
+    try:
+        with open(RISULTATI_FILE, 'w', encoding='utf-8') as file:
+            json.dump(risultati, file, indent=2, ensure_ascii=False)
+        print("Risultati salvati nel file JSON locale.")
+    except Exception as e:
+        print(f"Errore nel salvataggio dei risultati nel file JSON: {e}")
+        # Se non riusciamo a salvare nel file JSON, è un errore critico
+        return False
+    
+    # Se Supabase non è configurato, termina qui (abbiamo già salvato nel file JSON)
     if not is_supabase_configured():
-        print("Supabase non configurato. Impossibile salvare i risultati.")
-        # Salva comunque nel file JSON locale
-        try:
-            with open(RISULTATI_FILE, 'w', encoding='utf-8') as file:
-                json.dump(risultati, file, indent=2, ensure_ascii=False)
-            print("Risultati salvati nel file JSON locale.")
-            return True
-        except Exception as e:
-            print(f"Errore nel salvataggio dei risultati nel file JSON: {e}")
-            return False
+        print("Supabase non configurato. I risultati sono stati salvati solo localmente.")
+        return True
     
     try:
-        # Salva nel file JSON locale per sicurezza
-        try:
-            with open(RISULTATI_FILE, 'w', encoding='utf-8') as file:
-                json.dump(risultati, file, indent=2, ensure_ascii=False)
-            print("Risultati salvati nel file JSON locale.")
-        except Exception as e:
-            print(f"Errore nel salvataggio dei risultati nel file JSON: {e}")
-        
         # Ottieni gli ID dei risultati esistenti
         response = supabase.table('risultati').select('id').execute()
         existing_ids = [item.get('id') for item in response.data]
+        print(f"ID esistenti in Supabase: {existing_ids}")
         
         # Prepara i risultati da inserire e aggiornare
         to_insert = []
@@ -462,14 +458,16 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
         # Inserisci i nuovi risultati
         if to_insert:
             for risultato in to_insert:
-                supabase.table('risultati').insert(risultato).execute()
-                print(f"Inserito nuovo risultato con ID {risultato['id']}")
+                print(f"Inserimento nuovo risultato in Supabase con ID {risultato['id']}")
+                response = supabase.table('risultati').insert(risultato).execute()
+                print(f"Risposta inserimento: {response.data}")
         
         # Aggiorna i risultati esistenti
         if to_update:
             for risultato in to_update:
-                supabase.table('risultati').update(risultato).eq('id', risultato['id']).execute()
-                print(f"Aggiornato risultato esistente con ID {risultato['id']}")
+                print(f"Aggiornamento risultato esistente in Supabase con ID {risultato['id']}")
+                response = supabase.table('risultati').update(risultato).eq('id', risultato['id']).execute()
+                print(f"Risposta aggiornamento: {response.data}")
         
         # Trova gli ID da eliminare (quelli che esistono nel database ma non nei risultati)
         result_ids = [r.get('id') for r in risultati if 'id' in r]
@@ -478,22 +476,16 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
         # Elimina i risultati che non esistono più
         if to_delete:
             for id in to_delete:
-                supabase.table('risultati').delete().eq('id', id).execute()
-                print(f"Eliminato risultato con ID {id}")
+                print(f"Eliminazione risultato da Supabase con ID {id}")
+                response = supabase.table('risultati').delete().eq('id', id).execute()
+                print(f"Risposta eliminazione: {response.data}")
         
         return True
     except Exception as e:
         print(f"Errore nel salvataggio dei risultati su Supabase: {e}")
-        # Verifica se i risultati sono stati salvati nel file JSON
-        try:
-            with open(RISULTATI_FILE, 'r', encoding='utf-8') as file:
-                json_data = json.load(file)
-                if len(json_data) == len(risultati):
-                    print("I risultati sono stati salvati nel file JSON ma non su Supabase.")
-                    return True
-        except Exception:
-            pass
-        return False
+        # I risultati sono stati salvati nel file JSON, quindi possiamo considerare l'operazione parzialmente riuscita
+        print("I risultati sono stati salvati nel file JSON ma non su Supabase.")
+        return True
 
 # Funzioni per la gestione delle squadre
 def carica_squadre() -> List[str]:
