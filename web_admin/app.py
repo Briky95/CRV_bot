@@ -48,6 +48,8 @@ except ImportError:
 from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_riepilogo_weekend
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre, carica_admin_users, salva_admin_users, is_supabase_configured, migra_dati_a_supabase
 from modules.data_manager import ottieni_risultati_weekend
+from modules.quiz_manager import carica_quiz, salva_quiz, carica_statistiche_quiz, invia_quiz_al_canale
+from modules.quiz_generator import load_pending_quizzes, save_pending_quizzes, generate_multiple_quizzes, approve_pending_quiz, reject_pending_quiz
 import asyncio
 import telegram
 
@@ -213,6 +215,37 @@ def dashboard():
         num_utenti_autorizzati = len(utenti_data.get("autorizzati", []))
         num_utenti_in_attesa = len(utenti_data.get("in_attesa", []))
         
+        # Carica i dati dei quiz
+        try:
+            quiz_data = carica_quiz()
+            stats_quiz = carica_statistiche_quiz()
+            pending_data = load_pending_quizzes()
+            
+            # Statistiche quiz
+            total_quizzes = sum(len(cat.get("quiz", [])) for cat in quiz_data.get("categorie", []))
+            pending_quizzes = len(pending_data.get("quiz_pending", []))
+            total_participants = len(stats_quiz.get("partecipanti", {}))
+            
+            # Calcola il numero totale di risposte e risposte corrette
+            total_responses = 0
+            correct_responses = 0
+            for quiz in stats_quiz.get("quiz_giornalieri", []):
+                for risposta in quiz.get("risposte", []):
+                    total_responses += 1
+                    if risposta.get("corretta", False):
+                        correct_responses += 1
+            
+            # Calcola la percentuale di risposte corrette
+            correct_percentage = (correct_responses / total_responses * 100) if total_responses > 0 else 0
+        except Exception as e:
+            app.logger.error(f"Errore nel caricamento dei dati dei quiz: {e}")
+            total_quizzes = 0
+            pending_quizzes = 0
+            total_participants = 0
+            total_responses = 0
+            correct_responses = 0
+            correct_percentage = 0
+        
         # Calcola le partite recenti (ultimi 7 giorni)
         oggi = datetime.now()
         sette_giorni_fa = oggi - timedelta(days=7)
@@ -240,7 +273,13 @@ def dashboard():
                               num_partite=num_partite,
                               num_utenti_autorizzati=num_utenti_autorizzati,
                               num_utenti_in_attesa=num_utenti_in_attesa,
-                              partite_recenti=partite_recenti)
+                              partite_recenti=partite_recenti,
+                              total_quizzes=total_quizzes,
+                              pending_quizzes=pending_quizzes,
+                              total_participants=total_participants,
+                              total_responses=total_responses,
+                              correct_responses=correct_responses,
+                              correct_percentage=correct_percentage)
     except Exception as e:
         app.logger.error(f"Errore nella dashboard: {e}")
         flash(f"Si è verificato un errore nel caricamento della dashboard: {str(e)}", "danger")
@@ -249,7 +288,13 @@ def dashboard():
                               num_partite=0,
                               num_utenti_autorizzati=0,
                               num_utenti_in_attesa=0,
-                              partite_recenti=[])
+                              partite_recenti=[],
+                              total_quizzes=0,
+                              pending_quizzes=0,
+                              total_participants=0,
+                              total_responses=0,
+                              correct_responses=0,
+                              correct_percentage=0)
 
 # Rotta per la gestione utenti
 @app.route('/users')
@@ -1041,6 +1086,438 @@ def monitor():
         app.logger.error(f"Errore nella pagina di monitoraggio: {e}")
         flash(f'Si è verificato un errore durante il caricamento della pagina di monitoraggio: {str(e)}', 'danger')
         return redirect(url_for('dashboard'))
+
+# Rotte per la gestione dei quiz
+@app.route('/quizzes')
+@login_required
+def quizzes():
+    """Pagina principale per la gestione dei quiz."""
+    try:
+        # Carica i quiz
+        quiz_data = carica_quiz()
+        
+        # Carica le statistiche
+        stats = carica_statistiche_quiz()
+        
+        # Carica i quiz in attesa
+        pending_data = load_pending_quizzes()
+        pending_quizzes = pending_data.get("quiz_pending", [])
+        pending_count = len(pending_quizzes)
+        
+        # Calcola il numero totale di quiz
+        total_quizzes = sum(len(cat.get("quiz", [])) for cat in quiz_data.get("categorie", []))
+        
+        # Calcola il numero totale di risposte e risposte corrette
+        total_responses = 0
+        correct_responses = 0
+        for quiz in stats.get("quiz_giornalieri", []):
+            for risposta in quiz.get("risposte", []):
+                total_responses += 1
+                if risposta.get("corretta", False):
+                    correct_responses += 1
+        
+        # Crea la classifica
+        leaderboard = []
+        for user_id, user_data in stats.get("partecipanti", {}).items():
+            leaderboard.append({
+                "id": user_id,
+                "nome": user_data.get("nome", "Utente"),
+                "username": user_data.get("username", ""),
+                "punti": user_data.get("punti", 0),
+                "risposte_corrette": user_data.get("risposte_corrette", 0),
+                "risposte_totali": user_data.get("risposte_totali", 0)
+            })
+        
+        # Ordina la classifica per punti
+        leaderboard.sort(key=lambda x: x["punti"], reverse=True)
+        
+        return render_template('quizzes.html',
+                              quiz_data=quiz_data,
+                              categories=quiz_data.get("categorie", []),
+                              stats=stats,
+                              pending_quizzes=pending_quizzes,
+                              pending_count=pending_count,
+                              total_quizzes=total_quizzes,
+                              total_responses=total_responses,
+                              correct_responses=correct_responses,
+                              leaderboard=leaderboard[:10])  # Mostra solo i primi 10
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina dei quiz: {e}")
+        flash(f'Si è verificato un errore durante il caricamento della pagina dei quiz: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+@app.route('/quizzes/add', methods=['GET', 'POST'])
+@login_required
+def add_quiz():
+    """Pagina per aggiungere un nuovo quiz."""
+    try:
+        # Carica i quiz per ottenere le categorie
+        quiz_data = carica_quiz()
+        categories = quiz_data.get("categorie", [])
+        
+        if request.method == 'POST':
+            # Ottieni i dati dal form
+            category = request.form.get('category')
+            question = request.form.get('question')
+            options = [
+                request.form.get('option0'),
+                request.form.get('option1'),
+                request.form.get('option2'),
+                request.form.get('option3')
+            ]
+            correct_answer = int(request.form.get('correct_answer', 0))
+            explanation = request.form.get('explanation')
+            
+            # Trova la categoria
+            category_found = False
+            for cat in categories:
+                if cat["nome"] == category:
+                    # Aggiungi il quiz alla categoria
+                    cat["quiz"].append({
+                        "domanda": question,
+                        "opzioni": options,
+                        "risposta_corretta": correct_answer,
+                        "spiegazione": explanation
+                    })
+                    category_found = True
+                    break
+            
+            # Se la categoria non esiste, creala
+            if not category_found:
+                quiz_data["categorie"].append({
+                    "nome": category,
+                    "descrizione": f"Domande su {category}",
+                    "quiz": [{
+                        "domanda": question,
+                        "opzioni": options,
+                        "risposta_corretta": correct_answer,
+                        "spiegazione": explanation
+                    }]
+                })
+            
+            # Salva i quiz
+            salva_quiz(quiz_data)
+            
+            flash('Quiz aggiunto con successo!', 'success')
+            return redirect(url_for('quizzes'))
+        
+        return render_template('add_quiz.html', categories=categories)
+    except Exception as e:
+        app.logger.error(f"Errore nell'aggiunta di un quiz: {e}")
+        flash(f'Si è verificato un errore durante l\'aggiunta del quiz: {str(e)}', 'danger')
+        return redirect(url_for('quizzes'))
+
+@app.route('/quizzes/edit/<category>/<int:index>', methods=['GET', 'POST'])
+@login_required
+def edit_quiz(category, index):
+    """Pagina per modificare un quiz esistente."""
+    try:
+        # Carica i quiz
+        quiz_data = carica_quiz()
+        categories = quiz_data.get("categorie", [])
+        
+        # Trova la categoria e il quiz
+        quiz = None
+        for cat in categories:
+            if cat["nome"] == category and len(cat.get("quiz", [])) > index:
+                quiz = cat["quiz"][index]
+                break
+        
+        if not quiz:
+            flash('Quiz non trovato!', 'danger')
+            return redirect(url_for('quizzes'))
+        
+        if request.method == 'POST':
+            # Ottieni i dati dal form
+            new_category = request.form.get('category')
+            question = request.form.get('question')
+            options = [
+                request.form.get('option0'),
+                request.form.get('option1'),
+                request.form.get('option2'),
+                request.form.get('option3')
+            ]
+            correct_answer = int(request.form.get('correct_answer', 0))
+            explanation = request.form.get('explanation')
+            
+            # Se la categoria è cambiata, rimuovi il quiz dalla vecchia categoria e aggiungilo alla nuova
+            if new_category != category:
+                # Rimuovi dalla vecchia categoria
+                for cat in categories:
+                    if cat["nome"] == category and len(cat.get("quiz", [])) > index:
+                        cat["quiz"].pop(index)
+                        break
+                
+                # Aggiungi alla nuova categoria
+                category_found = False
+                for cat in categories:
+                    if cat["nome"] == new_category:
+                        cat["quiz"].append({
+                            "domanda": question,
+                            "opzioni": options,
+                            "risposta_corretta": correct_answer,
+                            "spiegazione": explanation
+                        })
+                        category_found = True
+                        break
+                
+                # Se la nuova categoria non esiste, creala
+                if not category_found:
+                    quiz_data["categorie"].append({
+                        "nome": new_category,
+                        "descrizione": f"Domande su {new_category}",
+                        "quiz": [{
+                            "domanda": question,
+                            "opzioni": options,
+                            "risposta_corretta": correct_answer,
+                            "spiegazione": explanation
+                        }]
+                    })
+            else:
+                # Aggiorna il quiz nella stessa categoria
+                for cat in categories:
+                    if cat["nome"] == category and len(cat.get("quiz", [])) > index:
+                        cat["quiz"][index] = {
+                            "domanda": question,
+                            "opzioni": options,
+                            "risposta_corretta": correct_answer,
+                            "spiegazione": explanation
+                        }
+                        break
+            
+            # Salva i quiz
+            salva_quiz(quiz_data)
+            
+            flash('Quiz modificato con successo!', 'success')
+            return redirect(url_for('quizzes'))
+        
+        return render_template('edit_quiz.html', quiz=quiz, category=category, index=index, categories=categories)
+    except Exception as e:
+        app.logger.error(f"Errore nella modifica di un quiz: {e}")
+        flash(f'Si è verificato un errore durante la modifica del quiz: {str(e)}', 'danger')
+        return redirect(url_for('quizzes'))
+
+@app.route('/quizzes/view/<category>/<int:index>')
+@login_required
+def view_quiz(category, index):
+    """Pagina per visualizzare un quiz."""
+    try:
+        # Carica i quiz
+        quiz_data = carica_quiz()
+        
+        # Trova la categoria e il quiz
+        quiz = None
+        for cat in quiz_data.get("categorie", []):
+            if cat["nome"] == category and len(cat.get("quiz", [])) > index:
+                quiz = cat["quiz"][index]
+                break
+        
+        if not quiz:
+            flash('Quiz non trovato!', 'danger')
+            return redirect(url_for('quizzes'))
+        
+        return render_template('view_quiz.html', quiz=quiz, category=category, index=index)
+    except Exception as e:
+        app.logger.error(f"Errore nella visualizzazione di un quiz: {e}")
+        flash(f'Si è verificato un errore durante la visualizzazione del quiz: {str(e)}', 'danger')
+        return redirect(url_for('quizzes'))
+
+@app.route('/quizzes/delete', methods=['POST'])
+@login_required
+def delete_quiz():
+    """Elimina un quiz."""
+    try:
+        category = request.form.get('category')
+        index = int(request.form.get('index', 0))
+        
+        # Carica i quiz
+        quiz_data = carica_quiz()
+        
+        # Trova la categoria e rimuovi il quiz
+        for cat in quiz_data.get("categorie", []):
+            if cat["nome"] == category and len(cat.get("quiz", [])) > index:
+                cat["quiz"].pop(index)
+                break
+        
+        # Salva i quiz
+        salva_quiz(quiz_data)
+        
+        flash('Quiz eliminato con successo!', 'success')
+        return redirect(url_for('quizzes'))
+    except Exception as e:
+        app.logger.error(f"Errore nell'eliminazione di un quiz: {e}")
+        flash(f'Si è verificato un errore durante l\'eliminazione del quiz: {str(e)}', 'danger')
+        return redirect(url_for('quizzes'))
+
+@app.route('/quizzes/add_category', methods=['POST'])
+@login_required
+def add_category():
+    """Aggiunge una nuova categoria di quiz."""
+    try:
+        name = request.form.get('name')
+        description = request.form.get('description')
+        
+        # Carica i quiz
+        quiz_data = carica_quiz()
+        
+        # Verifica se la categoria esiste già
+        for cat in quiz_data.get("categorie", []):
+            if cat["nome"] == name:
+                flash('Questa categoria esiste già!', 'warning')
+                return redirect(url_for('quizzes'))
+        
+        # Aggiungi la nuova categoria
+        quiz_data["categorie"].append({
+            "nome": name,
+            "descrizione": description,
+            "quiz": []
+        })
+        
+        # Salva i quiz
+        salva_quiz(quiz_data)
+        
+        flash('Categoria aggiunta con successo!', 'success')
+        return redirect(url_for('quizzes'))
+    except Exception as e:
+        app.logger.error(f"Errore nell'aggiunta di una categoria: {e}")
+        flash(f'Si è verificato un errore durante l\'aggiunta della categoria: {str(e)}', 'danger')
+        return redirect(url_for('quizzes'))
+
+@app.route('/quizzes/generate', methods=['GET', 'POST'])
+@login_required
+def generate_quizzes():
+    """Pagina per generare quiz con l'IA."""
+    try:
+        # Carica i quiz per ottenere le categorie
+        quiz_data = carica_quiz()
+        categories = quiz_data.get("categorie", [])
+        
+        # Carica i quiz in attesa
+        pending_data = load_pending_quizzes()
+        pending_count = len(pending_data.get("quiz_pending", []))
+        
+        generated_quizzes = []
+        
+        if request.method == 'POST':
+            # Ottieni i dati dal form
+            num_quizzes = int(request.form.get('num_quizzes', 3))
+            category = request.form.get('category', '')
+            
+            # Genera i quiz
+            generated_quizzes = generate_multiple_quizzes(num_quizzes, category if category else None)
+            
+            if generated_quizzes:
+                flash(f'Generati {len(generated_quizzes)} nuovi quiz con successo!', 'success')
+            else:
+                flash('Non è stato possibile generare i quiz. Verifica la configurazione dell\'API OpenAI.', 'danger')
+            
+            # Aggiorna il conteggio dei quiz in attesa
+            pending_data = load_pending_quizzes()
+            pending_count = len(pending_data.get("quiz_pending", []))
+        
+        return render_template('generate_quizzes.html', 
+                              categories=categories, 
+                              pending_count=pending_count,
+                              generated_quizzes=generated_quizzes)
+    except Exception as e:
+        app.logger.error(f"Errore nella generazione di quiz: {e}")
+        flash(f'Si è verificato un errore durante la generazione dei quiz: {str(e)}', 'danger')
+        return redirect(url_for('quizzes'))
+
+@app.route('/quizzes/approve_pending', methods=['POST'])
+@login_required
+def approve_pending_quiz_route():
+    """Approva un quiz in attesa."""
+    try:
+        data = request.get_json()
+        index = int(data.get('index', 0))
+        
+        success = approve_pending_quiz(index)
+        
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "message": "Errore nell'approvazione del quiz"})
+    except Exception as e:
+        app.logger.error(f"Errore nell'approvazione di un quiz in attesa: {e}")
+        return jsonify({"success": False, "message": str(e)})
+
+@app.route('/quizzes/reject_pending', methods=['POST'])
+@login_required
+def reject_pending_quiz_route():
+    """Rifiuta un quiz in attesa."""
+    try:
+        data = request.get_json()
+        index = int(data.get('index', 0))
+        
+        success = reject_pending_quiz(index)
+        
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "message": "Errore nel rifiuto del quiz"})
+    except Exception as e:
+        app.logger.error(f"Errore nel rifiuto di un quiz in attesa: {e}")
+        return jsonify({"success": False, "message": str(e)})
+
+@app.route('/quizzes/send_test/<category>/<int:index>')
+@login_required
+def send_test_quiz(category, index):
+    """Invia un quiz direttamente al canale principale."""
+    try:
+        # Carica i quiz
+        quiz_data = carica_quiz()
+        
+        # Trova la categoria e il quiz
+        quiz_obj = None
+        for cat in quiz_data.get("categorie", []):
+            if cat["nome"] == category and len(cat.get("quiz", [])) > index:
+                quiz_obj = {
+                    "quiz": cat["quiz"][index],
+                    "categoria": cat["nome"]
+                }
+                break
+        
+        if not quiz_obj:
+            flash('Quiz non trovato!', 'danger')
+            return redirect(url_for('view_quiz', category=category, index=index))
+        
+        # Ottieni l'ID del canale principale
+        from modules.config import CHANNEL_ID
+        
+        # Crea un bot Telegram
+        bot = telegram.Bot(token=BOT_TOKEN)
+        
+        # Crea un contesto fittizio
+        class FakeContext:
+            def __init__(self, bot):
+                self.bot = bot
+        
+        # Chiedi conferma prima di inviare al canale principale
+        if request.args.get('confirm') != 'true':
+            flash('Stai per inviare questo quiz al canale principale. Questa azione non può essere annullata.', 'warning')
+            return render_template('confirm_send_quiz.html', 
+                                  quiz=quiz_obj["quiz"], 
+                                  category=category, 
+                                  index=index,
+                                  channel_id=CHANNEL_ID)
+        
+        # Invia il quiz al canale principale
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        success = loop.run_until_complete(invia_quiz_al_canale(FakeContext(bot), CHANNEL_ID, quiz_obj))
+        loop.close()
+        
+        if success:
+            flash('Quiz inviato con successo al canale!', 'success')
+        else:
+            flash('Errore nell\'invio del quiz al canale.', 'danger')
+        
+        return redirect(url_for('view_quiz', category=category, index=index))
+    except Exception as e:
+        app.logger.error(f"Errore nell'invio di un quiz: {e}")
+        flash(f'Si è verificato un errore durante l\'invio del quiz: {str(e)}', 'danger')
+        return redirect(url_for('view_quiz', category=category, index=index))
 
 # Rotta per riavviare il bot
 @app.route('/maintenance/restart_bot', methods=['POST'])

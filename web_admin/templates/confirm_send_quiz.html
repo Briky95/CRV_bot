@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Conferma Invio Quiz - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Conferma Invio Quiz</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('view_quiz', category=category, index=index) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Torna al Quiz
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Attenzione</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <p><strong>Stai per inviare questo quiz al canale principale:</strong> {{ channel_id }}</p>
+                    <p>Questa azione non può essere annullata e il quiz sarà visibile a tutti gli iscritti al canale.</p>
+                    <p>Sei sicuro di voler procedere?</p>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('view_quiz', category=category, index=index) }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Annulla
+                    </a>
+                    <a href="{{ url_for('send_test_quiz', category=category, index=index, confirm='true') }}" class="btn btn-danger">
+                        <i class="fas fa-paper-plane"></i> Invia al Canale
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Anteprima Quiz</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Categoria:</h6>
+                    <p>{{ category }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Domanda:</h6>
+                    <p>{{ quiz.domanda }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Opzioni:</h6>
+                    <ul class="list-group">
+                        {% for i in range(4) %}
+                        <li class="list-group-item {% if i == quiz.risposta_corretta %}list-group-item-success{% endif %}">
+                            {{ chr(65 + i) }}. {{ quiz.opzioni[i] }}
+                            {% if i == quiz.risposta_corretta %}
+                            <span class="badge bg-success float-end">Corretta</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Spiegazione:</h6>
+                    <p>{{ quiz.spiegazione }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .list-group-item-success {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+</style>
+{% endblock %}

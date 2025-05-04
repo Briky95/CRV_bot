@@ -10,6 +10,9 @@ supabase>=2.0.0
 httpx>=0.26.0
 requests>=2.25.0
 
+# Dipendenze per i quiz e l'IA
+openai>=1.0.0
+
 # Dipendenze per la generazione di report
 xlsxwriter>=3.0.0
 openpyxl>=3.1.0

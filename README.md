@@ -10,14 +10,19 @@ Bot Telegram e interfaccia web per la gestione dei risultati delle partite di ru
 - Riepilogo weekend
 - Gestione utenti
 - Interfaccia web di amministrazione
+- Quiz educativi sul rugby con generazione automatica tramite IA
 
 ## Struttura del progetto
 
 - `bot_fixed.py`: Bot Telegram principale
 - `web_admin/`: Interfaccia web di amministrazione
 - `modules/`: Moduli condivisi tra bot e interfaccia web
+  - `quiz_manager.py`: Gestione dei quiz educativi
+  - `quiz_generator.py`: Generazione automatica di quiz tramite IA
+  - `quiz_handlers.py`: Gestori per i comandi relativi ai quiz
 - `start_bot.sh`: Script per avviare il bot
 - `start_web_admin.sh`: Script per avviare l'interfaccia web
+- `test_quiz.py`: Script per testare la funzionalità dei quiz
 
 ## Requisiti
 
@@ -39,6 +44,9 @@ Bot Telegram e interfaccia web per la gestione dei risultati delle partite di ru
    SUPABASE_KEY=your_supabase_key
    BOT_TOKEN=your_telegram_bot_token
    BOT_TOKEN_WEB=your_telegram_web_bot_token
+   CHANNEL_ID=@your_channel_name
+   TEST_CHANNEL_ID=@your_test_channel_id
+   OPENAI_API_KEY=your_openai_api_key
    ```
 
 ## Avvio

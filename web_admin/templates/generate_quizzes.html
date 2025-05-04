@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Genera Quiz con IA - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Genera Quiz con IA</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('quizzes') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Torna ai Quiz
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Generazione Quiz</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('generate_quizzes') }}" method="post" id="generateForm">
+                    <div class="mb-3">
+                        <label for="num_quizzes" class="form-label">Numero di Quiz da Generare</label>
+                        <select class="form-select" id="num_quizzes" name="num_quizzes" required>
+                            <option value="1">1 Quiz</option>
+                            <option value="3" selected>3 Quiz</option>
+                            <option value="5">5 Quiz</option>
+                            <option value="10">10 Quiz</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Categoria (opzionale)</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="" selected>Tutte le categorie (casuale)</option>
+                            {% for category in categories %}
+                            <option value="{{ category.nome }}">{{ category.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Se non selezioni una categoria, l'IA genererà quiz su categorie casuali.</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" id="generateButton">
+                            <i class="fas fa-robot"></i> Genera Quiz
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-4 d-none" id="generationProgress">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" id="progressBar"></div>
+                    </div>
+                    <p class="text-center" id="progressText">Inizializzazione generazione...</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if pending_count > 0 %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Quiz in Attesa</h5>
+            </div>
+            <div class="card-body">
+                <p>Ci sono attualmente <strong>{{ pending_count }}</strong> quiz in attesa di approvazione.</p>
+                <div class="d-grid">
+                    <a href="{{ url_for('quizzes') }}#pending-quizzes" class="btn btn-outline-primary">
+                        <i class="fas fa-eye"></i> Visualizza e Approva
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Informazioni sulla Generazione IA</h5>
+            </div>
+            <div class="card-body">
+                <h6>Come funziona:</h6>
+                <p>Il sistema utilizza l'API di OpenAI per generare automaticamente quiz educativi sul rugby. I quiz generati vengono poi salvati in una lista di attesa per essere revisionati e approvati dagli amministratori.</p>
+                
+                <h6>Processo di generazione:</h6>
+                <ol>
+                    <li>Seleziona il numero di quiz da generare</li>
+                    <li>Opzionalmente, scegli una categoria specifica</li>
+                    <li>Il sistema invia richieste all'API di OpenAI</li>
+                    <li>I quiz generati vengono salvati nella lista di attesa</li>
+                    <li>Gli amministratori possono approvarli o rifiutarli</li>
+                </ol>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Nota:</strong> La generazione di quiz richiede una chiave API di OpenAI valida configurata nel file <code>.env</code>.
+                </div>
+                
+                <h6>Suggerimenti:</h6>
+                <ul>
+                    <li>Genera pochi quiz alla volta per una revisione più efficiente</li>
+                    <li>Controlla sempre l'accuratezza delle informazioni generate</li>
+                    <li>Modifica i quiz se necessario prima di approvarli</li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if generated_quizzes %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Quiz Generati</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> <strong>Successo!</strong> Sono stati generati {{ generated_quizzes|length }} nuovi quiz.
+                </div>
+                
+                <p>I quiz sono stati aggiunti alla lista di attesa e possono essere approvati nella sezione "Quiz in Attesa".</p>
+                
+                <div class="d-grid">
+                    <a href="{{ url_for('quizzes') }}#pending-quizzes" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> Visualizza e Approva
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const generateForm = document.getElementById('generateForm');
+        const generateButton = document.getElementById('generateButton');
+        const progressDiv = document.getElementById('generationProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        
+        generateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Disabilita il pulsante e mostra il progresso
+            generateButton.disabled = true;
+            progressDiv.classList.remove('d-none');
+            
+            // Simula il progresso
+            let progress = 0;
+            const numQuizzes = parseInt(document.getElementById('num_quizzes').value);
+            const interval = setInterval(function() {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = progress + '%';
+                
+                if (progress < 30) {
+                    progressText.textContent = "Generazione delle domande...";
+                } else if (progress < 60) {
+                    progressText.textContent = "Creazione delle opzioni di risposta...";
+                } else if (progress < 90) {
+                    progressText.textContent = "Elaborazione delle spiegazioni...";
+                } else {
+                    progressText.textContent = "Finalizzazione dei quiz...";
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    // Invia effettivamente il form
+                    generateForm.submit();
+                }
+            }, 500);
+        });
+    });
+</script>
+{% endblock %}

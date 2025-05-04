@@ -4827,6 +4827,14 @@ def main() -> None:
     # Aggiungi il gestore degli errori
     application.add_error_handler(error)
     
+    # Registra i gestori per i quiz
+    try:
+        from modules.quiz_handlers import register_quiz_handlers
+        register_quiz_handlers(application)
+        logger.info("Funzionalità quiz registrate con successo")
+    except Exception as e:
+        logger.error(f"Errore nella registrazione delle funzionalità quiz: {e}")
+    
     # Configura il job per inviare automaticamente il riepilogo ogni domenica alle 18:00
     try:
         from datetime import time as dt_time

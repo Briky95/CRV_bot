@@ -85,6 +85,83 @@
     </div>
 </div>
 
+<!-- Statistiche Quiz -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="h4 mb-3">Statistiche Quiz</h2>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard bg-light shadow h-100 py-2" style="border-left: 4px solid #6f42c1;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Quiz Totali</div>
+                        <div class="card-text">{{ total_quizzes }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-question-circle card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard bg-light shadow h-100 py-2" style="border-left: 4px solid #e83e8c;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Quiz in Attesa</div>
+                        <div class="card-text">{{ pending_quizzes }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard bg-light shadow h-100 py-2" style="border-left: 4px solid #20c997;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Partecipanti</div>
+                        <div class="card-text">{{ total_participants }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-dashboard bg-light shadow h-100 py-2" style="border-left: 4px solid #fd7e14;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="card-title text-uppercase mb-1">Risposte Corrette</div>
+                        <div class="card-text">{{ correct_responses }} <small class="text-muted">({{ correct_percentage|round|int }}%)</small></div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle card-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 text-center mb-3">
+        <a href="{{ url_for('quizzes') }}" class="btn btn-primary">
+            <i class="fas fa-question-circle"></i> Gestisci Quiz
+        </a>
+    </div>
+</div>
+
 <h2 class="h4 mb-3">Partite Recenti</h2>
 <div class="table-responsive">
     <table class="table table-striped table-sm">
