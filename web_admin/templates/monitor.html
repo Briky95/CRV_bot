@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}Monitoraggio Bot - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Monitoraggio Bot</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('monitor') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-sync-alt"></i> Aggiorna
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Informazioni sul sistema -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-server"></i> Informazioni sul Sistema</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th>Sistema Operativo</th>
+                            <td>{{ system_info.sistema_operativo }}</td>
+                        </tr>
+                        <tr>
+                            <th>Versione OS</th>
+                            <td>{{ system_info.versione_os }}</td>
+                        </tr>
+                        <tr>
+                            <th>Architettura</th>
+                            <td>{{ system_info.architettura }}</td>
+                        </tr>
+                        <tr>
+                            <th>Processore</th>
+                            <td>{{ system_info.processore }}</td>
+                        </tr>
+                        <tr>
+                            <th>Versione Python</th>
+                            <td>{{ system_info.python_version }}</td>
+                        </tr>
+                        <tr>
+                            <th>Uptime</th>
+                            <td>{{ system_info.uptime }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Utilizzo risorse -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-microchip"></i> Utilizzo Risorse</h5>
+            </div>
+            <div class="card-body">
+                <h6>CPU</h6>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ resources_info.cpu_percent }}%;" 
+                         aria-valuenow="{{ resources_info.cpu_percent }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ resources_info.cpu_percent }}%
+                    </div>
+                </div>
+                
+                <h6>Memoria</h6>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ resources_info.memory_percent }}%;" 
+                         aria-valuenow="{{ resources_info.memory_percent }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ resources_info.memory_percent }}%
+                    </div>
+                </div>
+                <p class="text-muted small">{{ resources_info.memory_used }} / {{ resources_info.memory_total }}</p>
+                
+                <h6>Disco</h6>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ resources_info.disk_percent }}%;" 
+                         aria-valuenow="{{ resources_info.disk_percent }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ resources_info.disk_percent }}%
+                    </div>
+                </div>
+                <p class="text-muted small">{{ resources_info.disk_used }} / {{ resources_info.disk_total }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Informazioni sul bot -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-robot"></i> Informazioni sul Bot</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th>Token Bot</th>
+                            <td>
+                                {% if bot_info.token_configurato %}
+                                <span class="badge bg-success">Configurato</span>
+                                {% else %}
+                                <span class="badge bg-danger">Non configurato</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Token Web</th>
+                            <td>
+                                {% if bot_info.token_web_configurato %}
+                                <span class="badge bg-success">Configurato</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Non configurato (usa token principale)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Channel ID</th>
+                            <td>{{ bot_info.channel_id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Channel ID Web</th>
+                            <td>{{ bot_info.channel_id_web }}</td>
+                        </tr>
+                        <tr>
+                            <th>Supabase</th>
+                            <td>
+                                {% if bot_info.supabase_configurato %}
+                                <span class="badge bg-success">Configurato</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Non configurato (usa JSON locale)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiche di utilizzo -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Statistiche di Utilizzo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">Utenti Autorizzati</h6>
+                                <p class="card-text display-6">{{ usage_stats.utenti_autorizzati }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">Utenti in Attesa</h6>
+                                <p class="card-text display-6">{{ usage_stats.utenti_in_attesa }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">Partite Registrate</h6>
+                                <p class="card-text display-6">{{ usage_stats.partite_registrate }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">Admin Web</h6>
+                                <p class="card-text display-6">{{ usage_stats.admin_web }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log recenti -->
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="fas fa-list-alt"></i> Log Recenti</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-sm">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Livello</th>
+                        <th>Messaggio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td>{{ log.timestamp }}</td>
+                        <td>
+                            {% if log.level == 'ERROR' %}
+                            <span class="badge bg-danger">ERROR</span>
+                            {% elif log.level == 'WARNING' %}
+                            <span class="badge bg-warning text-dark">WARNING</span>
+                            {% elif log.level == 'CRITICAL' %}
+                            <span class="badge bg-dark">CRITICAL</span>
+                            {% elif log.level == 'DEBUG' %}
+                            <span class="badge bg-info">DEBUG</span>
+                            {% else %}
+                            <span class="badge bg-success">INFO</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.message }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Azioni di manutenzione -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-tools"></i> Azioni di Manutenzione</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="d-grid">
+                    <form action="{{ url_for('restart_bot') }}" method="post" onsubmit="return confirm('Sei sicuro di voler riavviare il bot?');">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-sync"></i> Riavvia Bot
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-grid">
+                    <form action="{{ url_for('clean_logs') }}" method="post" onsubmit="return confirm('Sei sicuro di voler pulire i log?');">
+                        <button type="submit" class="btn btn-outline-warning">
+                            <i class="fas fa-broom"></i> Pulisci Log
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-grid">
+                    <form action="{{ url_for('backup_data') }}" method="post" onsubmit="return confirm('Sei sicuro di voler eseguire il backup dei dati?');">
+                        <button type="submit" class="btn btn-outline-success">
+                            <i class="fas fa-database"></i> Backup Dati
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Aggiorna la pagina ogni 60 secondi
+    setTimeout(function() {
+        window.location.reload();
+    }, 60000);
+</script>
+{% endblock %}

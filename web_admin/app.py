@@ -934,6 +934,354 @@ def stats():
                           stats_categoria=stats_categoria,
                           stats_squadre=stats_squadre)
 
+# Rotta per la pagina di monitoraggio del bot
+@app.route('/monitor')
+@login_required
+def monitor():
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono accedere alla pagina di monitoraggio.', 'danger')
+            return redirect(url_for('dashboard'))
+        
+        # Ottieni informazioni sul sistema
+        import platform
+        import psutil
+        import time
+        from datetime import datetime, timedelta
+        
+        # Informazioni sul sistema
+        system_info = {
+            'sistema_operativo': platform.system(),
+            'versione_os': platform.version(),
+            'architettura': platform.machine(),
+            'processore': platform.processor(),
+            'python_version': platform.python_version(),
+            'uptime': str(timedelta(seconds=int(time.time() - psutil.boot_time())))
+        }
+        
+        # Informazioni sulle risorse
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        resources_info = {
+            'cpu_percent': cpu_percent,
+            'memory_percent': memory.percent,
+            'memory_used': f"{memory.used / (1024 * 1024 * 1024):.2f} GB",
+            'memory_total': f"{memory.total / (1024 * 1024 * 1024):.2f} GB",
+            'disk_percent': disk.percent,
+            'disk_used': f"{disk.used / (1024 * 1024 * 1024):.2f} GB",
+            'disk_total': f"{disk.total / (1024 * 1024 * 1024):.2f} GB"
+        }
+        
+        # Informazioni sul bot
+        bot_info = {
+            'token_configurato': bool(BOT_TOKEN),
+            'token_web_configurato': bool(TOKEN_WEB),
+            'channel_id': CHANNEL_ID,
+            'channel_id_web': CHANNEL_ID_WEB,
+            'supabase_configurato': is_supabase_configured()
+        }
+        
+        # Statistiche di utilizzo
+        utenti_data = carica_utenti()
+        risultati = carica_risultati()
+        
+        usage_stats = {
+            'utenti_autorizzati': len(utenti_data.get("autorizzati", [])),
+            'utenti_in_attesa': len(utenti_data.get("in_attesa", [])),
+            'partite_registrate': len(risultati),
+            'admin_web': len(carica_admin_users())
+        }
+        
+        # Ottieni i log recenti (ultimi 100 eventi)
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'bot.log')
+        recent_logs = []
+        
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    # Leggi le ultime 100 righe
+                    lines = f.readlines()[-100:]
+                    for line in lines:
+                        line = line.strip()
+                        if line:
+                            # Estrai il livello di log (INFO, WARNING, ERROR, ecc.)
+                            level = "INFO"
+                            if "WARNING" in line:
+                                level = "WARNING"
+                            elif "ERROR" in line:
+                                level = "ERROR"
+                            elif "CRITICAL" in line:
+                                level = "CRITICAL"
+                            elif "DEBUG" in line:
+                                level = "DEBUG"
+                            
+                            recent_logs.append({
+                                'timestamp': line.split(' - ')[0] if ' - ' in line else "",
+                                'level': level,
+                                'message': line
+                            })
+            except Exception as e:
+                app.logger.error(f"Errore nella lettura del file di log: {e}")
+                recent_logs.append({
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'level': "ERROR",
+                    'message': f"Errore nella lettura del file di log: {str(e)}"
+                })
+        
+        return render_template('monitor.html',
+                              system_info=system_info,
+                              resources_info=resources_info,
+                              bot_info=bot_info,
+                              usage_stats=usage_stats,
+                              recent_logs=recent_logs)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina di monitoraggio: {e}")
+        flash(f'Si è verificato un errore durante il caricamento della pagina di monitoraggio: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+# Rotta per riavviare il bot
+@app.route('/maintenance/restart_bot', methods=['POST'])
+@login_required
+def restart_bot():
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono riavviare il bot.', 'danger')
+            return redirect(url_for('monitor'))
+        
+        # Ottieni il percorso del file principale del bot
+        bot_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'bot.py')
+        
+        if not os.path.exists(bot_file):
+            flash('File principale del bot non trovato.', 'danger')
+            return redirect(url_for('monitor'))
+        
+        # Esegui il comando per riavviare il bot in background
+        import subprocess
+        import sys
+        
+        # Termina eventuali processi esistenti del bot
+        try:
+            subprocess.run(['pkill', '-f', 'python.*bot\.py'], check=False)
+        except Exception as e:
+            app.logger.warning(f"Errore durante la terminazione dei processi esistenti: {e}")
+        
+        # Avvia il bot in background
+        try:
+            subprocess.Popen([sys.executable, bot_file], 
+                            stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE, 
+                            start_new_session=True)
+            
+            flash('Bot riavviato con successo.', 'success')
+        except Exception as e:
+            flash(f'Errore durante il riavvio del bot: {str(e)}', 'danger')
+        
+        return redirect(url_for('monitor'))
+    except Exception as e:
+        app.logger.error(f"Errore durante il riavvio del bot: {e}")
+        flash(f'Si è verificato un errore durante il riavvio del bot: {str(e)}', 'danger')
+        return redirect(url_for('monitor'))
+
+# Rotta per pulire i log
+@app.route('/maintenance/clean_logs', methods=['POST'])
+@login_required
+def clean_logs():
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono pulire i log.', 'danger')
+            return redirect(url_for('monitor'))
+        
+        # Ottieni il percorso del file di log
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'bot.log')
+        
+        if not os.path.exists(log_file):
+            flash('File di log non trovato.', 'warning')
+            return redirect(url_for('monitor'))
+        
+        # Crea un backup del file di log
+        import shutil
+        from datetime import datetime
+        
+        backup_file = f"{log_file}.{datetime.now().strftime('%Y%m%d%H%M%S')}.bak"
+        shutil.copy2(log_file, backup_file)
+        
+        # Pulisci il file di log
+        with open(log_file, 'w', encoding='utf-8') as f:
+            f.write(f"--- Log pulito il {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+        
+        flash('Log puliti con successo. È stato creato un backup del file di log originale.', 'success')
+        return redirect(url_for('monitor'))
+    except Exception as e:
+        app.logger.error(f"Errore durante la pulizia dei log: {e}")
+        flash(f'Si è verificato un errore durante la pulizia dei log: {str(e)}', 'danger')
+        return redirect(url_for('monitor'))
+
+# Rotta per eseguire il backup dei dati
+@app.route('/maintenance/backup_data', methods=['POST'])
+@login_required
+def backup_data():
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono eseguire il backup dei dati.', 'danger')
+            return redirect(url_for('monitor'))
+        
+        # Ottieni il percorso della directory principale
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Crea una directory per i backup se non esiste
+        backup_dir = os.path.join(root_dir, 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Crea un nome per il file di backup
+        from datetime import datetime
+        import zipfile
+        
+        backup_file = os.path.join(backup_dir, f"backup_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip")
+        
+        # Crea un file zip con i dati
+        with zipfile.ZipFile(backup_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Aggiungi i file JSON
+            for file in ['utenti.json', 'risultati.json', 'squadre.json', 'admin_users.json', 'reazioni.json']:
+                file_path = os.path.join(root_dir, file)
+                if os.path.exists(file_path):
+                    zipf.write(file_path, file)
+            
+            # Aggiungi il file di configurazione
+            config_file = os.path.join(root_dir, 'modules', 'config.py')
+            if os.path.exists(config_file):
+                zipf.write(config_file, os.path.join('modules', 'config.py'))
+            
+            # Aggiungi il file di configurazione web
+            config_web_file = os.path.join(root_dir, 'modules', 'config_web.py')
+            if os.path.exists(config_web_file):
+                zipf.write(config_web_file, os.path.join('modules', 'config_web.py'))
+            
+            # Aggiungi il file di token
+            token_file = os.path.join(root_dir, 'token.txt')
+            if os.path.exists(token_file):
+                zipf.write(token_file, 'token.txt')
+        
+        flash(f'Backup dei dati eseguito con successo. File salvato in: {backup_file}', 'success')
+        return redirect(url_for('monitor'))
+    except Exception as e:
+        app.logger.error(f"Errore durante il backup dei dati: {e}")
+        flash(f'Si è verificato un errore durante il backup dei dati: {str(e)}', 'danger')
+        return redirect(url_for('monitor'))
+
+# Rotta per la pagina di monitoraggio del bot
+@app.route('/monitor')
+@login_required
+def monitor():
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono accedere alla pagina di monitoraggio.', 'danger')
+            return redirect(url_for('dashboard'))
+        
+        # Ottieni informazioni sul sistema
+        import platform
+        import psutil
+        import time
+        from datetime import datetime, timedelta
+        
+        # Informazioni sul sistema
+        system_info = {
+            'sistema_operativo': platform.system(),
+            'versione_os': platform.version(),
+            'architettura': platform.machine(),
+            'processore': platform.processor(),
+            'python_version': platform.python_version(),
+            'uptime': str(timedelta(seconds=int(time.time() - psutil.boot_time())))
+        }
+        
+        # Informazioni sulle risorse
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        resources_info = {
+            'cpu_percent': cpu_percent,
+            'memory_percent': memory.percent,
+            'memory_used': f"{memory.used / (1024 * 1024 * 1024):.2f} GB",
+            'memory_total': f"{memory.total / (1024 * 1024 * 1024):.2f} GB",
+            'disk_percent': disk.percent,
+            'disk_used': f"{disk.used / (1024 * 1024 * 1024):.2f} GB",
+            'disk_total': f"{disk.total / (1024 * 1024 * 1024):.2f} GB"
+        }
+        
+        # Informazioni sul bot
+        bot_info = {
+            'token_configurato': bool(BOT_TOKEN),
+            'token_web_configurato': bool(TOKEN_WEB),
+            'channel_id': CHANNEL_ID,
+            'channel_id_web': CHANNEL_ID_WEB,
+            'supabase_configurato': is_supabase_configured()
+        }
+        
+        # Statistiche di utilizzo
+        utenti_data = carica_utenti()
+        risultati = carica_risultati()
+        
+        usage_stats = {
+            'utenti_autorizzati': len(utenti_data.get("autorizzati", [])),
+            'utenti_in_attesa': len(utenti_data.get("in_attesa", [])),
+            'partite_registrate': len(risultati),
+            'admin_web': len(carica_admin_users())
+        }
+        
+        # Ottieni i log recenti (ultimi 100 eventi)
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'bot.log')
+        recent_logs = []
+        
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    # Leggi le ultime 100 righe
+                    lines = f.readlines()[-100:]
+                    for line in lines:
+                        line = line.strip()
+                        if line:
+                            # Estrai il livello di log (INFO, WARNING, ERROR, ecc.)
+                            level = "INFO"
+                            if "WARNING" in line:
+                                level = "WARNING"
+                            elif "ERROR" in line:
+                                level = "ERROR"
+                            elif "CRITICAL" in line:
+                                level = "CRITICAL"
+                            elif "DEBUG" in line:
+                                level = "DEBUG"
+                            
+                            recent_logs.append({
+                                'timestamp': line.split(' - ')[0] if ' - ' in line else "",
+                                'level': level,
+                                'message': line
+                            })
+            except Exception as e:
+                app.logger.error(f"Errore nella lettura del file di log: {e}")
+                recent_logs.append({
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'level': "ERROR",
+                    'message': f"Errore nella lettura del file di log: {str(e)}"
+                })
+        
+        return render_template('monitor.html',
+                              system_info=system_info,
+                              resources_info=resources_info,
+                              bot_info=bot_info,
+                              usage_stats=usage_stats,
+                              recent_logs=recent_logs)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina di monitoraggio: {e}")
+        flash(f'Si è verificato un errore durante il caricamento della pagina di monitoraggio: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
 # Funzione per generare il riepilogo del weekend
 def genera_riepilogo_weekend():
     """Genera un riepilogo delle partite del weekend."""
