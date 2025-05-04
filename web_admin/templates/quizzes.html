@@ -414,46 +414,56 @@
         });
         
         function approveQuiz(index) {
+            console.log("Approvazione quiz con indice:", index);
             fetch('{{ url_for("approve_pending_quiz_route_impl") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ index: index })
+                body: JSON.stringify({ index: parseInt(index) })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log("Risposta ricevuta:", response);
+                return response.json();
+            })
             .then(data => {
+                console.log("Dati ricevuti:", data);
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert('Errore: ' + data.message);
+                    alert('Errore: ' + (data.message || 'Errore sconosciuto'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Si è verificato un errore durante l\'approvazione del quiz.');
+                alert('Si è verificato un errore durante l\'approvazione del quiz: ' + error.message);
             });
         }
         
         function rejectQuiz(index) {
+            console.log("Rifiuto quiz con indice:", index);
             fetch('{{ url_for("reject_pending_quiz_route_impl") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ index: index })
+                body: JSON.stringify({ index: parseInt(index) })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log("Risposta ricevuta:", response);
+                return response.json();
+            })
             .then(data => {
+                console.log("Dati ricevuti:", data);
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert('Errore: ' + data.message);
+                    alert('Errore: ' + (data.message || 'Errore sconosciuto'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Si è verificato un errore durante il rifiuto del quiz.');
+                alert('Si è verificato un errore durante il rifiuto del quiz: ' + error.message);
             });
         }
     });

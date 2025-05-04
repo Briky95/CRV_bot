@@ -497,12 +497,23 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
     
     elif action == "approve":
         # Approva un quiz
-        index = int(query.data.split("_")[2])
-        
-        success = approve_pending_quiz(index)
-        
-        if success:
-            await query.answer("Quiz approvato con successo!")
+        try:
+            index = int(query.data.split("_")[2])
+            logger.info(f"Approvazione quiz con indice: {index}")
+            
+            success = approve_pending_quiz(index)
+            
+            if success:
+                await query.answer("Quiz approvato con successo!")
+                logger.info(f"Quiz approvato con successo (indice: {index})")
+            else:
+                await query.answer("Errore nell'approvazione del quiz")
+                logger.error(f"Errore nell'approvazione del quiz (indice: {index})")
+                return
+        except Exception as e:
+            logger.error(f"Errore durante l'approvazione del quiz: {e}")
+            await query.answer(f"Errore: {str(e)[:200]}")
+            return
             
             # Aggiorna la visualizzazione
             pending_count = get_pending_quiz_count()
@@ -534,12 +545,23 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
     
     elif action == "reject":
         # Rifiuta un quiz
-        index = int(query.data.split("_")[2])
-        
-        success = reject_pending_quiz(index)
-        
-        if success:
-            await query.answer("Quiz rifiutato")
+        try:
+            index = int(query.data.split("_")[2])
+            logger.info(f"Rifiuto quiz con indice: {index}")
+            
+            success = reject_pending_quiz(index)
+            
+            if success:
+                await query.answer("Quiz rifiutato")
+                logger.info(f"Quiz rifiutato con successo (indice: {index})")
+            else:
+                await query.answer("Errore nel rifiuto del quiz")
+                logger.error(f"Errore nel rifiuto del quiz (indice: {index})")
+                return
+        except Exception as e:
+            logger.error(f"Errore durante il rifiuto del quiz: {e}")
+            await query.answer(f"Errore: {str(e)[:200]}")
+            return
             
             # Aggiorna la visualizzazione
             pending_count = get_pending_quiz_count()
@@ -571,21 +593,29 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
     
     elif action == "nav":
         # Navigazione tra i quiz in attesa
-        direction = query.data.split("_")[2]  # prev o next
-        current_index = int(query.data.split("_")[3])
-        
-        if direction == "prev":
-            new_index = max(0, current_index - 1)
-        else:  # next
-            new_index = current_index + 1
-        
-        # Verifica che l'indice sia valido
-        pending_count = get_pending_quiz_count()
-        if new_index >= pending_count:
-            new_index = 0  # Torna al primo quiz
-        
-        # Ottieni il quiz
-        quiz = get_pending_quiz(new_index)
+        try:
+            direction = query.data.split("_")[2]  # prev o next
+            current_index = int(query.data.split("_")[3])
+            logger.info(f"Navigazione quiz: direzione={direction}, indice corrente={current_index}")
+            
+            if direction == "prev":
+                new_index = max(0, current_index - 1)
+            else:  # next
+                new_index = current_index + 1
+            
+            # Verifica che l'indice sia valido
+            pending_count = get_pending_quiz_count()
+            if new_index >= pending_count:
+                new_index = 0  # Torna al primo quiz
+            
+            logger.info(f"Nuovo indice: {new_index} (totale quiz: {pending_count})")
+            
+            # Ottieni il quiz
+            quiz = get_pending_quiz(new_index)
+        except Exception as e:
+            logger.error(f"Errore durante la navigazione dei quiz: {e}")
+            await query.answer(f"Errore: {str(e)[:200]}")
+            return
         
         if not quiz:
             await query.answer("Errore nel caricamento del quiz")

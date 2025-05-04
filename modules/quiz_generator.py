@@ -532,7 +532,17 @@ def get_pending_quiz_count() -> int:
 def get_pending_quiz(index: int = 0) -> Optional[Dict[str, Any]]:
     """Restituisce un quiz in attesa di approvazione in base all'indice."""
     try:
+        logger.info(f"Recupero quiz con indice: {index}")
         pending_data = load_pending_quizzes()
+        
+        # Verifica che l'indice sia un intero
+        if not isinstance(index, int):
+            try:
+                index = int(index)
+                logger.info(f"Indice convertito a intero: {index}")
+            except (ValueError, TypeError):
+                logger.error(f"Indice non valido: {index} (tipo: {type(index)})")
+                return None
         
         # Verifica che quiz_pending sia una lista
         if not isinstance(pending_data.get("quiz_pending"), list):
@@ -542,8 +552,13 @@ def get_pending_quiz(index: int = 0) -> Optional[Dict[str, Any]]:
             save_pending_quizzes(pending_data)
             return None
         
-        if not pending_data["quiz_pending"] or index >= len(pending_data["quiz_pending"]):
-            logger.warning(f"Nessun quiz in attesa all'indice {index}. Totale quiz: {len(pending_data['quiz_pending'])}")
+        # Verifica che ci siano quiz e che l'indice sia valido
+        if not pending_data["quiz_pending"]:
+            logger.warning("Nessun quiz in attesa")
+            return None
+        
+        if index >= len(pending_data["quiz_pending"]):
+            logger.warning(f"Indice fuori range: {index} (totale quiz: {len(pending_data['quiz_pending'])})")
             return None
         
         # Verifica che il quiz all'indice specificato sia un dizionario
@@ -580,13 +595,29 @@ def get_pending_quiz(index: int = 0) -> Optional[Dict[str, Any]]:
 
 def approve_pending_quiz(index: int) -> bool:
     """Approva un quiz in attesa e lo aggiunge al database principale."""
+    logger.info(f"Approvazione quiz con indice: {index}")
     pending_data = load_pending_quizzes()
     
-    if not pending_data["quiz_pending"] or index >= len(pending_data["quiz_pending"]):
+    # Verifica che l'indice sia un intero
+    if not isinstance(index, int):
+        try:
+            index = int(index)
+        except (ValueError, TypeError):
+            logger.error(f"Indice non valido: {index} (tipo: {type(index)})")
+            return False
+    
+    # Verifica che ci siano quiz in attesa e che l'indice sia valido
+    if not pending_data["quiz_pending"]:
+        logger.error("Nessun quiz in attesa")
+        return False
+    
+    if index >= len(pending_data["quiz_pending"]):
+        logger.error(f"Indice fuori range: {index} (totale quiz: {len(pending_data['quiz_pending'])})")
         return False
     
     # Ottieni il quiz da approvare
     quiz = pending_data["quiz_pending"][index]
+    logger.info(f"Quiz da approvare: {quiz['domanda'][:30]}...")
     
     # Aggiungi il quiz al database principale
     from modules.quiz_manager import aggiungi_quiz
@@ -610,10 +641,29 @@ def approve_pending_quiz(index: int) -> bool:
 
 def reject_pending_quiz(index: int) -> bool:
     """Rifiuta un quiz in attesa e lo rimuove dalla lista."""
+    logger.info(f"Rifiuto quiz con indice: {index}")
     pending_data = load_pending_quizzes()
     
-    if not pending_data["quiz_pending"] or index >= len(pending_data["quiz_pending"]):
+    # Verifica che l'indice sia un intero
+    if not isinstance(index, int):
+        try:
+            index = int(index)
+        except (ValueError, TypeError):
+            logger.error(f"Indice non valido: {index} (tipo: {type(index)})")
+            return False
+    
+    # Verifica che ci siano quiz in attesa e che l'indice sia valido
+    if not pending_data["quiz_pending"]:
+        logger.error("Nessun quiz in attesa")
         return False
+    
+    if index >= len(pending_data["quiz_pending"]):
+        logger.error(f"Indice fuori range: {index} (totale quiz: {len(pending_data['quiz_pending'])})")
+        return False
+    
+    # Ottieni il quiz da rifiutare per il log
+    quiz = pending_data["quiz_pending"][index]
+    logger.info(f"Quiz da rifiutare: {quiz['domanda'][:30]}...")
     
     # Rimuovi il quiz dalla lista dei quiz in attesa
     pending_data["quiz_pending"].pop(index)
