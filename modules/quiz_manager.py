@@ -223,9 +223,12 @@ async def invia_quiz_al_canale(context: ContextTypes.DEFAULT_TYPE, channel_id, q
         logger.error("Nessun quiz disponibile da inviare al canale")
         return False
     
-    # Crea il messaggio del quiz
-    messaggio = f"🏉 <b>QUIZ DEL GIORNO: {categoria}</b> 🏉\n\n"
-    messaggio += f"<b>Domanda:</b> {quiz['domanda']}\n\n"
+    # Crea il messaggio del quiz con un formato più accattivante
+    messaggio = f"🏉 <b>QUIZ DEL GIORNO</b> 🏉\n"
+    messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    messaggio += f"<b>📚 Categoria:</b> <i>{categoria}</i>\n\n"
+    messaggio += f"<b>❓ Domanda:</b>\n<i>{quiz['domanda']}</i>\n\n"
+    messaggio += f"<b>Scegli la risposta corretta:</b>"
     
     # Crea i pulsanti per le opzioni
     keyboard = []
@@ -345,13 +348,22 @@ async def gestisci_risposta_quiz(update: Update, context: ContextTypes.DEFAULT_T
     # Invia un messaggio privato all'utente con il risultato
     try:
         if risposta_utente == risposta_corretta:
-            messaggio = f"✅ <b>Risposta corretta!</b>\n\n"
-            messaggio += f"<b>Spiegazione:</b> {quiz_corrente['spiegazione']}\n\n"
-            messaggio += f"Hai guadagnato 10 punti! Il tuo punteggio totale è ora {stats['partecipanti'][str(user_id)]['punti']} punti."
+            messaggio = f"✅ <b>RISPOSTA CORRETTA!</b> ✅\n"
+            messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            messaggio += f"<b>🎯 Ottimo lavoro!</b> Hai scelto l'opzione corretta.\n\n"
+            messaggio += f"<b>💡 Spiegazione:</b>\n<i>{quiz_corrente['spiegazione']}</i>\n\n"
+            messaggio += f"<b>🏆 Punti guadagnati:</b> +10\n"
+            messaggio += f"<b>🏅 Punteggio totale:</b> {stats['partecipanti'][str(user_id)]['punti']} punti\n\n"
+            messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            messaggio += f"<i>Continua così! Partecipa ai prossimi quiz per aumentare il tuo punteggio.</i>"
         else:
-            messaggio = f"❌ <b>Risposta errata!</b>\n\n"
-            messaggio += f"La risposta corretta era: <b>{quiz_corrente['opzioni'][risposta_corretta]}</b>\n\n"
-            messaggio += f"<b>Spiegazione:</b> {quiz_corrente['spiegazione']}"
+            messaggio = f"❌ <b>RISPOSTA ERRATA</b> ❌\n"
+            messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            messaggio += f"<b>⚠️ Attenzione:</b> La tua risposta non è corretta.\n\n"
+            messaggio += f"<b>✅ Risposta corretta:</b>\n<i>{quiz_corrente['opzioni'][risposta_corretta]}</i>\n\n"
+            messaggio += f"<b>💡 Spiegazione:</b>\n<i>{quiz_corrente['spiegazione']}</i>\n\n"
+            messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            messaggio += f"<i>Non preoccuparti! Partecipa al prossimo quiz per guadagnare punti.</i>"
         
         await context.bot.send_message(
             chat_id=user_id,
@@ -381,11 +393,12 @@ async def mostra_risultati_quiz(context: ContextTypes.DEFAULT_TYPE, chat_id, mes
     if not quiz_corrente:
         return
     
-    # Crea il messaggio con i risultati
-    messaggio = f"🏉 <b>RISULTATI DEL QUIZ</b> 🏉\n\n"
-    messaggio += f"<b>Domanda:</b> {quiz_corrente['domanda']}\n\n"
-    messaggio += f"<b>Risposta corretta:</b> {quiz_corrente['opzioni'][quiz_corrente['risposta_corretta']]}\n\n"
-    messaggio += f"<b>Spiegazione:</b> {quiz_corrente['spiegazione']}\n\n"
+    # Crea il messaggio con i risultati in un formato più accattivante
+    messaggio = f"� <b>RISULTATI DEL QUIZ</b> �\n"
+    messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    messaggio += f"<b>❓ Domanda:</b>\n<i>{quiz_corrente['domanda']}</i>\n\n"
+    messaggio += f"<b>✅ Risposta corretta:</b>\n<i>{quiz_corrente['opzioni'][quiz_corrente['risposta_corretta']]}</i>\n\n"
+    messaggio += f"<b>💡 Spiegazione:</b>\n<i>{quiz_corrente['spiegazione']}</i>\n\n"
     
     # Statistiche delle risposte
     risposte_corrette = sum(1 for r in quiz_corrente.get("risposte", []) if r.get("corretta"))
@@ -393,20 +406,39 @@ async def mostra_risultati_quiz(context: ContextTypes.DEFAULT_TYPE, chat_id, mes
     
     if totale_risposte > 0:
         percentuale_corrette = (risposte_corrette / totale_risposte) * 100
-        messaggio += f"<b>Statistiche:</b>\n"
-        messaggio += f"• Risposte totali: {totale_risposte}\n"
-        messaggio += f"• Risposte corrette: {risposte_corrette} ({percentuale_corrette:.1f}%)\n\n"
+        messaggio += f"<b>📊 STATISTICHE</b>\n"
+        messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        messaggio += f"<b>🔢 Risposte totali:</b> {totale_risposte}\n"
+        messaggio += f"<b>✅ Risposte corrette:</b> {risposte_corrette} ({percentuale_corrette:.1f}%)\n\n"
+        
+        # Aggiungi una valutazione basata sulla percentuale di risposte corrette
+        if percentuale_corrette >= 80:
+            messaggio += f"<b>🌟 Eccellente!</b> La maggior parte dei partecipanti ha risposto correttamente.\n\n"
+        elif percentuale_corrette >= 50:
+            messaggio += f"<b>👍 Buono!</b> Molti partecipanti hanno risposto correttamente.\n\n"
+        else:
+            messaggio += f"<b>🤔 Difficile!</b> Questo quiz ha messo alla prova molti partecipanti.\n\n"
         
         # Elenco dei primi 5 utenti che hanno risposto correttamente
         risposte_corrette_list = [r for r in quiz_corrente.get("risposte", []) if r.get("corretta")]
         if risposte_corrette_list:
-            messaggio += "<b>Hanno risposto correttamente:</b>\n"
-            for i, risposta in enumerate(risposte_corrette_list[:5], 1):
+            # Ordina per timestamp (i più veloci prima)
+            risposte_corrette_list.sort(key=lambda x: x.get("timestamp", ""))
+            
+            messaggio += f"<b>🥇 CLASSIFICA VELOCITÀ</b>\n"
+            messaggio += f"<i>I più veloci a rispondere correttamente:</i>\n\n"
+            
+            medaglie = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+            for i, risposta in enumerate(risposte_corrette_list[:5]):
                 nome = risposta.get("user_name", "Utente")
-                messaggio += f"{i}. {nome}\n"
+                username = risposta.get("username")
+                if username:
+                    messaggio += f"{medaglie[i]} <b>{nome}</b> (@{username})\n"
+                else:
+                    messaggio += f"{medaglie[i]} <b>{nome}</b>\n"
             
             if len(risposte_corrette_list) > 5:
-                messaggio += f"...e altri {len(risposte_corrette_list) - 5} utenti\n"
+                messaggio += f"\n<i>...e altri {len(risposte_corrette_list) - 5} partecipanti hanno risposto correttamente!</i>\n"
     else:
         messaggio += "Nessuna risposta ricevuta per questo quiz."
     

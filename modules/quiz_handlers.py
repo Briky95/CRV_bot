@@ -297,15 +297,106 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
     action = query.data.split("_")[1]
     
     if action == "gen":
-        # Generazione di quiz
-        num_quizzes = int(query.data.split("_")[2])
+        # Ottieni il terzo elemento del callback data
+        sub_action = query.data.split("_")[2]
         
-        # Mostra un messaggio di attesa
-        await query.edit_message_text(
-            f"<b>🔄 Generazione di {num_quizzes} quiz in corso...</b>\n\n"
-            "Questo processo potrebbe richiedere alcuni secondi.",
-            parse_mode='HTML'
-        )
+        # Se il sub_action è "view", mostra i quiz in attesa
+        if sub_action == "view":
+            logger.info("Visualizzazione quiz in attesa")
+            # Visualizza i quiz in attesa di approvazione
+            pending_count = get_pending_quiz_count()
+            
+            if pending_count == 0:
+                await query.edit_message_text(
+                    "<b>ℹ️ Nessun quiz in attesa</b>\n\n"
+                    "Non ci sono quiz in attesa di approvazione.\n\n"
+                    "Puoi generare nuovi quiz dalla sezione 'Genera quiz con IA'.",
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔄 Genera quiz", callback_data="quiz_admin_genera")],
+                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                    ])
+                )
+                return
+            
+            # Ottieni il primo quiz in attesa
+            quiz = get_pending_quiz(0)
+            
+            if not quiz:
+                await query.edit_message_text(
+                    "<b>❌ Errore</b>\n\n"
+                    "Si è verificato un errore nel caricamento dei quiz in attesa.",
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                    ])
+                )
+                return
+            
+            # Mostra il quiz con un formato più accattivante
+            messaggio = f"<b>🎲 QUIZ GENERATO</b> <code>(1/{pending_count})</code>\n"
+            messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            messaggio += f"<b>📚 Categoria:</b> <i>{quiz['categoria']}</i>\n\n"
+            messaggio += f"<b>❓ Domanda:</b>\n<i>{quiz['domanda']}</i>\n\n"
+            messaggio += f"<b>🔤 Opzioni:</b>\n"
+            
+            for i, opzione in enumerate(quiz['opzioni']):
+                if i == quiz['risposta_corretta']:
+                    messaggio += f"✅ <b>{chr(65+i)}</b>. <i>{opzione}</i> <b>[CORRETTA]</b>\n"
+                else:
+                    messaggio += f"⚪ <b>{chr(65+i)}</b>. <i>{opzione}</i>\n"
+            
+            messaggio += f"\n<b>💡 Spiegazione:</b>\n<i>{quiz['spiegazione']}</i>\n\n"
+            messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            messaggio += f"📅 <i>Generato il: {quiz.get('generato_il', 'N/D')}</i>"
+            
+            # Crea i pulsanti per l'approvazione/rifiuto
+            keyboard = [
+                [
+                    InlineKeyboardButton("✅ Approva", callback_data="quiz_approve_0"),
+                    InlineKeyboardButton("❌ Rifiuta", callback_data="quiz_reject_0")
+                ]
+            ]
+            
+            # Aggiungi pulsanti per la navigazione se ci sono più quiz
+            if pending_count > 1:
+                keyboard.append([
+                    InlineKeyboardButton("⬅️ Precedente", callback_data="quiz_nav_prev_0"),
+                    InlineKeyboardButton("➡️ Successivo", callback_data="quiz_nav_next_0")
+                ])
+            
+            keyboard.append([InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_genera")])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                messaggio,
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+            return
+        
+        # Altrimenti, genera quiz
+        try:
+            num_quizzes = int(sub_action)
+            
+            # Mostra un messaggio di attesa
+            await query.edit_message_text(
+                f"<b>🔄 Generazione di {num_quizzes} quiz in corso...</b>\n\n"
+                "Questo processo potrebbe richiedere alcuni secondi.",
+                parse_mode='HTML'
+            )
+        except ValueError:
+            logger.error(f"Valore non valido per num_quizzes: {sub_action}")
+            await query.edit_message_text(
+                "<b>❌ Errore</b>\n\n"
+                f"Valore non valido per il numero di quiz: {sub_action}",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                ])
+            )
+            return
         
         try:
             # Genera i quiz con un timeout complessivo
@@ -423,77 +514,8 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
                     [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
                 ])
             )
+    # La sezione "view" è stata spostata nella sezione "gen" con sub_action "view"
     
-    elif action == "view":
-        # Visualizza i quiz in attesa di approvazione
-        pending_count = get_pending_quiz_count()
-        
-        if pending_count == 0:
-            await query.edit_message_text(
-                "<b>ℹ️ Nessun quiz in attesa</b>\n\n"
-                "Non ci sono quiz in attesa di approvazione.\n\n"
-                "Puoi generare nuovi quiz dalla sezione 'Genera quiz con IA'.",
-                parse_mode='HTML',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🔄 Genera quiz", callback_data="quiz_admin_genera")],
-                    [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
-                ])
-            )
-            return
-        
-        # Ottieni il primo quiz in attesa
-        quiz = get_pending_quiz(0)
-        
-        if not quiz:
-            await query.edit_message_text(
-                "<b>❌ Errore</b>\n\n"
-                "Si è verificato un errore nel caricamento dei quiz in attesa.",
-                parse_mode='HTML',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
-                ])
-            )
-            return
-        
-        # Mostra il quiz
-        messaggio = f"<b>🤖 QUIZ GENERATO ({1}/{pending_count})</b>\n\n"
-        messaggio += f"<b>Categoria:</b> {quiz['categoria']}\n\n"
-        messaggio += f"<b>Domanda:</b> {quiz['domanda']}\n\n"
-        messaggio += "<b>Opzioni:</b>\n"
-        
-        for i, opzione in enumerate(quiz['opzioni']):
-            if i == quiz['risposta_corretta']:
-                messaggio += f"✅ {chr(65+i)}. {opzione}\n"
-            else:
-                messaggio += f"⬜ {chr(65+i)}. {opzione}\n"
-        
-        messaggio += f"\n<b>Spiegazione:</b> {quiz['spiegazione']}\n\n"
-        messaggio += f"<i>Generato il: {quiz.get('generato_il', 'N/D')}</i>"
-        
-        # Crea i pulsanti per l'approvazione/rifiuto
-        keyboard = [
-            [
-                InlineKeyboardButton("✅ Approva", callback_data="quiz_approve_0"),
-                InlineKeyboardButton("❌ Rifiuta", callback_data="quiz_reject_0")
-            ]
-        ]
-        
-        # Aggiungi pulsanti per la navigazione se ci sono più quiz
-        if pending_count > 1:
-            keyboard.append([
-                InlineKeyboardButton("⬅️ Precedente", callback_data="quiz_nav_prev_0"),
-                InlineKeyboardButton("➡️ Successivo", callback_data="quiz_nav_next_0")
-            ])
-        
-        keyboard.append([InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_genera")])
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            messaggio,
-            reply_markup=reply_markup,
-            parse_mode='HTML'
-        )
     
     elif action == "approve":
         # Approva un quiz
@@ -621,20 +643,22 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
             await query.answer("Errore nel caricamento del quiz")
             return
         
-        # Mostra il quiz
-        messaggio = f"<b>🤖 QUIZ GENERATO ({new_index+1}/{pending_count})</b>\n\n"
-        messaggio += f"<b>Categoria:</b> {quiz['categoria']}\n\n"
-        messaggio += f"<b>Domanda:</b> {quiz['domanda']}\n\n"
-        messaggio += "<b>Opzioni:</b>\n"
+        # Mostra il quiz con un formato più accattivante
+        messaggio = f"<b>🎲 QUIZ GENERATO</b> <code>({new_index+1}/{pending_count})</code>\n"
+        messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        messaggio += f"<b>📚 Categoria:</b> <i>{quiz['categoria']}</i>\n\n"
+        messaggio += f"<b>❓ Domanda:</b>\n<i>{quiz['domanda']}</i>\n\n"
+        messaggio += f"<b>🔤 Opzioni:</b>\n"
         
         for i, opzione in enumerate(quiz['opzioni']):
             if i == quiz['risposta_corretta']:
-                messaggio += f"✅ {chr(65+i)}. {opzione}\n"
+                messaggio += f"✅ <b>{chr(65+i)}</b>. <i>{opzione}</i> <b>[CORRETTA]</b>\n"
             else:
-                messaggio += f"⬜ {chr(65+i)}. {opzione}\n"
+                messaggio += f"⚪ <b>{chr(65+i)}</b>. <i>{opzione}</i>\n"
         
-        messaggio += f"\n<b>Spiegazione:</b> {quiz['spiegazione']}\n\n"
-        messaggio += f"<i>Generato il: {quiz.get('generato_il', 'N/D')}</i>"
+        messaggio += f"\n<b>💡 Spiegazione:</b>\n<i>{quiz['spiegazione']}</i>\n\n"
+        messaggio += f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        messaggio += f"📅 <i>Generato il: {quiz.get('generato_il', 'N/D')}</i>"
         
         # Crea i pulsanti per l'approvazione/rifiuto
         keyboard = [

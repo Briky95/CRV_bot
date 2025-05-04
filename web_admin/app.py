@@ -136,6 +136,13 @@ def inject_csrf_token():
     # Usa la funzione dummy se CSRF è disabilitato
     return dict(csrf_token=dummy_csrf)
 
+@app.context_processor
+def utility_processor():
+    """Aggiunge funzioni di utilità ai template."""
+    return {
+        'chr': chr  # Aggiungi la funzione chr() ai template
+    }
+
 # Aggiungi un after_request handler per impostare il token CSRF nei cookie
 @app.after_request
 def set_csrf_cookie(response):
