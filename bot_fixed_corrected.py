@@ -4216,7 +4216,7 @@ async def sezione_arbitrale_callback(update: Update, context: ContextTypes.DEFAU
                     parse_mode='HTML'
                 )
         else:
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            await update.message.reply_text(
                 messaggio,
             reply_markup=reply_markup,
             parse_mode='HTML'
