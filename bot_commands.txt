@@ -1,0 +1,11 @@
+start - Avvia il bot e ricevi il messaggio di benvenuto
+help - Visualizza le istruzioni su come utilizzare il bot
+menu - Mostra il menu principale con tutte le opzioni disponibili
+nuova - Inizia l'inserimento di una nuova partita
+annulla - Annulla l'operazione corrente
+risultati - Visualizza i risultati delle partite recenti
+dashboard - Mostra la tua dashboard personalizzata
+quiz - Gestisci i quiz (solo per amministratori)
+squadre - Gestisci l'elenco delle squadre (solo per amministratori)
+aggiungi_squadra - Aggiungi una nuova squadra (solo per amministratori)
+health - Visualizza lo stato di salute del bot (solo per amministratori)
