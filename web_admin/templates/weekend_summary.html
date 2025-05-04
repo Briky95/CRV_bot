@@ -16,6 +16,9 @@
         </div>
         {% if current_user.is_admin %}
         <div class="btn-group me-2">
+            <a href="{{ url_for('send_weekend_text') }}" class="btn btn-sm btn-primary" onclick="return confirm('Sei sicuro di voler inviare il riepilogo testuale al canale Telegram?');">
+                <i class="fas fa-paper-plane"></i> Invia Testo su Telegram
+            </a>
             <a href="{{ url_for('send_weekend_excel') }}" class="btn btn-sm btn-success" onclick="return confirm('Sei sicuro di voler inviare il file Excel al canale Telegram?');">
                 <i class="fas fa-paper-plane"></i> Invia Excel su Telegram
             </a>

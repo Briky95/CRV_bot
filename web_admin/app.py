@@ -1078,6 +1078,32 @@ async def invia_file_telegram(file_buffer, filename, caption):
     except Exception as e:
         return False, str(e)
 
+# Funzione asincrona per inviare un messaggio di testo al canale Telegram
+async def invia_messaggio_telegram(messaggio, parse_mode="Markdown"):
+    """Invia un messaggio di testo al canale Telegram."""
+    # Usa il token dell'interfaccia web se disponibile, altrimenti usa il token del bot principale
+    token = TOKEN_WEB or BOT_TOKEN
+    channel = CHANNEL_ID_WEB or CHANNEL_ID
+    
+    if not token:
+        return False, "Token del bot Telegram non configurato"
+    
+    try:
+        # Crea un'istanza del bot con un client HTTP separato per evitare conflitti
+        bot = telegram.Bot(token=token)
+        # Imposta un timeout più breve per evitare blocchi
+        await bot.send_message(
+            chat_id=channel,
+            text=messaggio,
+            parse_mode=parse_mode,
+            read_timeout=5,
+            write_timeout=5,
+            connect_timeout=5
+        )
+        return True, "Messaggio inviato con successo"
+    except Exception as e:
+        return False, str(e)
+
 # Rotta per esportare il riepilogo del weekend in Excel
 @app.route('/export/weekend_excel')
 @login_required
@@ -1135,8 +1161,18 @@ def send_weekend_excel():
         # Crea la didascalia per il file
         caption = f"📊 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato Excel"
         
+        # Assicurati che il puntatore sia all'inizio del buffer
+        excel_buffer.seek(0)
+        
+        # Leggi il contenuto del buffer
+        file_content = excel_buffer.read()
+        
+        # Crea un nuovo buffer con il contenuto
+        from io import BytesIO
+        telegram_buffer = BytesIO(file_content)
+        
         # Invia il file al canale Telegram
-        success, message = asyncio.run(invia_file_telegram(excel_buffer, filename, caption))
+        success, message = asyncio.run(invia_file_telegram(telegram_buffer, filename, caption))
         
         if success:
             flash('File Excel inviato con successo al canale Telegram.', 'success')
@@ -1205,8 +1241,18 @@ def send_weekend_pdf():
         # Crea la didascalia per il file
         caption = f"📄 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato PDF"
         
+        # Assicurati che il puntatore sia all'inizio del buffer
+        pdf_buffer.seek(0)
+        
+        # Leggi il contenuto del buffer
+        file_content = pdf_buffer.read()
+        
+        # Crea un nuovo buffer con il contenuto
+        from io import BytesIO
+        telegram_buffer = BytesIO(file_content)
+        
         # Invia il file al canale Telegram
-        success, message = asyncio.run(invia_file_telegram(pdf_buffer, filename, caption))
+        success, message = asyncio.run(invia_file_telegram(telegram_buffer, filename, caption))
         
         if success:
             flash('File PDF inviato con successo al canale Telegram.', 'success')
@@ -1216,6 +1262,36 @@ def send_weekend_pdf():
         return redirect(url_for('weekend_summary'))
     except Exception as e:
         flash(f'Errore durante l\'invio del file PDF: {str(e)}', 'danger')
+        return redirect(url_for('weekend_summary'))
+
+# Rotta per inviare il riepilogo testuale del weekend al canale Telegram
+@app.route('/send/weekend_text')
+@login_required
+def send_weekend_text():
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono inviare messaggi al canale Telegram.', 'danger')
+            return redirect(url_for('weekend_summary'))
+        
+        # Genera il riepilogo del weekend
+        inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend = genera_riepilogo_weekend()
+        
+        if not messaggio or not risultati_weekend:
+            flash(f'Non ci sono risultati per il weekend {inizio_weekend_str} - {fine_weekend_str}.', 'warning')
+            return redirect(url_for('weekend_summary'))
+        
+        # Invia il messaggio al canale Telegram
+        success, message = asyncio.run(invia_messaggio_telegram(messaggio))
+        
+        if success:
+            flash('Riepilogo testuale inviato con successo al canale Telegram.', 'success')
+        else:
+            flash(f'Errore durante l\'invio del messaggio al canale Telegram: {message}', 'danger')
+        
+        return redirect(url_for('weekend_summary'))
+    except Exception as e:
+        flash(f'Errore durante l\'invio del riepilogo testuale: {str(e)}', 'danger')
         return redirect(url_for('weekend_summary'))
 
 # Rotta per esportare i dati in Excel
