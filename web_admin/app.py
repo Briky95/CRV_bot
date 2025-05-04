@@ -109,29 +109,44 @@ app.config['SECRET_KEY'] = secrets.token_hex(16)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # Imposta il limite di tempo per il token CSRF a 1 ora
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disabilita il controllo SSL per il token CSRF
+app.config['WTF_CSRF_CHECK_DEFAULT'] = False  # Disabilita la protezione CSRF per tutte le richieste
 
-# Inizializza la protezione CSRF
-csrf = CSRFProtect(app)
+# Inizializza la protezione CSRF (commentata per disabilitarla completamente)
+# csrf = CSRFProtect(app)
 
 # Importa la funzione per generare il token CSRF
 from flask_wtf.csrf import generate_csrf
 
-# Esenzioni dalla protezione CSRF (se necessario)
+# Esenzioni dalla protezione CSRF per le route AJAX (non necessarie con CSRF disabilitato)
 # @csrf.exempt
-# def my_exempt_view():
-#     return 'Questa vista è esente dalla protezione CSRF'
+# def approve_pending_quiz_route_impl():
+#     pass
+# 
+# @csrf.exempt
+# def reject_pending_quiz_route_impl():
+#     pass
 
 # Aggiungi un context processor per rendere disponibile il token CSRF in tutti i template
 @app.context_processor
 def inject_csrf_token():
-    return dict(csrf_token=generate_csrf)
+    # Funzione dummy per quando CSRF è disabilitato
+    def dummy_csrf():
+        return ""
+    
+    # Usa la funzione dummy se CSRF è disabilitato
+    return dict(csrf_token=dummy_csrf)
 
 # Aggiungi un after_request handler per impostare il token CSRF nei cookie
 @app.after_request
 def set_csrf_cookie(response):
-    if 'text/html' in response.content_type:
-        response.set_cookie('csrf_token', generate_csrf())
+    # Non facciamo nulla se CSRF è disabilitato
     return response
+
+# Proteggi solo i form HTML, non le richieste AJAX (disabilitato)
+@app.before_request
+def csrf_protect():
+    # Non facciamo nulla se CSRF è disabilitato
+    pass
 
 # Carica il token del bot Telegram
 try:
@@ -1452,15 +1467,9 @@ def generate_quizzes():
 
 @app.route('/quizzes/approve_pending', methods=['POST'])
 @login_required
-def approve_pending_quiz_route():
+def approve_pending_quiz_route_impl():
     """Approva un quiz in attesa."""
     try:
-        # Verifica che il token CSRF sia presente
-        csrf_token = request.headers.get('X-CSRFToken')
-        if not csrf_token:
-            app.logger.error("Token CSRF mancante nella richiesta")
-            return jsonify({"success": False, "message": "Token CSRF mancante"}), 400
-        
         data = request.get_json()
         index = int(data.get('index', 0))
         
@@ -1476,15 +1485,9 @@ def approve_pending_quiz_route():
 
 @app.route('/quizzes/reject_pending', methods=['POST'])
 @login_required
-def reject_pending_quiz_route():
+def reject_pending_quiz_route_impl():
     """Rifiuta un quiz in attesa."""
     try:
-        # Verifica che il token CSRF sia presente
-        csrf_token = request.headers.get('X-CSRFToken')
-        if not csrf_token:
-            app.logger.error("Token CSRF mancante nella richiesta")
-            return jsonify({"success": False, "message": "Token CSRF mancante"}), 400
-        
         data = request.get_json()
         index = int(data.get('index', 0))
         

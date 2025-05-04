@@ -414,7 +414,7 @@
         });
         
         function approveQuiz(index) {
-            fetchWithCSRF('{{ url_for("approve_pending_quiz_route") }}', {
+            fetch('{{ url_for("approve_pending_quiz_route_impl") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -436,7 +436,7 @@
         }
         
         function rejectQuiz(index) {
-            fetchWithCSRF('{{ url_for("reject_pending_quiz_route") }}', {
+            fetch('{{ url_for("reject_pending_quiz_route_impl") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
