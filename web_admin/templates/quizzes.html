@@ -414,11 +414,10 @@
         });
         
         function approveQuiz(index) {
-            fetch('{{ url_for("approve_pending_quiz_route") }}', {
+            fetchWithCSRF('{{ url_for("approve_pending_quiz_route") }}', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ index: index })
             })
@@ -437,11 +436,10 @@
         }
         
         function rejectQuiz(index) {
-            fetch('{{ url_for("reject_pending_quiz_route") }}', {
+            fetchWithCSRF('{{ url_for("reject_pending_quiz_route") }}', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ index: index })
             })

@@ -107,9 +107,31 @@ def migra_utenti_vecchio_formato():
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # Imposta il limite di tempo per il token CSRF a 1 ora
+app.config['WTF_CSRF_SSL_STRICT'] = False  # Disabilita il controllo SSL per il token CSRF
 
 # Inizializza la protezione CSRF
 csrf = CSRFProtect(app)
+
+# Importa la funzione per generare il token CSRF
+from flask_wtf.csrf import generate_csrf
+
+# Esenzioni dalla protezione CSRF (se necessario)
+# @csrf.exempt
+# def my_exempt_view():
+#     return 'Questa vista è esente dalla protezione CSRF'
+
+# Aggiungi un context processor per rendere disponibile il token CSRF in tutti i template
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
+
+# Aggiungi un after_request handler per impostare il token CSRF nei cookie
+@app.after_request
+def set_csrf_cookie(response):
+    if 'text/html' in response.content_type:
+        response.set_cookie('csrf_token', generate_csrf())
+    return response
 
 # Carica il token del bot Telegram
 try:
@@ -1433,6 +1455,12 @@ def generate_quizzes():
 def approve_pending_quiz_route():
     """Approva un quiz in attesa."""
     try:
+        # Verifica che il token CSRF sia presente
+        csrf_token = request.headers.get('X-CSRFToken')
+        if not csrf_token:
+            app.logger.error("Token CSRF mancante nella richiesta")
+            return jsonify({"success": False, "message": "Token CSRF mancante"}), 400
+        
         data = request.get_json()
         index = int(data.get('index', 0))
         
@@ -1451,6 +1479,12 @@ def approve_pending_quiz_route():
 def reject_pending_quiz_route():
     """Rifiuta un quiz in attesa."""
     try:
+        # Verifica che il token CSRF sia presente
+        csrf_token = request.headers.get('X-CSRFToken')
+        if not csrf_token:
+            app.logger.error("Token CSRF mancante nella richiesta")
+            return jsonify({"success": False, "message": "Token CSRF mancante"}), 400
+        
         data = request.get_json()
         index = int(data.get('index', 0))
         
