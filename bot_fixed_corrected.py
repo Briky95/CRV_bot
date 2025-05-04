@@ -262,7 +262,8 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_html(
             "⚠️ <b>Accesso non autorizzato</b>\n\n"
             "Non sei autorizzato a utilizzare questo comando.\n"
-            "Usa /start per richiedere l'accesso."
+            "Usa /start per richiedere l'accesso.",
+            parse_mode='HTML'
         )
         return
     
@@ -343,10 +344,30 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_html(
-        messaggio,
-        reply_markup=reply_markup
-    )
+    if update.callback_query:
+        # Handle the case where update.callback_query exists
+        if not is_utente_autorizzato(user_id):
+            await update.callback_query.answer("Non sei autorizzato a utilizzare questa funzione.")
+            await update.callback_query.edit_message_text(
+                "⚠️ <b>Accesso non autorizzato</b>\n\n"
+                "Non sei autorizzato a utilizzare questo comando.\n"
+                "Usa /start per richiedere l'accesso.",
+                parse_mode='HTML'
+            )
+            return
+        
+        await update.callback_query.message.edit_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    else:
+        # Handle the non-callback query case
+        await update.message.reply_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
 
 # Comando /menu
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -358,7 +379,8 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_html(
             "⚠️ <b>Accesso non autorizzato</b>\n\n"
             "Non sei autorizzato a utilizzare questo comando.\n"
-            "Usa /start per richiedere l'accesso."
+            "Usa /start per richiedere l'accesso.",
+            parse_mode='HTML'
         )
         return
     
@@ -1035,6 +1057,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"Usa /risultati per vedere le ultime partite inserite"
         )
     else:
+        pass  # Add a valid statement or logic here if needed
         # Verifica se l'utente è già in attesa di approvazione
         utenti = carica_utenti()
         utente_in_attesa = False
@@ -1118,7 +1141,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_html(
             "⚠️ <b>Accesso non autorizzato</b>\n\n"
             "Non sei autorizzato a utilizzare questo comando.\n"
-            "Usa /start per richiedere l'accesso."
+            "Usa /start per richiedere l'accesso.",
+            parse_mode='HTML'
         )
         # Traccia l'errore
         bot_monitor.track_error("Accesso non autorizzato", "Tentativo di accesso non autorizzato al comando /help", user_id, "/help")
@@ -1160,7 +1184,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "- Per problemi o suggerimenti, contatta un amministratore"
     )
     
-    await update.message.reply_html(help_text)
+    await update.message.reply_html(help_text, parse_mode='HTML')
     
     # Registra il completamento del comando
     bot_monitor.track_command_completion(start_time)
@@ -1183,7 +1207,8 @@ async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not is_admin(user_id):
         await update.message.reply_html(
             "⚠️ <b>Accesso non autorizzato</b>\n\n"
-            "Solo gli amministratori possono visualizzare lo stato di salute del bot."
+            "Solo gli amministratori possono visualizzare lo stato di salute del bot.",
+            parse_mode='HTML'
         )
         # Traccia l'errore
         bot_monitor.track_error("Accesso non autorizzato", "Tentativo di accesso non autorizzato al comando /health", user_id, "/health")
@@ -1205,7 +1230,8 @@ async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Invia il messaggio con i pulsanti
     await update.message.reply_html(
         health_message,
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
+        parse_mode='HTML'
     )
     
     # Registra il completamento del comando
@@ -2708,6 +2734,7 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 parse_mode='HTML'
             )
         else:
+            # Handle the case where update.callback_query does not exist
             await update.message.reply_html(
                 "⚠️ <b>Accesso non autorizzato</b>\n\n"
                 "Non sei autorizzato a utilizzare questo comando.\n"
@@ -2807,7 +2834,7 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             )
         else:
             await update.message.reply_text(
-                f"Si è verificato un errore: {e}\nRiprova più tardi.",
+                "Si è verificato un errore nell'inserimento della sezione arbitrale. Riprova con /nuova.",
                 parse_mode='HTML'
             )
         return ConversationHandler.END
@@ -4216,6 +4243,7 @@ async def sezione_arbitrale_callback(update: Update, context: ContextTypes.DEFAU
                     parse_mode='HTML'
                 )
         else:
+            logger.error(f"Traceback: {traceback.format_exc()}")
             await update.message.reply_text(
                 messaggio,
             reply_markup=reply_markup,
@@ -4226,7 +4254,6 @@ async def sezione_arbitrale_callback(update: Update, context: ContextTypes.DEFAU
         return CONFERMA
     except Exception as e:
         logger.error(f"Errore nella gestione della sezione arbitrale: {e}")
-        await update.message.reply_text(
         
         error_message = "Si è verificato un errore nell'inserimento della sezione arbitrale. Riprova con /nuova."
         
