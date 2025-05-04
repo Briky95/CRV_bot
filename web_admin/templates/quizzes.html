@@ -412,7 +412,7 @@
         });
         
         function approveQuiz(index) {
-            fetch('{{ url_for("approve_pending_quiz") }}', {
+            fetch('{{ url_for("approve_pending_quiz_route") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -435,7 +435,7 @@
         }
         
         function rejectQuiz(index) {
-            fetch('{{ url_for("reject_pending_quiz") }}', {
+            fetch('{{ url_for("reject_pending_quiz_route") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
