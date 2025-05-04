@@ -4774,24 +4774,17 @@ def main() -> None:
             raise
 
 # Classe per gestire le richieste HTTP
-class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'Bot Telegram CRV Rugby attivo!')
-    
-    def log_message(self, format, *args):
-        # Disabilita i log delle richieste HTTP per evitare spam nel log
-        return
+# Importa il gestore delle richieste web
+from modules.web_server import WebRequestHandler
 
 # Funzione per avviare il server HTTP
 def run_http_server():
     # Ottieni la porta da Render o usa 8080 come default
     port = int(os.environ.get('PORT', 8080))
     server_address = ('', port)
-    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    httpd = HTTPServer(server_address, WebRequestHandler)
     logger.info(f"Avvio server HTTP sulla porta {port}...")
+    logger.info(f"Dashboard web disponibile su http://localhost:{port}/")
     httpd.serve_forever()
 
 def start_keep_alive():
