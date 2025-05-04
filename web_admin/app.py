@@ -576,8 +576,15 @@ def add_match():
         return redirect(url_for('matches'))
     
     # Carica le squadre e le categorie per il form
-    squadre = carica_squadre()
+    squadre_raw = carica_squadre()
     categorie = ["Serie A Elite", "Serie A", "Serie B", "Serie C1", "U18 Nazionale", "U18", "U16", "U14"]
+    
+    # Verifica se squadre_raw è già un dizionario
+    if isinstance(squadre_raw, dict):
+        squadre = squadre_raw
+    else:
+        # Se è una lista, crea un dizionario con una sola categoria "Tutte le squadre"
+        squadre = {"Tutte le squadre": sorted(squadre_raw)}
     
     return render_template('add_match.html', squadre=squadre, categorie=categorie)
 
@@ -656,8 +663,15 @@ def edit_match(match_id):
             return redirect(url_for('match_details', match_id=match_id))
         
         # Carica le squadre per il form
-        squadre = carica_squadre()
+        squadre_raw = carica_squadre()
         categorie = ["Serie A Elite", "Serie A", "Serie B", "Serie C1", "U18 Nazionale", "U18", "U16", "U14"]
+        
+        # Verifica se squadre_raw è già un dizionario
+        if isinstance(squadre_raw, dict):
+            squadre = squadre_raw
+        else:
+            # Se è una lista, crea un dizionario con una sola categoria "Tutte le squadre"
+            squadre = {"Tutte le squadre": sorted(squadre_raw)}
         
         return render_template('edit_match.html', 
                               partita=risultati[match_id], 
@@ -695,8 +709,15 @@ def teams():
     
     # Estrai tutte le squadre in una lista unica
     squadre = []
-    for categoria, squadre_categoria in squadre_per_categoria.items():
-        squadre.extend(squadre_categoria)
+    
+    # Verifica se squadre_per_categoria è un dizionario o una lista
+    if isinstance(squadre_per_categoria, dict):
+        # Se è un dizionario, estrai le squadre da ogni categoria
+        for categoria, squadre_categoria in squadre_per_categoria.items():
+            squadre.extend(squadre_categoria)
+    else:
+        # Se è già una lista, usala direttamente
+        squadre = squadre_per_categoria
     
     # Rimuovi eventuali duplicati e ordina alfabeticamente
     squadre = sorted(list(set(squadre)))
@@ -717,12 +738,23 @@ def add_team():
         
         # Estrai tutte le squadre in una lista unica per verificare duplicati
         tutte_le_squadre = []
-        for categoria, squadre_categoria in squadre_per_categoria.items():
-            tutte_le_squadre.extend(squadre_categoria)
+        
+        # Verifica se squadre_per_categoria è un dizionario o una lista
+        if isinstance(squadre_per_categoria, dict):
+            # Se è un dizionario, estrai le squadre da ogni categoria
+            for categoria, squadre_categoria in squadre_per_categoria.items():
+                tutte_le_squadre.extend(squadre_categoria)
+        else:
+            # Se è già una lista, usala direttamente
+            tutte_le_squadre = squadre_per_categoria
         
         # Verifica se la squadra esiste già
         if team_name in tutte_le_squadre:
             return jsonify({"success": False, "message": "Squadra già esistente"}), 400
+        
+        # Se squadre_per_categoria è una lista, convertila in un dizionario
+        if not isinstance(squadre_per_categoria, dict):
+            squadre_per_categoria = {"Generale": list(squadre_per_categoria)}
         
         # Aggiungi la nuova squadra alla categoria "Generale" (o crea la categoria se non esiste)
         if "Generale" not in squadre_per_categoria:
@@ -753,8 +785,15 @@ def update_team():
         
         # Estrai tutte le squadre in una lista unica
         tutte_le_squadre = []
-        for categoria, squadre_categoria in squadre_per_categoria.items():
-            tutte_le_squadre.extend(squadre_categoria)
+        
+        # Verifica se squadre_per_categoria è un dizionario o una lista
+        if isinstance(squadre_per_categoria, dict):
+            # Se è un dizionario, estrai le squadre da ogni categoria
+            for categoria, squadre_categoria in squadre_per_categoria.items():
+                tutte_le_squadre.extend(squadre_categoria)
+        else:
+            # Se è già una lista, usala direttamente
+            tutte_le_squadre = squadre_per_categoria
         
         # Ordina alfabeticamente (come nella route teams())
         tutte_le_squadre = sorted(list(set(tutte_le_squadre)))
@@ -769,6 +808,10 @@ def update_team():
         if new_team_name in tutte_le_squadre and new_team_name != old_team_name:
             return jsonify({"success": False, "message": "Esiste già una squadra con questo nome"}), 400
         
+        # Se squadre_per_categoria è una lista, convertila in un dizionario
+        if not isinstance(squadre_per_categoria, dict):
+            squadre_per_categoria = {"Generale": list(squadre_per_categoria)}
+            
         # Aggiorna il nome della squadra in tutte le categorie
         for categoria, squadre_categoria in squadre_per_categoria.items():
             if old_team_name in squadre_categoria:
@@ -799,8 +842,15 @@ def delete_team():
         
         # Estrai tutte le squadre in una lista unica
         tutte_le_squadre = []
-        for categoria, squadre_categoria in squadre_per_categoria.items():
-            tutte_le_squadre.extend(squadre_categoria)
+        
+        # Verifica se squadre_per_categoria è un dizionario o una lista
+        if isinstance(squadre_per_categoria, dict):
+            # Se è un dizionario, estrai le squadre da ogni categoria
+            for categoria, squadre_categoria in squadre_per_categoria.items():
+                tutte_le_squadre.extend(squadre_categoria)
+        else:
+            # Se è già una lista, usala direttamente
+            tutte_le_squadre = squadre_per_categoria
         
         # Ordina alfabeticamente (come nella route teams())
         tutte_le_squadre = sorted(list(set(tutte_le_squadre)))
@@ -811,6 +861,10 @@ def delete_team():
         # Ottieni il nome della squadra da eliminare
         team_name = tutte_le_squadre[team_index]
         
+        # Se squadre_per_categoria è una lista, convertila in un dizionario
+        if not isinstance(squadre_per_categoria, dict):
+            squadre_per_categoria = {"Generale": list(squadre_per_categoria)}
+            
         # Rimuovi la squadra da tutte le categorie
         for categoria, squadre_categoria in list(squadre_per_categoria.items()):
             if team_name in squadre_categoria:
