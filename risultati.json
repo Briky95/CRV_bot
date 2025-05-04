@@ -1,23 +1,5 @@
 [
   {
-    "id": 3,
-    "categoria": "Test",
-    "squadra1": "Squadra Test 1",
-    "squadra2": "Squadra Test 2",
-    "punteggio1": 25,
-    "punteggio2": 18,
-    "mete1": 3,
-    "mete2": 2,
-    "arbitro": "Test",
-    "inserito_da": "Test Script",
-    "genere": "Test",
-    "data_partita": "02/05/2025",
-    "data_partita_iso": "2025-05-02T00:00:00+00:00",
-    "modificato_da": null,
-    "timestamp_modifica": "2025-05-02T13:34:39.364904+00:00",
-    "message_id": null
-  },
-  {
     "id": 1,
     "categoria": "Serie A",
     "squadra1": "ASD AVALON",
@@ -36,17 +18,21 @@
     "message_id": 27
   },
   {
-    "id": 999,
-    "categoria": "Test",
-    "squadra1": "Test1",
-    "squadra2": "Test2",
-    "punteggio1": 10,
-    "punteggio2": 5,
-    "mete1": 2,
-    "mete2": 1,
-    "arbitro": "Test",
-    "inserito_da": "Test",
-    "genere": "M",
-    "data_partita": "01/01/2025"
+    "id": 1746362541,
+    "categoria": "Test Script",
+    "squadra1": "Squadra Test A",
+    "squadra2": "Squadra Test B",
+    "punteggio1": 30,
+    "punteggio2": 25,
+    "mete1": 4,
+    "mete2": 3,
+    "arbitro": "Test Script",
+    "inserito_da": "Test Script",
+    "genere": "Test",
+    "data_partita": "03/05/2025",
+    "data_partita_iso": "2025-05-03T00:00:00+00:00",
+    "modificato_da": null,
+    "timestamp_modifica": "2025-05-04T12:42:21.626117+00:00",
+    "message_id": null
   }
 ]

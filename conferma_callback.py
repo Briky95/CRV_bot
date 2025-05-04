@@ -28,9 +28,15 @@ async def conferma_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "squadra2": context.user_data['squadra2'],
                 "arbitro": context.user_data['arbitro'],
                 "inserito_da": update.effective_user.full_name,
-                "timestamp": datetime.now().isoformat(),
                 "id": int(datetime.now().timestamp())  # Genera un ID univoco basato sul timestamp
             }
+            
+            # Converti la data nel formato ISO
+            try:
+                data = datetime.strptime(context.user_data['data_partita'], '%d/%m/%Y')
+                nuovo_risultato["data_partita_iso"] = data.isoformat()
+            except ValueError:
+                nuovo_risultato["data_partita_iso"] = None
             
             # Gestione diversa per partite normali e triangolari
             if context.user_data.get('tipo_partita') == 'triangolare':

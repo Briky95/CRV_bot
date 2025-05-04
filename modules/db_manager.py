@@ -437,8 +437,11 @@ def salva_risultati(risultati: List[Dict[str, Any]]) -> bool:
                            # Campi specifici per i triangolari
                            'partita1_punteggio1', 'partita1_punteggio2', 'partita1_mete1', 'partita1_mete2',
                            'partita2_punteggio1', 'partita2_punteggio2', 'partita2_mete1', 'partita2_mete2',
-                           'partita3_punteggio1', 'partita3_punteggio2', 'partita3_mete1', 'partita3_mete2',
-                           'timestamp']
+                           'partita3_punteggio1', 'partita3_punteggio2', 'partita3_mete1', 'partita3_mete2']
+            
+            # Rimuovi esplicitamente il campo timestamp se presente
+            if 'timestamp' in risultato_db:
+                del risultato_db['timestamp']
             
             # Crea un nuovo dizionario con solo i campi validi
             risultato_filtrato = {}
