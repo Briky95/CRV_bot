@@ -11,6 +11,7 @@ import socket
 import sys
 import atexit
 import tempfile
+import traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -4207,8 +4208,16 @@ async def sezione_arbitrale_callback(update: Update, context: ContextTypes.DEFAU
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await update.message.reply_text(
-            messaggio,
+        # Gestisci diversamente a seconda che l'aggiornamento provenga da un messaggio o da un callback query
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+        else:
+            logger.error(f"Traceback: {traceback.format_exc()}")
+                messaggio,
             reply_markup=reply_markup,
             parse_mode='HTML'
         )
@@ -4216,10 +4225,23 @@ async def sezione_arbitrale_callback(update: Update, context: ContextTypes.DEFAU
         context.user_data['stato_corrente'] = CONFERMA
         return CONFERMA
     except Exception as e:
-        logger.error(f"Errore nell'inserimento dell'arbitro: {e}")
+        logger.error(f"Errore nella gestione della sezione arbitrale: {e}")
         await update.message.reply_text(
-            "Si è verificato un errore nell'inserimento dell'arbitro. Riprova con /nuova."
-        )
+        
+        error_message = "Si è verificato un errore nell'inserimento della sezione arbitrale. Riprova con /nuova."
+        
+        # Gestisci diversamente a seconda che l'aggiornamento provenga da un messaggio o da un callback query
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                error_message,
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text(
+                error_message,
+                parse_mode='HTML'
+            )
+        
         return ConversationHandler.END
 
 # Callback per la conferma dell'inserimento
