@@ -250,18 +250,24 @@ def formatta_messaggio_partita_normale(risultato):
     # Determina il risultato con stile visivo migliorato
     if punteggio1 > punteggio2:
         risultato_emoji = "🏆 VITTORIA SQUADRA CASA"
-        squadra1_style = "<b>"
-        squadra2_style = ""
+        squadra1_style_open = "<b>"
+        squadra1_style_close = "</b>"
+        squadra2_style_open = ""
+        squadra2_style_close = ""
         punteggio_style = f"<b>{punteggio1}</b> - {punteggio2}"
     elif punteggio2 > punteggio1:
         risultato_emoji = "🏆 VITTORIA SQUADRA OSPITE"
-        squadra1_style = ""
-        squadra2_style = "<b>"
+        squadra1_style_open = ""
+        squadra1_style_close = ""
+        squadra2_style_open = "<b>"
+        squadra2_style_close = "</b>"
         punteggio_style = f"{punteggio1} - <b>{punteggio2}</b>"
     else:
         risultato_emoji = "🤝 PAREGGIO"
-        squadra1_style = "<i>"
-        squadra2_style = "<i>"
+        squadra1_style_open = "<i>"
+        squadra1_style_close = "</i>"
+        squadra2_style_open = "<i>"
+        squadra2_style_close = "</i>"
         punteggio_style = f"<b>{punteggio1} - {punteggio2}</b>"
     
     # Crea il messaggio con layout migliorato
@@ -273,8 +279,8 @@ def formatta_messaggio_partita_normale(risultato):
     messaggio += f"<code>  {risultato_emoji}  </code>\n\n"
     
     # Visualizzazione squadre e punteggio con stile migliorato
-    messaggio += f"🏠 {squadra1_style}{risultato['squadra1']}</b>\n"
-    messaggio += f"🏁 {squadra2_style}{risultato['squadra2']}</b>\n\n"
+    messaggio += f"🏠 {squadra1_style_open}{risultato['squadra1']}{squadra1_style_close}\n"
+    messaggio += f"🏁 {squadra2_style_open}{risultato['squadra2']}{squadra2_style_close}\n\n"
     messaggio += f"📊 <b>RISULTATO:</b> {punteggio_style}\n"
     messaggio += f"🏉 <b>METE:</b> {risultato['mete1']} - {risultato['mete2']}\n\n"
     
