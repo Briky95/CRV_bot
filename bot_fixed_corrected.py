@@ -10,6 +10,7 @@ import threading
 import socket
 import sys
 import atexit
+import tempfile
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -17,6 +18,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_riepilogo_weekend
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre
 from modules.data_manager import carica_reazioni, salva_reazioni
+from modules.monitor import bot_monitor
 from conferma_callback import conferma_callback
 
 # Abilita logging
@@ -615,84 +617,17 @@ def genera_riepilogo_weekend():
         
         risultati_per_categoria[key].append(r)
     
-    # Crea il messaggio con il riepilogo in formato più accattivante
-    messaggio = f"🏆 <b>RIEPILOGO WEEKEND RUGBY</b> 🏆\n"
-    messaggio += f"📅 <i>Weekend del {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')}</i>\n"
-    messaggio += "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n"
-    messaggio += f"<i>Ecco tutti i risultati delle partite giocate questo weekend nel Comitato Regionale Veneto.</i>\n\n"
+    # Usa la funzione di formattazione migliorata dal modulo message_manager
+    from modules.message_manager import formatta_messaggio_riepilogo_weekend
     
-    for categoria, partite in risultati_per_categoria.items():
-        # Aggiungi un'icona diversa in base alla categoria
-        if "Elite" in categoria:
-            icona = "🔝"
-        elif "Serie A" in categoria:
-            icona = "🏆"
-        elif "Serie B" in categoria:
-            icona = "🥈"
-        elif "Serie C" in categoria:
-            icona = "🥉"
-        elif "U18" in categoria:
-            icona = "👦"
-        elif "U16" in categoria:
-            icona = "👦"
-        elif "U14" in categoria:
-            icona = "👦"
-        else:
-            icona = "📋"
-            
-        messaggio += f"\n<b>{icona} {categoria.upper()}</b>\n"
-        messaggio += "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
-        
-        for p in partite:
-            # Determina il vincitore
-            punteggio1 = int(p.get('punteggio1', 0))
-            punteggio2 = int(p.get('punteggio2', 0))
-            
-            # Abbrevia i nomi delle squadre se sono troppo lunghi
-            squadra1 = p.get('squadra1', '')
-            squadra2 = p.get('squadra2', '')
-            
-            if len(squadra1) > 20:
-                squadra1 = squadra1[:17] + "..."
-            if len(squadra2) > 20:
-                squadra2 = squadra2[:17] + "..."
-            
-            # Formatta il risultato in modo più leggibile
-            if punteggio1 > punteggio2:
-                risultato = f"<b>{squadra1}</b> <code>{punteggio1}:{punteggio2}</code> {squadra2} 🏆"
-            elif punteggio2 > punteggio1:
-                risultato = f"{squadra1} <code>{punteggio1}:{punteggio2}</code> <b>{squadra2}</b> 🏆"
-            else:
-                risultato = f"{squadra1} <code>{punteggio1}:{punteggio2}</code> {squadra2} 🤝"
-            
-            # Aggiungi la data della partita se disponibile
-            data_partita = p.get('data_partita', '')
-            if data_partita:
-                data_display = f"<i>({data_partita})</i> "
-            else:
-                data_display = ""
-                
-            messaggio += f"• {data_display}{risultato}\n"
-        
-        messaggio += "\n"
+    # Formatta le date per il messaggio
+    inizio_weekend_str_format = inizio_weekend.strftime('%d/%m/%Y')
+    fine_weekend_str_format = fine_weekend.strftime('%d/%m/%Y')
     
-    # Aggiungi statistiche del weekend in formato più dettagliato e visivamente accattivante
-    totale_partite = len(risultati_weekend)
-    totale_punti = sum(int(r.get('punteggio1', 0)) + int(r.get('punteggio2', 0)) for r in risultati_weekend)
-    totale_mete = sum(int(r.get('mete1', 0)) + int(r.get('mete2', 0)) for r in risultati_weekend)
+    # Usa la funzione migliorata per formattare il messaggio
+    messaggio = formatta_messaggio_riepilogo_weekend(risultati_weekend, inizio_weekend_str_format, fine_weekend_str_format)
     
-    # Calcola la media di punti e mete per partita
-    media_punti = round(totale_punti / totale_partite, 1) if totale_partite > 0 else 0
-    media_mete = round(totale_mete / totale_partite, 1) if totale_partite > 0 else 0
-    
-    messaggio += "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n"
-    messaggio += f"<b>📊 STATISTICHE WEEKEND</b>\n\n"
-    messaggio += f"🏟️ <b>Partite giocate:</b> {totale_partite}\n"
-    messaggio += f"🔢 <b>Punti totali:</b> {totale_punti} (media: {media_punti} per partita)\n"
-    messaggio += f"🏉 <b>Mete totali:</b> {totale_mete} (media: {media_mete} per partita)\n\n"
-    
-    # Aggiungi il disclaimer in formato più elegante
-    messaggio += "<i>⚠️ Tutti i risultati sono in attesa di omologazione ufficiale da parte del Giudice Sportivo</i>"
+
     
     return inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend
 
@@ -1156,6 +1091,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Invia un messaggio quando viene emesso il comando /help."""
     user_id = update.effective_user.id
+    user_name = update.effective_user.full_name
+    is_admin_user = is_admin(user_id)
+    
+    # Traccia il comando nel monitor
+    start_time = bot_monitor.track_command(
+        user_id=user_id,
+        user_name=user_name,
+        command="/help",
+        is_admin=is_admin_user
+    )
     
     # Verifica che l'utente sia autorizzato
     if not is_utente_autorizzato(user_id):
@@ -1164,9 +1109,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "Non sei autorizzato a utilizzare questo comando.\n"
             "Usa /start per richiedere l'accesso."
         )
+        # Traccia l'errore
+        bot_monitor.track_error("Accesso non autorizzato", "Tentativo di accesso non autorizzato al comando /help", user_id, "/help")
         return
     
-    await update.message.reply_html(
+    help_text = (
         "<b>🏉 GUIDA AL BOT</b>\n\n"
         "Questo bot ti permette di inserire e visualizzare i risultati delle partite di rugby del CRV.\n\n"
         "<b>Comandi disponibili:</b>\n"
@@ -1175,8 +1122,20 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/dashboard - Mostra la tua dashboard personalizzata\n"
         "/nuova - Inserisci una nuova partita\n"
         "/risultati - Visualizza gli ultimi risultati\n"
-        "/help - Mostra questo messaggio di aiuto\n\n"
-        "<b>Come inserire una nuova partita:</b>\n"
+        "/help - Mostra questo messaggio di aiuto\n"
+    )
+    
+    # Aggiungi comandi admin se l'utente è amministratore
+    if is_admin_user:
+        help_text += (
+            "\n<b>🔐 Comandi amministratore:</b>\n"
+            "/utenti - Gestisci gli utenti autorizzati\n"
+            "/squadre - Gestisci l'elenco delle squadre\n"
+            "/health - Visualizza lo stato di salute del bot\n"
+        )
+    
+    help_text += (
+        "\n<b>Come inserire una nuova partita:</b>\n"
         "1. Usa il comando /nuova o seleziona 'Inserisci nuova partita' dal menu\n"
         "2. Seleziona la categoria e il genere della partita\n"
         "3. Seleziona le squadre che hanno giocato\n"
@@ -1189,6 +1148,132 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "- Solo gli utenti autorizzati possono inserire nuovi risultati\n"
         "- Per problemi o suggerimenti, contatta un amministratore"
     )
+    
+    await update.message.reply_html(help_text)
+    
+    # Registra il completamento del comando
+    bot_monitor.track_command_completion(start_time)
+
+# Comando /health per mostrare lo stato di salute del bot
+async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Mostra lo stato di salute del bot (solo per amministratori)."""
+    user_id = update.effective_user.id
+    user_name = update.effective_user.full_name
+    
+    # Traccia il comando nel monitor
+    start_time = bot_monitor.track_command(
+        user_id=user_id,
+        user_name=user_name,
+        command="/health",
+        is_admin=is_admin(user_id)
+    )
+    
+    # Verifica che l'utente sia un amministratore
+    if not is_admin(user_id):
+        await update.message.reply_html(
+            "⚠️ <b>Accesso non autorizzato</b>\n\n"
+            "Solo gli amministratori possono visualizzare lo stato di salute del bot."
+        )
+        # Traccia l'errore
+        bot_monitor.track_error("Accesso non autorizzato", "Tentativo di accesso non autorizzato al comando /health", user_id, "/health")
+        return
+    
+    # Ottieni e formatta il messaggio di stato
+    health_message = bot_monitor.format_health_message()
+    
+    # Crea pulsanti per azioni aggiuntive
+    keyboard = [
+        [InlineKeyboardButton("🔄 Aggiorna", callback_data="health_refresh")],
+        [
+            InlineKeyboardButton("📊 Esporta dati", callback_data="health_export"),
+            InlineKeyboardButton("🧹 Pulisci errori", callback_data="health_clear_errors")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Invia il messaggio con i pulsanti
+    await update.message.reply_html(
+        health_message,
+        reply_markup=reply_markup
+    )
+    
+    # Registra il completamento del comando
+    bot_monitor.track_command_completion(start_time)
+
+# Callback per il comando health
+async def health_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce i callback del comando health."""
+    query = update.callback_query
+    user_id = query.from_user.id
+    
+    # Verifica che l'utente sia un amministratore
+    if not is_admin(user_id):
+        await query.answer("Solo gli amministratori possono eseguire questa azione.")
+        return
+    
+    await query.answer()
+    
+    action = query.data.replace("health_", "")
+    
+    if action == "refresh":
+        # Aggiorna le metriche e mostra il messaggio aggiornato
+        health_message = bot_monitor.format_health_message()
+        
+        keyboard = [
+            [InlineKeyboardButton("🔄 Aggiorna", callback_data="health_refresh")],
+            [
+                InlineKeyboardButton("📊 Esporta dati", callback_data="health_export"),
+                InlineKeyboardButton("🧹 Pulisci errori", callback_data="health_clear_errors")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            health_message,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif action == "export":
+        # Esporta i dati di monitoraggio in formato JSON
+        health_data = bot_monitor.get_health_status()
+        json_data = json.dumps(health_data, indent=2, default=str)
+        
+        # Crea un file temporaneo
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as temp_file:
+            temp_file.write(json_data.encode('utf-8'))
+            temp_file_path = temp_file.name
+        
+        # Invia il file JSON
+        with open(temp_file_path, 'rb') as file:
+            await context.bot.send_document(
+                chat_id=user_id,
+                document=file,
+                filename=f"bot_health_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                caption="📊 Dati di monitoraggio del bot"
+            )
+        
+        # Elimina il file temporaneo
+        os.unlink(temp_file_path)
+        
+        await query.edit_message_text(
+            "✅ I dati di monitoraggio sono stati esportati con successo.\n\n"
+            "Usa il pulsante qui sotto per tornare alla dashboard di monitoraggio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Torna al monitoraggio", callback_data="health_refresh")]]),
+            parse_mode='HTML'
+        )
+    
+    elif action == "clear_errors":
+        # Pulisci la cronologia degli errori
+        bot_monitor.error_history.clear()
+        bot_monitor.metrics['errors'] = 0
+        
+        await query.edit_message_text(
+            "✅ La cronologia degli errori è stata pulita con successo.\n\n"
+            "Usa il pulsante qui sotto per tornare alla dashboard di monitoraggio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Torna al monitoraggio", callback_data="health_refresh")]]),
+            parse_mode='HTML'
+        )
 
 # Funzione per mostrare le statistiche
 async def mostra_statistiche(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1388,9 +1473,54 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             return
         
-        # Reindirizza all'esportazione Excel
-        query.data = "esporta_excel_riepilogo"
-        return await esporta_excel_riepilogo_callback(update, context)
+        # Genera il riepilogo direttamente qui invece di reindirizzare
+        inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend = genera_riepilogo_weekend()
+        
+        if not messaggio or not risultati_weekend:
+            await query.edit_message_text(
+                "⚠️ Nessun risultato trovato per il weekend corrente o precedente.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+            return
+        
+        # Genera il file Excel
+        try:
+            # Mostra messaggio di attesa
+            await query.edit_message_text(
+                "⏳ Generazione del file Excel in corso...",
+                parse_mode='HTML'
+            )
+            
+            # Genera il file Excel
+            excel_buffer = genera_excel_riepilogo_weekend(risultati_weekend, inizio_weekend_str, fine_weekend_str)
+            
+            # Crea un nome per il file Excel
+            inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
+            fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
+            excel_filename = f"Riepilogo_Rugby_{inizio_weekend.strftime('%d-%m-%Y')}_{fine_weekend.strftime('%d-%m-%Y')}.xlsx"
+            
+            # Invia il file Excel all'utente
+            await context.bot.send_document(
+                chat_id=query.from_user.id,
+                document=excel_buffer,
+                filename=excel_filename,
+                caption=f"📊 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato Excel"
+            )
+            
+            # Aggiorna il messaggio
+            await query.edit_message_text(
+                "✅ File Excel generato e inviato con successo!",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+        except Exception as e:
+            logger.error(f"Errore durante la generazione del file Excel: {e}")
+            await query.edit_message_text(
+                f"❌ Errore durante la generazione del file Excel: {e}",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
     
     elif azione == "pdf":
         # Verifica che l'utente sia un amministratore
@@ -1402,9 +1532,54 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             return
         
-        # Reindirizza all'esportazione PDF
-        query.data = "esporta_pdf_riepilogo"
-        return await esporta_pdf_riepilogo_callback(update, context)
+        # Genera il riepilogo direttamente qui invece di reindirizzare
+        inizio_weekend_str, fine_weekend_str, messaggio, risultati_weekend = genera_riepilogo_weekend()
+        
+        if not messaggio or not risultati_weekend:
+            await query.edit_message_text(
+                "⚠️ Nessun risultato trovato per il weekend corrente o precedente.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+            return
+        
+        # Genera il file PDF
+        try:
+            # Mostra messaggio di attesa
+            await query.edit_message_text(
+                "⏳ Generazione del file PDF in corso...",
+                parse_mode='HTML'
+            )
+            
+            # Genera il file PDF
+            pdf_buffer = genera_pdf_riepilogo_weekend(risultati_weekend, inizio_weekend_str, fine_weekend_str)
+            
+            # Crea un nome per il file PDF
+            inizio_weekend = datetime.strptime(inizio_weekend_str, "%d/%m/%Y")
+            fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
+            pdf_filename = f"Riepilogo_Rugby_{inizio_weekend.strftime('%d-%m-%Y')}_{fine_weekend.strftime('%d-%m-%Y')}.pdf"
+            
+            # Invia il file PDF all'utente
+            await context.bot.send_document(
+                chat_id=query.from_user.id,
+                document=pdf_buffer,
+                filename=pdf_filename,
+                caption=f"📄 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato PDF"
+            )
+            
+            # Aggiorna il messaggio
+            await query.edit_message_text(
+                "✅ File PDF generato e inviato con successo!",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
+        except Exception as e:
+            logger.error(f"Errore durante la generazione del file PDF: {e}")
+            await query.edit_message_text(
+                f"❌ Errore durante la generazione del file PDF: {e}",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Torna alla dashboard", callback_data="dashboard_torna")]])
+            )
     
     elif azione == "torna":
         # Torna alla dashboard
@@ -4423,6 +4598,7 @@ def main() -> None:
     application.add_handler(CommandHandler("dashboard", dashboard_command))
     application.add_handler(CommandHandler("squadre", squadre_command))
     application.add_handler(CommandHandler("aggiungi_squadra", aggiungi_squadra_command))
+    application.add_handler(CommandHandler("health", health_command))
     
     # Aggiungi il gestore per i callback delle query inline
     application.add_handler(CallbackQueryHandler(reaction_callback, pattern=r"^(reaction:|view_reactions:)"))
@@ -4436,6 +4612,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(promuovi_utente_callback, pattern=r"^promuovi_"))
     application.add_handler(CallbackQueryHandler(declassa_utente_callback, pattern=r"^declassa_"))
     application.add_handler(CallbackQueryHandler(gestione_utenti_callback, pattern=r"^(mostra_autorizzati|mostra_in_attesa|cerca_utente|rimuovi_)"))
+    application.add_handler(CallbackQueryHandler(health_callback, pattern=r"^health_"))
     
     # Aggiungi il gestore per la conversazione di inserimento nuova partita
     conv_handler = ConversationHandler(
