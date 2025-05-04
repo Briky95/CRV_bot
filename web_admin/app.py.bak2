@@ -1174,6 +1174,7 @@ def backup_data():
         flash(f'Si è verificato un errore durante il backup dei dati: {str(e)}', 'danger')
         return redirect(url_for('monitor'))
 
+        
         # Ottieni informazioni sul sistema
         import platform
         import psutil

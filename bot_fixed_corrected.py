@@ -1373,8 +1373,10 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     azione = query.data.replace("dashboard_", "")
     
     if azione == "nuova":
-        # Questo caso è ora gestito direttamente dal ConversationHandler
-        pass
+        # Avvia il processo di inserimento di una nuova partita
+        # Questo caso dovrebbe essere gestito dal ConversationHandler, ma aggiungiamo
+        # un reindirizzamento esplicito per sicurezza
+        await nuova_partita(update, context)
     
     elif azione == "risultati":
         # Mostra gli ultimi risultati
