@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf.csrf import CSRFProtect
 import sys
 
 # Funzioni personalizzate per l'hashing delle password
@@ -106,6 +107,9 @@ def migra_utenti_vecchio_formato():
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+
+# Inizializza la protezione CSRF
+csrf = CSRFProtect(app)
 
 # Carica il token del bot Telegram
 try:

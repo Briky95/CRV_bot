@@ -162,6 +162,7 @@
                     </div>
                     <div class="card-body">
                         <form action="{{ url_for('add_category') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label for="categoryName" class="form-label">Nome Categoria</label>
                                 <input type="text" class="form-control" id="categoryName" name="name" required>
@@ -336,6 +337,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
                 <form action="{{ url_for('delete_quiz') }}" method="post" id="deleteQuizForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="category" id="deleteCategory">
                     <input type="hidden" name="index" id="deleteIndex">
                     <button type="submit" class="btn btn-danger">Elimina</button>

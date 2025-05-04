@@ -535,36 +535,85 @@ def configura_job_quiz(application, channel_id):
         # Orario per l'invio del quiz giornaliero (12:00)
         job_time = dt_time(hour=12, minute=0, second=0)
         
-        # Funzione wrapper per il job
-        async def job_invia_quiz(context):
-            await invia_quiz_al_canale(context, channel_id)
-        
-        # Pianifica il job giornaliero
-        application.job_queue.run_daily(
-            job_invia_quiz,
-            time=job_time,
-            name="quiz_giornaliero"
-        )
-        
-        # Pianifica anche il job per mostrare i risultati dopo 24 ore
-        async def job_mostra_risultati(context):
-            stats = carica_statistiche_quiz()
-            ieri = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        # Prova prima con il job_queue standard
+        try:
+            # Funzione wrapper per il job
+            async def job_invia_quiz(context):
+                await invia_quiz_al_canale(context, channel_id)
             
-            for quiz in stats["quiz_giornalieri"]:
-                if quiz.get("data") == ieri and quiz.get("message_id"):
-                    await mostra_risultati_quiz(context, channel_id, quiz.get("message_id"))
-        
-        # Pianifica il job per mostrare i risultati (alle 11:55, prima del nuovo quiz)
-        risultati_time = dt_time(hour=11, minute=55, second=0)
-        application.job_queue.run_daily(
-            job_mostra_risultati,
-            time=risultati_time,
-            name="mostra_risultati_quiz"
-        )
-        
-        logger.info(f"Job per quiz giornaliero configurato con successo per le {job_time}")
-        return True
+            # Pianifica il job giornaliero
+            application.job_queue.run_daily(
+                job_invia_quiz,
+                time=job_time,
+                name="quiz_giornaliero"
+            )
+            
+            # Pianifica anche il job per mostrare i risultati dopo 24 ore
+            async def job_mostra_risultati(context):
+                stats = carica_statistiche_quiz()
+                ieri = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+                
+                for quiz in stats["quiz_giornalieri"]:
+                    if quiz.get("data") == ieri and quiz.get("message_id"):
+                        await mostra_risultati_quiz(context, channel_id, quiz.get("message_id"))
+            
+            # Pianifica il job per mostrare i risultati (alle 11:55, prima del nuovo quiz)
+            risultati_time = dt_time(hour=11, minute=55, second=0)
+            application.job_queue.run_daily(
+                job_mostra_risultati,
+                time=risultati_time,
+                name="mostra_risultati_quiz"
+            )
+            
+            logger.info(f"Job per quiz giornaliero configurato con successo per le {job_time} usando job_queue standard")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Impossibile utilizzare job_queue standard: {e}. Provo con JobManager alternativo...")
+            
+            # Utilizza il JobManager alternativo
+            try:
+                from modules.job_manager import job_manager
+                
+                # Wrapper per adattare la funzione al formato richiesto dal JobManager
+                async def job_invia_quiz_wrapper(context_data):
+                    # Crea un contesto fittizio con il bot
+                    class FakeContext:
+                        def __init__(self, bot):
+                            self.bot = bot
+                    
+                    fake_context = FakeContext(application.bot)
+                    await invia_quiz_al_canale(fake_context, channel_id)
+                
+                # Wrapper per mostrare i risultati
+                async def job_mostra_risultati_wrapper(context_data):
+                    class FakeContext:
+                        def __init__(self, bot):
+                            self.bot = bot
+                    
+                    fake_context = FakeContext(application.bot)
+                    stats = carica_statistiche_quiz()
+                    ieri = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+                    
+                    for quiz in stats["quiz_giornalieri"]:
+                        if quiz.get("data") == ieri and quiz.get("message_id"):
+                            await mostra_risultati_quiz(fake_context, channel_id, quiz.get("message_id"))
+                
+                # Pianifica i job con il JobManager alternativo
+                # Tutti i giorni della settimana (0-6)
+                all_days = list(range(7))
+                job_manager.run_daily(job_invia_quiz_wrapper, job_time, days=all_days, name="quiz_giornaliero")
+                
+                risultati_time = dt_time(hour=11, minute=55, second=0)
+                job_manager.run_daily(job_mostra_risultati_wrapper, risultati_time, days=all_days, name="mostra_risultati_quiz")
+                
+                logger.info(f"Job per quiz giornaliero configurato con successo per le {job_time} usando JobManager alternativo")
+                return True
+                
+            except Exception as alt_error:
+                logger.error(f"Errore nella configurazione del job con JobManager alternativo: {alt_error}")
+                return False
+                
     except Exception as e:
         logger.error(f"Errore nella configurazione del job per i quiz: {e}")
         return False

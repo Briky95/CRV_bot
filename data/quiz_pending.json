@@ -1,4 +1,33 @@
 {
-    "quiz_pending": [],
+    "quiz_pending": [
+        {
+            "categoria": "Tecnica e Tattica",
+            "domanda": "Cosa si intende per 'ruck' nel rugby?",
+            "opzioni": [
+                "Un tipo di calcio",
+                "Una formazione di gioco",
+                "Una fase di gioco dopo un placcaggio",
+                "Un fallo di gioco"
+            ],
+            "risposta_corretta": 2,
+            "spiegazione": "Il ruck è una fase di gioco che si forma dopo un placcaggio quando uno o più giocatori di ciascuna squadra sono in piedi e in contatto fisico, chiudendosi attorno alla palla a terra. I giocatori devono usare i piedi per conquistare o mantenere il possesso della palla.",
+            "generato_il": "2025-05-05 00:01:47",
+            "nota": "Quiz di esempio generato in modalità offline"
+        },
+        {
+            "categoria": "Giocatori Famosi",
+            "domanda": "Chi è il giocatore che ha segnato più mete nella storia della Coppa del Mondo di rugby?",
+            "opzioni": [
+                "Jonah Lomu",
+                "Bryan Habana",
+                "Doug Howlett",
+                "Shane Williams"
+            ],
+            "risposta_corretta": 1,
+            "spiegazione": "Bryan Habana, ex ala sudafricana, detiene il record di mete segnate nella Coppa del Mondo di rugby insieme a Jonah Lomu, entrambi con 15 mete. Habana ha raggiunto questo record nel 2015, eguagliando il primato stabilito dalla leggenda neozelandese Lomu.",
+            "generato_il": "2025-05-05 00:02:01",
+            "nota": "Quiz di esempio generato in modalità offline"
+        }
+    ],
     "last_generated": "2025-05-04 23:24:41"
 }

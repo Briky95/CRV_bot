@@ -57,7 +57,33 @@ def load_pending_quizzes() -> Dict[str, Any]:
     
     try:
         with open(QUIZ_PENDING_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
+            data = json.load(file)
+            
+            # Verifica che il formato del file sia corretto
+            if not isinstance(data, dict):
+                logger.error(f"Il file dei quiz in attesa non contiene un dizionario: {type(data)}")
+                data = {"quiz_pending": [], "last_generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+                save_pending_quizzes(data)
+            
+            # Verifica che quiz_pending sia presente e sia una lista
+            if "quiz_pending" not in data:
+                logger.error("Il file dei quiz in attesa non contiene la chiave 'quiz_pending'")
+                data["quiz_pending"] = []
+            elif not isinstance(data["quiz_pending"], list):
+                logger.error(f"quiz_pending non è una lista: {type(data['quiz_pending'])}")
+                data["quiz_pending"] = []
+            
+            # Verifica che last_generated sia presente
+            if "last_generated" not in data:
+                data["last_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            return data
+    except json.JSONDecodeError as e:
+        logger.error(f"Errore nella decodifica del file JSON dei quiz in attesa: {e}")
+        # Il file è corrotto, lo reiniziamo
+        data = {"quiz_pending": [], "last_generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        save_pending_quizzes(data)
+        return data
     except Exception as e:
         logger.error(f"Errore nel caricamento dei quiz in attesa: {e}")
         return {"quiz_pending": [], "last_generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -65,8 +91,31 @@ def load_pending_quizzes() -> Dict[str, Any]:
 def save_pending_quizzes(data: Dict[str, Any]) -> bool:
     """Salva i quiz in attesa di approvazione."""
     try:
+        # Verifica che data sia un dizionario
+        if not isinstance(data, dict):
+            logger.error(f"I dati da salvare non sono un dizionario: {type(data)}")
+            data = {"quiz_pending": [], "last_generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        
+        # Verifica che quiz_pending sia presente e sia una lista
+        if "quiz_pending" not in data:
+            logger.error("I dati da salvare non contengono la chiave 'quiz_pending'")
+            data["quiz_pending"] = []
+        elif not isinstance(data["quiz_pending"], list):
+            logger.error(f"quiz_pending non è una lista: {type(data['quiz_pending'])}")
+            data["quiz_pending"] = []
+        
+        # Verifica che last_generated sia presente
+        if "last_generated" not in data:
+            data["last_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Crea la directory se non esiste
+        os.makedirs(os.path.dirname(QUIZ_PENDING_FILE), exist_ok=True)
+        
+        # Salva i dati
         with open(QUIZ_PENDING_FILE, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
+        
+        logger.info(f"Salvati {len(data['quiz_pending'])} quiz in attesa")
         return True
     except Exception as e:
         logger.error(f"Errore nel salvataggio dei quiz in attesa: {e}")
@@ -133,13 +182,43 @@ def generate_sample_quiz(category: str = None) -> Dict[str, Any]:
     
     # Seleziona un quiz dalla categoria specificata o uno casuale se la categoria non è disponibile
     if category in sample_quizzes:
-        quiz = sample_quizzes[category]
+        quiz = dict(sample_quizzes[category])  # Crea una copia del dizionario
     else:
-        quiz = random.choice(list(sample_quizzes.values()))
+        quiz = dict(random.choice(list(sample_quizzes.values())))  # Crea una copia del dizionario
     
     # Aggiungi la data di generazione e un indicatore che è un quiz di esempio
     quiz["generato_il"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     quiz["nota"] = "Quiz di esempio generato in modalità offline"
+    
+    # Verifica che il quiz contenga tutti i campi necessari
+    required_fields = ["categoria", "domanda", "opzioni", "risposta_corretta", "spiegazione"]
+    for field in required_fields:
+        if field not in quiz:
+            logger.error(f"Campo mancante nel quiz di esempio: {field}")
+            # Aggiungi un valore predefinito
+            if field == "categoria":
+                quiz[field] = category or "Regole del Rugby"
+            elif field == "domanda":
+                quiz[field] = "Domanda di esempio"
+            elif field == "opzioni":
+                quiz[field] = ["Opzione A", "Opzione B", "Opzione C", "Opzione D"]
+            elif field == "risposta_corretta":
+                quiz[field] = 0
+            elif field == "spiegazione":
+                quiz[field] = "Spiegazione di esempio"
+    
+    # Verifica che ci siano esattamente 4 opzioni
+    if len(quiz["opzioni"]) != 4:
+        logger.warning(f"Numero errato di opzioni nel quiz di esempio: {len(quiz['opzioni'])}")
+        # Aggiungi opzioni mancanti o rimuovi quelle in eccesso
+        while len(quiz["opzioni"]) < 4:
+            quiz["opzioni"].append(f"Opzione {len(quiz['opzioni']) + 1}")
+        quiz["opzioni"] = quiz["opzioni"][:4]
+    
+    # Verifica che l'indice della risposta corretta sia valido
+    if not (0 <= quiz["risposta_corretta"] <= 3):
+        logger.warning(f"Indice risposta corretta non valido nel quiz di esempio: {quiz['risposta_corretta']}")
+        quiz["risposta_corretta"] = 0
     
     return quiz
 
@@ -178,7 +257,7 @@ Assicurati che:
 """
 
     try:
-        # Chiamata all'API di OpenAI
+        # Chiamata all'API di OpenAI con timeout
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {OPENAI_API_KEY}"
@@ -194,10 +273,12 @@ Assicurati che:
             "max_tokens": 800
         }
         
+        # Aggiungi un timeout di 10 secondi per evitare blocchi
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
-            json=data
+            json=data,
+            timeout=10  # Timeout di 10 secondi
         )
         
         if response.status_code != 200:
@@ -291,9 +372,28 @@ Assicurati che:
 - Il JSON sia valido e ben formattato
 """
         
-        # Genera il contenuto
-        response = model.generate_content(prompt)
-        content = response.text
+        # Genera il contenuto con timeout
+        import concurrent.futures
+        import time
+        
+        def generate_with_timeout():
+            try:
+                return model.generate_content(prompt)
+            except Exception as e:
+                logger.error(f"Errore nella generazione con Gemini: {e}")
+                return None
+        
+        # Esegui la generazione con un timeout di 15 secondi
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(generate_with_timeout)
+            try:
+                response = future.result(timeout=15)  # 15 secondi di timeout
+                if response is None:
+                    raise Exception("Generazione fallita")
+                content = response.text
+            except concurrent.futures.TimeoutError:
+                logger.error("Timeout nella generazione con Gemini")
+                raise Exception("Timeout nella generazione con Gemini")
         
         # Estrai il JSON dalla risposta
         import re
@@ -355,11 +455,48 @@ def generate_quiz(category: str = None) -> Dict[str, Any]:
 def generate_multiple_quizzes(num_quizzes: int = 5, category: str = None) -> List[Dict[str, Any]]:
     """Genera più quiz e li salva nel file dei quiz in attesa."""
     generated_quizzes = []
+    errors = 0
     
-    for _ in range(num_quizzes):
-        quiz = generate_quiz(category)
-        if quiz:
-            generated_quizzes.append(quiz)
+    # Se non è possibile generare quiz online, genera quiz di esempio
+    use_sample = False
+    
+    try:
+        # Prova a generare il primo quiz per verificare se le API funzionano
+        if USE_GEMINI and GEMINI_API_KEY:
+            try:
+                # Importa la libreria solo se necessario
+                import google.generativeai as genai
+                # Verifica che la libreria sia installata correttamente
+            except ImportError:
+                logger.error("Libreria 'google-generativeai' non installata. Utilizzo quiz di esempio.")
+                use_sample = True
+        elif not OPENAI_API_KEY:
+            logger.warning("Nessuna API configurata. Utilizzo quiz di esempio.")
+            use_sample = True
+    except Exception as e:
+        logger.error(f"Errore nella verifica delle API: {e}")
+        use_sample = True
+    
+    for i in range(num_quizzes):
+        try:
+            if use_sample:
+                # Genera un quiz di esempio
+                quiz = generate_sample_quiz(category)
+            else:
+                # Prova a generare un quiz online
+                quiz = generate_quiz(category)
+                
+            if quiz:
+                generated_quizzes.append(quiz)
+            else:
+                errors += 1
+                logger.error(f"Errore nella generazione del quiz {i+1}/{num_quizzes}")
+        except Exception as e:
+            errors += 1
+            logger.error(f"Eccezione nella generazione del quiz {i+1}/{num_quizzes}: {e}")
+            # Se fallisce il primo quiz, passa ai quiz di esempio per i successivi
+            if i == 0:
+                use_sample = True
     
     # Salva i quiz generati nel file dei quiz in attesa
     if generated_quizzes:
@@ -368,23 +505,78 @@ def generate_multiple_quizzes(num_quizzes: int = 5, category: str = None) -> Lis
         pending_data["last_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         save_pending_quizzes(pending_data)
         
-        logger.info(f"Generati {len(generated_quizzes)} nuovi quiz")
+        logger.info(f"Generati {len(generated_quizzes)} nuovi quiz ({errors} errori)")
+    else:
+        logger.error(f"Nessun quiz generato ({errors} errori)")
     
     return generated_quizzes
 
 def get_pending_quiz_count() -> int:
     """Restituisce il numero di quiz in attesa di approvazione."""
-    pending_data = load_pending_quizzes()
-    return len(pending_data["quiz_pending"])
+    try:
+        pending_data = load_pending_quizzes()
+        
+        # Verifica che quiz_pending sia una lista
+        if not isinstance(pending_data.get("quiz_pending"), list):
+            logger.error(f"quiz_pending non è una lista: {type(pending_data.get('quiz_pending'))}")
+            # Inizializza quiz_pending come lista vuota
+            pending_data["quiz_pending"] = []
+            save_pending_quizzes(pending_data)
+            return 0
+        
+        return len(pending_data["quiz_pending"])
+    except Exception as e:
+        logger.error(f"Errore nel conteggio dei quiz in attesa: {e}")
+        return 0
 
 def get_pending_quiz(index: int = 0) -> Optional[Dict[str, Any]]:
     """Restituisce un quiz in attesa di approvazione in base all'indice."""
-    pending_data = load_pending_quizzes()
-    
-    if not pending_data["quiz_pending"] or index >= len(pending_data["quiz_pending"]):
+    try:
+        pending_data = load_pending_quizzes()
+        
+        # Verifica che quiz_pending sia una lista
+        if not isinstance(pending_data.get("quiz_pending"), list):
+            logger.error(f"quiz_pending non è una lista: {type(pending_data.get('quiz_pending'))}")
+            # Inizializza quiz_pending come lista vuota
+            pending_data["quiz_pending"] = []
+            save_pending_quizzes(pending_data)
+            return None
+        
+        if not pending_data["quiz_pending"] or index >= len(pending_data["quiz_pending"]):
+            logger.warning(f"Nessun quiz in attesa all'indice {index}. Totale quiz: {len(pending_data['quiz_pending'])}")
+            return None
+        
+        # Verifica che il quiz all'indice specificato sia un dizionario
+        quiz = pending_data["quiz_pending"][index]
+        if not isinstance(quiz, dict):
+            logger.error(f"Quiz all'indice {index} non è un dizionario: {type(quiz)}")
+            return None
+        
+        # Verifica che il quiz contenga tutti i campi necessari
+        required_fields = ["categoria", "domanda", "opzioni", "risposta_corretta", "spiegazione"]
+        for field in required_fields:
+            if field not in quiz:
+                logger.error(f"Campo mancante nel quiz all'indice {index}: {field}")
+                # Aggiungi un valore predefinito
+                if field == "categoria":
+                    quiz[field] = "Regole del Rugby"
+                elif field == "domanda":
+                    quiz[field] = "Domanda di esempio"
+                elif field == "opzioni":
+                    quiz[field] = ["Opzione A", "Opzione B", "Opzione C", "Opzione D"]
+                elif field == "risposta_corretta":
+                    quiz[field] = 0
+                elif field == "spiegazione":
+                    quiz[field] = "Spiegazione di esempio"
+                
+                # Salva le modifiche
+                pending_data["quiz_pending"][index] = quiz
+                save_pending_quizzes(pending_data)
+        
+        return quiz
+    except Exception as e:
+        logger.error(f"Errore nel recupero del quiz in attesa: {e}")
         return None
-    
-    return pending_data["quiz_pending"][index]
 
 def approve_pending_quiz(index: int) -> bool:
     """Approva un quiz in attesa e lo aggiunge al database principale."""

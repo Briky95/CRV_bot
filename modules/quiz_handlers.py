@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 from modules.quiz_manager import (
@@ -13,7 +14,8 @@ from modules.quiz_manager import (
 from modules.quiz_generator import (
     generate_quiz_with_openai, generate_multiple_quizzes,
     get_pending_quiz_count, get_pending_quiz,
-    approve_pending_quiz, reject_pending_quiz, edit_pending_quiz
+    approve_pending_quiz, reject_pending_quiz, edit_pending_quiz,
+    generate_sample_quiz, load_pending_quizzes, save_pending_quizzes
 )
 
 # Configurazione logging
@@ -305,14 +307,105 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
             parse_mode='HTML'
         )
         
-        # Genera i quiz
-        generated_quizzes = generate_multiple_quizzes(num_quizzes)
+        try:
+            # Genera i quiz con un timeout complessivo
+            import asyncio
+            
+            # Crea una funzione che esegue la generazione in un thread separato
+            def generate_in_thread():
+                return generate_multiple_quizzes(num_quizzes)
+            
+            # Esegui la generazione in un thread separato con un timeout
+            loop = asyncio.get_event_loop()
+            generated_quizzes = await loop.run_in_executor(None, generate_in_thread)
+            
+            # Mostra il risultato
+            if generated_quizzes:
+                # Determina se sono stati generati quiz di esempio o online
+                sample_count = sum(1 for quiz in generated_quizzes if quiz.get('nota') == "Quiz di esempio generato in modalità offline")
+                online_count = len(generated_quizzes) - sample_count
+                
+                message = f"<b>✅ Generazione completata!</b>\n\n"
+                
+                if online_count > 0 and sample_count > 0:
+                    message += f"Sono stati generati {len(generated_quizzes)} nuovi quiz:\n"
+                    message += f"- {online_count} quiz generati online\n"
+                    message += f"- {sample_count} quiz di esempio (generati offline)\n\n"
+                elif online_count > 0:
+                    message += f"Sono stati generati {online_count} nuovi quiz online.\n\n"
+                else:
+                    message += f"Sono stati generati {sample_count} quiz di esempio in modalità offline.\n"
+                    message += "Non è stato possibile utilizzare l'API online. Verifica la connessione e le chiavi API.\n\n"
+                
+                message += f"Puoi visualizzarli e approvarli dalla sezione 'Visualizza quiz in attesa'."
+                
+                await query.edit_message_text(
+                    message,
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("👁️ Visualizza quiz in attesa", callback_data="quiz_gen_view")],
+                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                    ])
+                )
+            else:
+                await query.edit_message_text(
+                    "<b>❌ Generazione fallita</b>\n\n"
+                    "Non è stato possibile generare i quiz. Possibili cause:\n"
+                    "- Chiavi API non configurate o non valide\n"
+                    "- Problemi di connessione\n"
+                    "- Timeout nella risposta dell'API\n\n"
+                    "Puoi riprovare o generare quiz di esempio.",
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔄 Riprova", callback_data=f"quiz_gen_{num_quizzes}")],
+                        [InlineKeyboardButton("📝 Usa quiz di esempio", callback_data="quiz_gen_sample")],
+                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                    ])
+                )
+        except Exception as e:
+            logger.error(f"Errore durante la generazione dei quiz: {e}")
+            await query.edit_message_text(
+                f"<b>❌ Errore durante la generazione</b>\n\n"
+                f"Si è verificato un errore: {str(e)[:100]}...\n\n"
+                f"Puoi riprovare o generare quiz di esempio.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔄 Riprova", callback_data=f"quiz_gen_{num_quizzes}")],
+                    [InlineKeyboardButton("📝 Usa quiz di esempio", callback_data="quiz_gen_sample")],
+                    [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                ])
+            )
+    
+    elif action == "sample":
+        # Genera quiz di esempio
+        num_quizzes = 3  # Generiamo 3 quiz di esempio
         
-        # Mostra il risultato
-        if generated_quizzes:
+        # Mostra un messaggio di attesa
+        await query.edit_message_text(
+            f"<b>🔄 Generazione di {num_quizzes} quiz di esempio in corso...</b>\n\n"
+            "Questo processo richiederà solo un momento.",
+            parse_mode='HTML'
+        )
+        
+        try:
+            # Genera i quiz di esempio
+            generated_quizzes = []
+            for _ in range(num_quizzes):
+                quiz = generate_sample_quiz()
+                if quiz:
+                    generated_quizzes.append(quiz)
+            
+            # Salva i quiz generati
+            if generated_quizzes:
+                pending_data = load_pending_quizzes()
+                pending_data["quiz_pending"].extend(generated_quizzes)
+                pending_data["last_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                save_pending_quizzes(pending_data)
+            
+            # Mostra il risultato
             await query.edit_message_text(
                 f"<b>✅ Generazione completata!</b>\n\n"
-                f"Sono stati generati {len(generated_quizzes)} nuovi quiz.\n\n"
+                f"Sono stati generati {len(generated_quizzes)} quiz di esempio.\n\n"
                 f"Puoi visualizzarli e approvarli dalla sezione 'Visualizza quiz in attesa'.",
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup([
@@ -320,13 +413,13 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
                     [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
                 ])
             )
-        else:
+        except Exception as e:
+            logger.error(f"Errore durante la generazione dei quiz di esempio: {e}")
             await query.edit_message_text(
-                "<b>❌ Generazione fallita</b>\n\n"
-                "Non è stato possibile generare i quiz. Verifica che la chiave API di OpenAI sia configurata correttamente.",
+                f"<b>❌ Errore durante la generazione</b>\n\n"
+                f"Si è verificato un errore: {str(e)[:100]}...",
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🔄 Riprova", callback_data=f"quiz_gen_{num_quizzes}")],
                     [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
                 ])
             )
@@ -555,8 +648,5 @@ def register_quiz_handlers(application):
     # Callback per la classifica
     application.add_handler(CallbackQueryHandler(mostra_classifica_quiz, pattern=r"^quiz_classifica$"))
     
-    # Configura i job per l'invio automatico dei quiz
-    from bot_fixed_corrected import CHANNEL_ID
-    configura_job_quiz(application, CHANNEL_ID)
-    
+    # Non configuriamo qui i job per evitare problemi di importazione circolare
     logger.info("Gestori per i quiz registrati con successo")

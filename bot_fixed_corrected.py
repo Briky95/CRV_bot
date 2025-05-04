@@ -4831,6 +4831,11 @@ def main() -> None:
     try:
         from modules.quiz_handlers import register_quiz_handlers
         register_quiz_handlers(application)
+        
+        # Configura i job per i quiz dopo aver registrato i gestori
+        from modules.quiz_manager import configura_job_quiz
+        configura_job_quiz(application, CHANNEL_ID)
+        
         logger.info("Funzionalità quiz registrate con successo")
     except Exception as e:
         logger.error(f"Errore nella registrazione delle funzionalità quiz: {e}")
