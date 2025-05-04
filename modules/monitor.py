@@ -3,12 +3,19 @@
 
 import time
 import os
-import psutil
 import platform
 import logging
 import json
 from datetime import datetime, timedelta
 from collections import deque
+
+# Prova a importare psutil, ma gestisci il caso in cui non sia disponibile
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    logging.warning("Modulo psutil non disponibile. Alcune funzionalità di monitoraggio saranno limitate.")
 
 logger = logging.getLogger(__name__)
 
@@ -147,20 +154,31 @@ class BotMonitor:
                 
             self.last_metrics_check = current_time
             
-            # Metriche CPU
-            self.system_metrics['cpu_percent'] = psutil.cpu_percent(interval=0.1)
-            
-            # Metriche memoria
-            memory = psutil.virtual_memory()
-            self.system_metrics['memory_percent'] = memory.percent
-            self.system_metrics['memory_used'] = self._format_bytes(memory.used)
-            self.system_metrics['memory_total'] = self._format_bytes(memory.total)
-            
-            # Metriche disco
-            disk = psutil.disk_usage('/')
-            self.system_metrics['disk_percent'] = disk.percent
-            self.system_metrics['disk_used'] = self._format_bytes(disk.used)
-            self.system_metrics['disk_total'] = self._format_bytes(disk.total)
+            # Verifica se psutil è disponibile
+            if PSUTIL_AVAILABLE:
+                # Metriche CPU
+                self.system_metrics['cpu_percent'] = psutil.cpu_percent(interval=0.1)
+                
+                # Metriche memoria
+                memory = psutil.virtual_memory()
+                self.system_metrics['memory_percent'] = memory.percent
+                self.system_metrics['memory_used'] = self._format_bytes(memory.used)
+                self.system_metrics['memory_total'] = self._format_bytes(memory.total)
+                
+                # Metriche disco
+                disk = psutil.disk_usage('/')
+                self.system_metrics['disk_percent'] = disk.percent
+                self.system_metrics['disk_used'] = self._format_bytes(disk.used)
+                self.system_metrics['disk_total'] = self._format_bytes(disk.total)
+            else:
+                # Valori di fallback quando psutil non è disponibile
+                self.system_metrics['cpu_percent'] = 0
+                self.system_metrics['memory_percent'] = 0
+                self.system_metrics['memory_used'] = "N/A"
+                self.system_metrics['memory_total'] = "N/A"
+                self.system_metrics['disk_percent'] = 0
+                self.system_metrics['disk_used'] = "N/A"
+                self.system_metrics['disk_total'] = "N/A"
             
         except Exception as e:
             logger.error(f"Errore nell'aggiornamento delle metriche di sistema: {e}")
@@ -201,14 +219,25 @@ class BotMonitor:
         avg_response_time = sum(self.response_times) / len(self.response_times) if self.response_times else 0
         
         # Determina lo stato di salute
-        if self.system_metrics['cpu_percent'] > 90 or self.system_metrics['memory_percent'] > 90:
-            health_status = "critical"
-        elif self.system_metrics['cpu_percent'] > 70 or self.system_metrics['memory_percent'] > 70:
-            health_status = "warning"
-        elif self.metrics['errors'] > 10:
-            health_status = "degraded"
+        if PSUTIL_AVAILABLE:
+            if self.system_metrics['cpu_percent'] > 90 or self.system_metrics['memory_percent'] > 90:
+                health_status = "critical"
+            elif self.system_metrics['cpu_percent'] > 70 or self.system_metrics['memory_percent'] > 70:
+                health_status = "warning"
+            elif self.metrics['errors'] > 10:
+                health_status = "degraded"
+            else:
+                health_status = "healthy"
         else:
-            health_status = "healthy"
+            # Quando psutil non è disponibile, basa lo stato solo sugli errori
+            if self.metrics['errors'] > 20:
+                health_status = "critical"
+            elif self.metrics['errors'] > 10:
+                health_status = "warning"
+            elif self.metrics['errors'] > 5:
+                health_status = "degraded"
+            else:
+                health_status = "healthy"
         
         # Comandi più utilizzati (top 5)
         top_commands = sorted(self.command_counts.items(), key=lambda x: x[1], reverse=True)[:5]

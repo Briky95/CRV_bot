@@ -18,3 +18,6 @@ reportlab>=4.0.0
 # Dipendenze per il deployment
 gunicorn>=20.0.0
 aws-lambda-wsgi>=0.0.6
+
+# Dipendenze per il monitoraggio
+psutil>=5.9.0
