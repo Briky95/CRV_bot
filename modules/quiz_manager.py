@@ -613,6 +613,9 @@ def configura_job_quiz(application, channel_id):
                     class FakeContext:
                         def __init__(self, bot):
                             self.bot = bot
+                            self.user_data = {}
+                            self.chat_data = {}
+                            self.bot_data = {}
                     
                     fake_context = FakeContext(application.bot)
                     await invia_quiz_al_canale(fake_context, channel_id)
@@ -622,6 +625,9 @@ def configura_job_quiz(application, channel_id):
                     class FakeContext:
                         def __init__(self, bot):
                             self.bot = bot
+                            self.user_data = {}
+                            self.chat_data = {}
+                            self.bot_data = {}
                     
                     fake_context = FakeContext(application.bot)
                     stats = carica_statistiche_quiz()

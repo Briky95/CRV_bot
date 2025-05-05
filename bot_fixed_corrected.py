@@ -1539,13 +1539,29 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
             excel_filename = f"Riepilogo_Rugby_{inizio_weekend.strftime('%d-%m-%Y')}_{fine_weekend.strftime('%d-%m-%Y')}.xlsx"
             
+            # Assicurati che il puntatore sia all'inizio del buffer
+            excel_buffer.seek(0)
+            
+            # Crea un file temporaneo per salvare il contenuto del buffer
+            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as temp_file:
+                temp_file.write(excel_buffer.getvalue())
+                temp_path = temp_file.name
+            
             # Invia il file Excel all'utente
-            await context.bot.send_document(
-                chat_id=query.from_user.id,
-                document=excel_buffer,
-                filename=excel_filename,
-                caption=f"📊 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato Excel"
-            )
+            try:
+                await context.bot.send_document(
+                    chat_id=query.from_user.id,
+                    document=open(temp_path, 'rb'),
+                    filename=excel_filename,
+                    caption=f"📊 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato Excel"
+                )
+                # Elimina il file temporaneo dopo l'invio
+                os.unlink(temp_path)
+            except Exception as e:
+                logger.error(f"Errore nell'invio del file Excel: {e}")
+                # Assicurati di eliminare il file temporaneo anche in caso di errore
+                os.unlink(temp_path)
+                raise
             
             # Aggiorna il messaggio
             await query.edit_message_text(
@@ -1598,13 +1614,29 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             fine_weekend = datetime.strptime(fine_weekend_str, "%d/%m/%Y")
             pdf_filename = f"Riepilogo_Rugby_{inizio_weekend.strftime('%d-%m-%Y')}_{fine_weekend.strftime('%d-%m-%Y')}.pdf"
             
+            # Assicurati che il puntatore sia all'inizio del buffer
+            pdf_buffer.seek(0)
+            
+            # Crea un file temporaneo per salvare il contenuto del buffer
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                temp_file.write(pdf_buffer.getvalue())
+                temp_path = temp_file.name
+            
             # Invia il file PDF all'utente
-            await context.bot.send_document(
-                chat_id=query.from_user.id,
-                document=pdf_buffer,
-                filename=pdf_filename,
-                caption=f"📄 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato PDF"
-            )
+            try:
+                await context.bot.send_document(
+                    chat_id=query.from_user.id,
+                    document=open(temp_path, 'rb'),
+                    filename=pdf_filename,
+                    caption=f"📄 Riepilogo weekend {inizio_weekend.strftime('%d')} - {fine_weekend.strftime('%d %B %Y')} in formato PDF"
+                )
+                # Elimina il file temporaneo dopo l'invio
+                os.unlink(temp_path)
+            except Exception as e:
+                logger.error(f"Errore nell'invio del file PDF: {e}")
+                # Assicurati di eliminare il file temporaneo anche in caso di errore
+                os.unlink(temp_path)
+                raise
             
             # Aggiorna il messaggio
             await query.edit_message_text(
@@ -2803,6 +2835,9 @@ async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 def __init__(self, bot, job):
                     self.bot = bot
                     self.job = job
+                    self.user_data = {}
+                    self.chat_data = {}
+                    self.bot_data = {}
             
             # Define the FakeJob class
             class FakeJob:
@@ -5299,6 +5334,9 @@ def main() -> None:
                 class FakeContext:
                     def __init__(self, bot):
                         self.bot = bot
+                        self.user_data = {}
+                        self.chat_data = {}
+                        self.bot_data = {}
                 
                 fake_context = FakeContext(application.bot)
                 await invia_riepilogo_automatico(fake_context)

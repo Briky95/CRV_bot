@@ -570,6 +570,7 @@ def add_match():
         squadra1 = request.form.get('squadra1')
         squadra2 = request.form.get('squadra2')
         arbitro = request.form.get('arbitro')
+        sezione_arbitrale = request.form.get('sezione_arbitrale')
         
         # Converti la data nel formato DD/MM/YYYY
         data_partita = datetime.strptime(data_partita_raw, '%Y-%m-%d').strftime('%d/%m/%Y')
@@ -586,6 +587,7 @@ def add_match():
             'squadra1': squadra1,
             'squadra2': squadra2,
             'arbitro': arbitro,
+            'sezione_arbitrale': sezione_arbitrale,
             'inserito_da': current_user.username,
             'timestamp_inserimento': datetime.now().isoformat()
         }
@@ -746,6 +748,7 @@ def edit_match(match_id):
             risultati[match_id]['mete1'] = int(request.form.get('mete1'))
             risultati[match_id]['mete2'] = int(request.form.get('mete2'))
             risultati[match_id]['arbitro'] = request.form.get('arbitro')
+            risultati[match_id]['sezione_arbitrale'] = request.form.get('sezione_arbitrale')
             risultati[match_id]['modificato_da'] = current_user.username
             risultati[match_id]['timestamp_modifica'] = datetime.now().isoformat()
             
@@ -1540,6 +1543,9 @@ def send_test_quiz(category, index):
         class FakeContext:
             def __init__(self, bot):
                 self.bot = bot
+                self.user_data = {}
+                self.chat_data = {}
+                self.bot_data = {}
         
         # Chiedi conferma prima di inviare al canale principale
         if request.args.get('confirm') != 'true':
