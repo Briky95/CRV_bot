@@ -44,6 +44,111 @@
                 <h5 class="mb-0">Informazioni Partita</h5>
             </div>
             <div class="card-body">
+                {% if partita.tipo_partita == 'triangolare' %}
+                <!-- Visualizzazione per partita triangolare -->
+                <div class="alert alert-info mb-4">
+                    <h5 class="alert-heading">Partita Triangolare</h5>
+                    <p>Questa è una partita triangolare tra tre squadre.</p>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0 text-center">{{ partita.squadra1 }}</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="display-4">{{ partita.punteggio1 }}</div>
+                                <div>Mete: {{ partita.mete1 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0 text-center">{{ partita.squadra2 }}</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="display-4">{{ partita.punteggio2 }}</div>
+                                <div>Mete: {{ partita.mete2 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0 text-center">{{ partita.squadra3 }}</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="display-4">{{ partita.punteggio3 }}</div>
+                                <div>Mete: {{ partita.mete3 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5 class="mt-4 mb-3">Dettaglio Incontri</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">{{ partita.squadra1 }} vs {{ partita.squadra2 }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6 text-center">
+                                        <div class="h4">{{ partita.partita1_punteggio1 }}</div>
+                                        <small>Mete: {{ partita.partita1_mete1 }}</small>
+                                    </div>
+                                    <div class="col-6 text-center">
+                                        <div class="h4">{{ partita.partita1_punteggio2 }}</div>
+                                        <small>Mete: {{ partita.partita1_mete2 }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">{{ partita.squadra1 }} vs {{ partita.squadra3 }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6 text-center">
+                                        <div class="h4">{{ partita.partita2_punteggio1 }}</div>
+                                        <small>Mete: {{ partita.partita2_mete1 }}</small>
+                                    </div>
+                                    <div class="col-6 text-center">
+                                        <div class="h4">{{ partita.partita2_punteggio2 }}</div>
+                                        <small>Mete: {{ partita.partita2_mete2 }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">{{ partita.squadra2 }} vs {{ partita.squadra3 }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6 text-center">
+                                        <div class="h4">{{ partita.partita3_punteggio1 }}</div>
+                                        <small>Mete: {{ partita.partita3_mete1 }}</small>
+                                    </div>
+                                    <div class="col-6 text-center">
+                                        <div class="h4">{{ partita.partita3_punteggio2 }}</div>
+                                        <small>Mete: {{ partita.partita3_mete2 }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Visualizzazione per partita normale -->
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <h3 class="text-center">{{ partita.squadra1 }}</h3>
@@ -56,6 +161,7 @@
                         <div class="text-center">Mete: {{ partita.mete2 }}</div>
                     </div>
                 </div>
+                {% endif %}
                 
                 <div class="row">
                     <div class="col-md-6">

@@ -3175,6 +3175,79 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return ConversationHandler.END
 
+# Funzione per creare la tastiera delle squadre con paginazione
+def create_teams_keyboard(squadre, page=1, teams_per_page=8, search_query=None, exclude_team=None):
+    """
+    Crea una tastiera con paginazione per la selezione delle squadre.
+    
+    Args:
+        squadre: Lista di tutte le squadre disponibili
+        page: Numero di pagina corrente (inizia da 1)
+        teams_per_page: Numero di squadre per pagina
+        search_query: Query di ricerca per filtrare le squadre
+        exclude_team: Squadra da escludere dalla lista (es. prima squadra già selezionata)
+    
+    Returns:
+        InlineKeyboardMarkup con le squadre paginate e i controlli di navigazione
+    """
+    # Filtra le squadre in base alla query di ricerca
+    if search_query:
+        search_query = search_query.lower()
+        filtered_squadre = [s for s in squadre if search_query in s.lower()]
+    else:
+        filtered_squadre = squadre.copy()
+    
+    # Rimuovi la squadra da escludere se specificata
+    if exclude_team and exclude_team in filtered_squadre:
+        filtered_squadre.remove(exclude_team)
+    
+    # Ordina le squadre alfabeticamente
+    filtered_squadre.sort()
+    
+    # Calcola il numero totale di pagine
+    total_pages = max(1, (len(filtered_squadre) + teams_per_page - 1) // teams_per_page)
+    
+    # Assicurati che la pagina sia valida
+    page = max(1, min(page, total_pages))
+    
+    # Calcola l'indice di inizio e fine per la pagina corrente
+    start_idx = (page - 1) * teams_per_page
+    end_idx = min(start_idx + teams_per_page, len(filtered_squadre))
+    
+    # Seleziona le squadre per la pagina corrente
+    current_page_teams = filtered_squadre[start_idx:end_idx]
+    
+    # Crea la tastiera con le squadre (2 per riga)
+    keyboard = []
+    for i in range(0, len(current_page_teams), 2):
+        row = [InlineKeyboardButton(current_page_teams[i], callback_data=current_page_teams[i])]
+        if i + 1 < len(current_page_teams):
+            row.append(InlineKeyboardButton(current_page_teams[i + 1], callback_data=current_page_teams[i + 1]))
+        keyboard.append(row)
+    
+    # Aggiungi i controlli di navigazione
+    nav_row = []
+    
+    # Pulsante pagina precedente
+    if page > 1:
+        nav_row.append(InlineKeyboardButton("⬅️ Prec", callback_data=f"page:{page-1}"))
+    
+    # Indicatore di pagina
+    nav_row.append(InlineKeyboardButton(f"📄 {page}/{total_pages}", callback_data="noop"))
+    
+    # Pulsante pagina successiva
+    if page < total_pages:
+        nav_row.append(InlineKeyboardButton("Succ ➡️", callback_data=f"page:{page+1}"))
+    
+    if nav_row:
+        keyboard.append(nav_row)
+    
+    # Aggiungi pulsanti per la ricerca e l'inserimento manuale
+    keyboard.append([InlineKeyboardButton("🔍 Cerca squadra", callback_data="search_team")])
+    keyboard.append([InlineKeyboardButton("➕ Altra squadra", callback_data="altra_squadra")])
+    
+    return InlineKeyboardMarkup(keyboard)
+
 # Callback per la selezione del tipo di partita
 async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gestisce la selezione del tipo di partita."""
@@ -3184,6 +3257,10 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         tipo_partita = query.data
         context.user_data['tipo_partita'] = tipo_partita
+        
+        # Inizializza o resetta le variabili di paginazione e ricerca
+        context.user_data['team_page'] = 1
+        context.user_data['team_search'] = None
         
         # Aggiorna lo stato corrente
         context.user_data['stato_corrente'] = SQUADRA1
@@ -3197,20 +3274,8 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # Carica le squadre disponibili
         squadre = get_squadre_list()
         
-        # Crea una tastiera con le squadre (2 per riga)
-        keyboard = []
-        for i in range(0, len(squadre), 2):
-            row = []
-            # Aggiungi la prima squadra della riga
-            row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i]))
-            if i + 1 < len(squadre):
-                row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-            keyboard.append(row)
-        
-        # Aggiungi un pulsante per inserire manualmente una squadra
-        keyboard.append([InlineKeyboardButton("Altra squadra", callback_data="altra_squadra")])
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        # Crea la tastiera con paginazione
+        reply_markup = create_teams_keyboard(squadre, page=1)
         
         # Prepara il messaggio con barra di avanzamento e riepilogo
         messaggio = f"{barra_avanzamento}\n\n"
@@ -3243,10 +3308,65 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if update.callback_query:
             query = update.callback_query
             await query.answer()
-            squadra = query.data
+            callback_data = query.data
             
+            # Gestione della paginazione
+            if callback_data.startswith("page:"):
+                # Estrai il numero di pagina
+                page = int(callback_data.split(":")[1])
+                context.user_data['team_page'] = page
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=page,
+                    search_query=context.user_data.get('team_search')
+                )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA1, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                # Aggiungi informazioni sulla ricerca se presente
+                if context.user_data.get('team_search'):
+                    messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                
+                messaggio += "<b>Seleziona la prima squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await query.edit_message_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA1
+                
+            # Gestione della ricerca
+            elif callback_data == "search_team":
+                await query.edit_message_text(
+                    "🔍 <b>RICERCA SQUADRA</b>\n\n"
+                    "Inserisci il nome o parte del nome della squadra che stai cercando:\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                # Imposta un flag per indicare che siamo in modalità ricerca
+                context.user_data['team_search_mode'] = 'squadra1'
+                return SQUADRA1
+                
             # Se l'utente ha selezionato "Altra squadra", chiedi di inserire manualmente
-            if squadra == "altra_squadra":
+            elif callback_data == "altra_squadra":
                 await query.edit_message_text(
                     f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
                     "<b>Inserisci manualmente il nome della prima squadra:</b>\n\n"
@@ -3254,83 +3374,127 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     parse_mode='HTML'
                 )
                 return SQUADRA1
-            
-            # Carica le squadre disponibili per la seconda squadra
-            squadre = get_squadre_list()
-            
-            # Rimuovi la prima squadra dalla lista
-            if squadra in squadre:
-                squadre.remove(squadra)
-            
-            # Crea una tastiera con le squadre rimanenti (2 per riga)
-            keyboard = []
-            for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
-                if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                keyboard.append(row)
-            
-            # Aggiungi un pulsante per inserire manualmente una squadra
-            keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
-            
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await query.edit_message_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                f"<b>Prima squadra:</b> {squadra}\n\n"
-                "<b>Seleziona la seconda squadra:</b>\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-        else:
-            squadra = update.message.text
-            
-            # Aggiungi la squadra al database solo se l'utente è un amministratore
-            from modules.db_manager import aggiungi_squadra
-            user_id = update.effective_user.id
-            
-            # Informa l'utente se non è un amministratore
-            if not is_admin(user_id):
-                await update.message.reply_text(
-                    "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
-                    "La squadra inserita sarà utilizzata solo per questa partita."
+                
+            # Ignora il click sul pulsante di pagina corrente
+            elif callback_data == "noop":
+                return SQUADRA1
+                
+            # Altrimenti, l'utente ha selezionato una squadra
+            else:
+                squadra = callback_data
+                context.user_data['squadra1'] = squadra
+                
+                # Resetta le variabili di paginazione e ricerca per la seconda squadra
+                context.user_data['team_page'] = 1
+                context.user_data['team_search'] = None
+                
+                # Carica le squadre disponibili per la seconda squadra
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione, escludendo la prima squadra
+                reply_markup = create_teams_keyboard(squadre, page=1, exclude_team=squadra)
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA2, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                context.user_data['stato_corrente'] = SQUADRA2
+                riepilogo = genera_riepilogo_dati(context)
+                
+                await query.edit_message_text(
+                    f"{barra_avanzamento}\n\n"
+                    "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                    f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                    "<b>Seleziona la seconda squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
                 )
+                return SQUADRA2
+        else:
+            # L'utente ha inviato un messaggio di testo
+            text = update.message.text
             
-            aggiungi_squadra(squadra, user_id)
-            
-            # Carica le squadre disponibili per la seconda squadra
-            squadre = get_squadre_list()
-            
-            # Rimuovi la prima squadra dalla lista
-            if squadra in squadre:
-                squadre.remove(squadra)
-            
-            # Crea una tastiera con le squadre rimanenti (2 per riga)
-            keyboard = []
-            for i in range(0, len(squadre), 2):
-                row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
-                if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                keyboard.append(row)
-            
-            # Aggiungi un pulsante per inserire manualmente una squadra
-            keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
-            
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await update.message.reply_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                f"<b>Prima squadra:</b> {squadra}\n\n"
-                "<b>Seleziona la seconda squadra:</b>\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-        
-        context.user_data['squadra1'] = squadra
-        context.user_data['stato_corrente'] = SQUADRA2
-        return SQUADRA2
+            # Se siamo in modalità ricerca, usa il testo come query di ricerca
+            if context.user_data.get('team_search_mode') == 'squadra1':
+                context.user_data['team_search'] = text
+                context.user_data['team_page'] = 1
+                context.user_data.pop('team_search_mode', None)
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione e ricerca
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1,
+                    search_query=text
+                )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA1, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                messaggio += f"<b>Risultati per:</b> \"{text}\"\n\n"
+                messaggio += "<b>Seleziona la prima squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await update.message.reply_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA1
+            else:
+                # Altrimenti, l'utente sta inserendo manualmente una squadra
+                squadra = text
+                context.user_data['squadra1'] = squadra
+                
+                # Aggiungi la squadra al database solo se l'utente è un amministratore
+                from modules.db_manager import aggiungi_squadra
+                user_id = update.effective_user.id
+                
+                # Informa l'utente se non è un amministratore
+                if not is_admin(user_id):
+                    await update.message.reply_text(
+                        "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
+                        "La squadra inserita sarà utilizzata solo per questa partita."
+                    )
+                
+                aggiungi_squadra(squadra, user_id)
+                
+                # Carica le squadre disponibili per la seconda squadra
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione, escludendo la prima squadra
+                reply_markup = create_teams_keyboard(squadre, page=1, exclude_team=squadra)
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA2, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                context.user_data['stato_corrente'] = SQUADRA2
+                riepilogo = genera_riepilogo_dati(context)
+                
+                await update.message.reply_text(
+                    f"{barra_avanzamento}\n\n"
+                    "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                    f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                    "<b>Seleziona la seconda squadra:</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+                return SQUADRA2
     except Exception as e:
         logger.error(f"Errore nella selezione della prima squadra: {e}")
         if update.callback_query:
@@ -3350,9 +3514,66 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if update.callback_query:
             query = update.callback_query
             await query.answer()
-            squadra = query.data
+            callback_data = query.data
+            
+            # Gestione della paginazione
+            if callback_data.startswith("page:"):
+                # Estrai il numero di pagina
+                page = int(callback_data.split(":")[1])
+                context.user_data['team_page'] = page
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione, escludendo la prima squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=page,
+                    search_query=context.user_data.get('team_search'),
+                    exclude_team=context.user_data.get('squadra1')
+                )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA2, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                # Aggiungi informazioni sulla ricerca se presente
+                if context.user_data.get('team_search'):
+                    messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                
+                messaggio += "<b>Seleziona la seconda squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await query.edit_message_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA2
+                
+            # Gestione della ricerca
+            elif callback_data == "search_team":
+                await query.edit_message_text(
+                    "🔍 <b>RICERCA SQUADRA</b>\n\n"
+                    "Inserisci il nome o parte del nome della squadra che stai cercando:\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                # Imposta un flag per indicare che siamo in modalità ricerca
+                context.user_data['team_search_mode'] = 'squadra2'
+                return SQUADRA2
+                
             # Se l'utente ha selezionato "Altra squadra", chiedi di inserire manualmente
-            if squadra == "altra_squadra":
+            elif callback_data == "altra_squadra":
                 await query.edit_message_text(
                     f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
                     f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n\n"
@@ -3362,10 +3583,14 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 )
                 return SQUADRA2
                 
+            # Ignora il click sul pulsante di pagina corrente
+            elif callback_data == "noop":
+                return SQUADRA2
+                
             # Se l'utente ha confermato una nuova squadra
-            if squadra.startswith("conferma_"):
+            elif callback_data.startswith("conferma_"):
                 # Estrai il nome della squadra dalla stringa "conferma_NOME_SQUADRA"
-                squadra = squadra[9:]  # Rimuovi "conferma_" dal callback_data
+                squadra = callback_data[9:]  # Rimuovi "conferma_" dal callback_data
                 
                 # Aggiungi la nuova squadra alla lista delle squadre
                 squadre_list = get_squadre_list()
@@ -3378,14 +3603,38 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     global _squadre_cache, _squadre_last_load
                     _squadre_cache = squadre_list
                     _squadre_last_load = time.time()
+                    
+                # Continua con la selezione della squadra
+                callback_data = squadra
+            
+            # Altrimenti, l'utente ha selezionato una squadra
+            squadra = callback_data
             
             # Verifica che la seconda squadra sia diversa dalla prima
-            if squadra == context.user_data['squadra1']:
+            if squadra == context.user_data.get('squadra1'):
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA2, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione, escludendo la prima squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=context.user_data.get('team_page', 1),
+                    search_query=context.user_data.get('team_search'),
+                    exclude_team=context.user_data.get('squadra1')
+                )
+                
                 await query.edit_message_text(
-                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
-                    "⚠️ La seconda squadra deve essere diversa dalla prima. Seleziona un'altra squadra.\n\n"
+                    f"{barra_avanzamento}\n\n"
+                    "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                    f"<b>DATI INSERITI:</b>\n{genera_riepilogo_dati(context)}\n"
+                    "⚠️ <b>La seconda squadra deve essere diversa dalla prima.</b>\n"
+                    "<b>Seleziona un'altra squadra:</b>\n\n"
                     "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                    parse_mode='HTML'
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
                 )
                 return SQUADRA2
                 
@@ -3416,34 +3665,36 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 )
                 return SQUADRA2
             
+            # Salva la seconda squadra
+            context.user_data['squadra2'] = squadra
+            
             # Se è un triangolare, prepara la selezione della terza squadra
             if context.user_data.get('tipo_partita') == 'triangolare':
+                # Resetta le variabili di paginazione e ricerca per la terza squadra
+                context.user_data['team_page'] = 1
+                context.user_data['team_search'] = None
+                
                 # Carica le squadre disponibili per la terza squadra
                 squadre = get_squadre_list()
                 
-                # Rimuovi la prima e la seconda squadra dalla lista
-                if context.user_data['squadra1'] in squadre:
-                    squadre.remove(context.user_data['squadra1'])
-                if squadra in squadre:
-                    squadre.remove(squadra)
+                # Crea la tastiera con paginazione, escludendo la prima e la seconda squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1, 
+                    exclude_team=[context.user_data['squadra1'], squadra]
+                )
                 
-                # Crea una tastiera con le squadre rimanenti (2 per riga)
-                keyboard = []
-                for i in range(0, len(squadre), 2):
-                    row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
-                    if i + 1 < len(squadre):
-                        row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                    keyboard.append(row)
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA3, context.user_data.get('tipo_partita', 'triangolare'))
                 
-                # Aggiungi un pulsante per inserire manualmente una squadra
-                keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
-                
-                reply_markup = InlineKeyboardMarkup(keyboard)
+                # Genera il riepilogo dei dati inseriti finora
+                context.user_data['stato_corrente'] = SQUADRA3
+                riepilogo = genera_riepilogo_dati(context)
                 
                 await query.edit_message_text(
-                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                    f"<b>Seconda squadra:</b> {squadra}\n\n"
+                    f"{barra_avanzamento}\n\n"
+                    "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                    f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
                     "<b>Seleziona la terza squadra:</b>\n\n"
                     "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
                     parse_mode='HTML',
@@ -3460,69 +3711,120 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     parse_mode='HTML'
                 )
         else:
-            squadra = update.message.text
+            # L'utente ha inviato un messaggio di testo
+            text = update.message.text
             
-            # Aggiungi la squadra al database solo se l'utente è un amministratore
-            from modules.db_manager import aggiungi_squadra
-            user_id = update.effective_user.id
-            
-            # Informa l'utente se non è un amministratore
-            if not is_admin(user_id):
-                await update.message.reply_text(
-                    "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
-                    "La squadra inserita sarà utilizzata solo per questa partita."
-                )
-            
-            aggiungi_squadra(squadra, user_id)
-            
-            # Verifica che la seconda squadra sia diversa dalla prima
-            if squadra == context.user_data['squadra1']:
-                await update.message.reply_text(
-                    "⚠️ La seconda squadra deve essere diversa dalla prima. Inserisci un'altra squadra."
-                )
-                return SQUADRA2
-            
-            # Se è un triangolare, prepara la selezione della terza squadra
-            if context.user_data.get('tipo_partita') == 'triangolare':
-                # Carica le squadre disponibili per la terza squadra
+            # Se siamo in modalità ricerca, usa il testo come query di ricerca
+            if context.user_data.get('team_search_mode') == 'squadra2':
+                context.user_data['team_search'] = text
+                context.user_data['team_page'] = 1
+                context.user_data.pop('team_search_mode', None)
+                
+                # Carica le squadre disponibili
                 squadre = get_squadre_list()
                 
-                # Rimuovi la prima e la seconda squadra dalla lista
-                if context.user_data['squadra1'] in squadre:
-                    squadre.remove(context.user_data['squadra1'])
-                if squadra in squadre:
-                    squadre.remove(squadra)
-                
-                # Crea una tastiera con le squadre rimanenti (2 per riga)
-                keyboard = []
-                for i in range(0, len(squadre), 2):
-                    row = [InlineKeyboardButton(squadre[i], callback_data=squadre[i])]
-                    if i + 1 < len(squadre):
-                        row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                    keyboard.append(row)
-                
-                # Aggiungi un pulsante per inserire manualmente una squadra
-                keyboard.append([InlineKeyboardButton("Altra squadra (inserisci manualmente)", callback_data="altra_squadra")])
-                
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await update.message.reply_text(
-                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                    f"<b>Seconda squadra:</b> {squadra}\n\n"
-                    "<b>Seleziona la terza squadra:</b>\n\n"
-                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                    parse_mode='HTML',
-                    reply_markup=reply_markup
+                # Crea la tastiera con paginazione e ricerca, escludendo la prima squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1,
+                    search_query=text,
+                    exclude_team=context.user_data.get('squadra1')
                 )
-            else:
-                # Per le partite normali, chiedi la data
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA2, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                messaggio += f"<b>Risultati per:</b> \"{text}\"\n\n"
+                messaggio += "<b>Seleziona la seconda squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
                 await update.message.reply_text(
-                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                    f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                    f"<b>Seconda squadra:</b> {squadra}\n\n"
-                    "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
-                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA2
+            else:
+                # Altrimenti, l'utente sta inserendo manualmente una squadra
+                squadra = text
+                
+                # Verifica che la seconda squadra sia diversa dalla prima
+                if squadra == context.user_data.get('squadra1'):
+                    await update.message.reply_text(
+                        "⚠️ La seconda squadra deve essere diversa dalla prima. Inserisci un'altra squadra."
+                    )
+                    return SQUADRA2
+                
+                # Aggiungi la squadra al database solo se l'utente è un amministratore
+                from modules.db_manager import aggiungi_squadra
+                user_id = update.effective_user.id
+                
+                # Informa l'utente se non è un amministratore
+                if not is_admin(user_id):
+                    await update.message.reply_text(
+                        "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
+                        "La squadra inserita sarà utilizzata solo per questa partita."
+                    )
+                
+                aggiungi_squadra(squadra, user_id)
+                
+                # Salva la seconda squadra
+                context.user_data['squadra2'] = squadra
+                
+                # Se è un triangolare, prepara la selezione della terza squadra
+                if context.user_data.get('tipo_partita') == 'triangolare':
+                    # Carica le squadre disponibili per la terza squadra
+                    squadre = get_squadre_list()
+                    
+                    # Crea la tastiera con paginazione, escludendo la prima e la seconda squadra
+                    reply_markup = create_teams_keyboard(
+                        squadre, 
+                        page=1, 
+                        exclude_team=[context.user_data['squadra1'], squadra]
+                    )
+                    
+                    # Genera la barra di avanzamento
+                    barra_avanzamento = genera_barra_avanzamento(SQUADRA3, context.user_data.get('tipo_partita', 'triangolare'))
+                    
+                    # Genera il riepilogo dei dati inseriti finora
+                    context.user_data['stato_corrente'] = SQUADRA3
+                    riepilogo = genera_riepilogo_dati(context)
+                    
+                    await update.message.reply_text(
+                        f"{barra_avanzamento}\n\n"
+                        "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                        f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                        "<b>Seleziona la terza squadra:</b>\n\n"
+                        "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
+                    return SQUADRA3
+                else:
+                    # Per le partite normali, chiedi la data
+                    # Genera la barra di avanzamento
+                    barra_avanzamento = genera_barra_avanzamento(DATA_PARTITA, context.user_data.get('tipo_partita', 'normale'))
+                    
+                    # Genera il riepilogo dei dati inseriti finora
+                    context.user_data['stato_corrente'] = DATA_PARTITA
+                    riepilogo = genera_riepilogo_dati(context)
+                    
+                    await update.message.reply_text(
+                        f"{barra_avanzamento}\n\n"
+                        "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                        f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                        "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
+                        "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
                     parse_mode='HTML'
                 )
         
@@ -3554,10 +3856,66 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if update.callback_query:
             query = update.callback_query
             await query.answer()
-            squadra = query.data
+            callback_data = query.data
             
+            # Gestione della paginazione
+            if callback_data.startswith("page:"):
+                # Estrai il numero di pagina
+                page = int(callback_data.split(":")[1])
+                context.user_data['team_page'] = page
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione, escludendo la prima e la seconda squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=page,
+                    search_query=context.user_data.get('team_search'),
+                    exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')]
+                )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA3, context.user_data.get('tipo_partita', 'triangolare'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                # Aggiungi informazioni sulla ricerca se presente
+                if context.user_data.get('team_search'):
+                    messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                
+                messaggio += "<b>Seleziona la terza squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await query.edit_message_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA3
+                
+            # Gestione della ricerca
+            elif callback_data == "search_team":
+                await query.edit_message_text(
+                    "🔍 <b>RICERCA SQUADRA</b>\n\n"
+                    "Inserisci il nome o parte del nome della squadra che stai cercando:\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                # Imposta un flag per indicare che siamo in modalità ricerca
+                context.user_data['team_search_mode'] = 'squadra3'
+                return SQUADRA3
+                
             # Se l'utente ha selezionato "Altra squadra", chiedi di inserire manualmente
-            if squadra == "altra_squadra":
+            elif callback_data == "altra_squadra":
                 await query.edit_message_text(
                     f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
                     f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
@@ -3567,62 +3925,148 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     parse_mode='HTML'
                 )
                 return SQUADRA3
+                
+            # Ignora il click sul pulsante di pagina corrente
+            elif callback_data == "noop":
+                return SQUADRA3
+                
+            # Altrimenti, l'utente ha selezionato una squadra
+            squadra = callback_data
             
             # Verifica che la terza squadra sia diversa dalle altre
-            if squadra == context.user_data['squadra1'] or squadra == context.user_data['squadra2']:
+            if squadra == context.user_data.get('squadra1') or squadra == context.user_data.get('squadra2'):
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA3, context.user_data.get('tipo_partita', 'triangolare'))
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione, escludendo la prima e la seconda squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=context.user_data.get('team_page', 1),
+                    search_query=context.user_data.get('team_search'),
+                    exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')]
+                )
+                
                 await query.edit_message_text(
-                    f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n\n"
-                    "⚠️ La terza squadra deve essere diversa dalle altre. Seleziona un'altra squadra.\n\n"
+                    f"{barra_avanzamento}\n\n"
+                    "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                    f"<b>DATI INSERITI:</b>\n{genera_riepilogo_dati(context)}\n"
+                    "⚠️ <b>La terza squadra deve essere diversa dalle altre.</b>\n"
+                    "<b>Seleziona un'altra squadra:</b>\n\n"
                     "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                    parse_mode='HTML'
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
                 )
                 return SQUADRA3
             
+            # Salva la terza squadra
+            context.user_data['squadra3'] = squadra
+            
+            # Genera la barra di avanzamento
+            barra_avanzamento = genera_barra_avanzamento(DATA_PARTITA, context.user_data.get('tipo_partita', 'triangolare'))
+            
+            # Genera il riepilogo dei dati inseriti finora
+            context.user_data['stato_corrente'] = DATA_PARTITA
+            riepilogo = genera_riepilogo_dati(context)
             
             await query.edit_message_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                f"<b>Seconda squadra:</b> {context.user_data['squadra2']}\n"
-                f"<b>Terza squadra:</b> {squadra}\n\n"
+                f"{barra_avanzamento}\n\n"
+                "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
                 "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
                 "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
                 parse_mode='HTML'
             )
         else:
-            squadra = update.message.text
+            # L'utente ha inviato un messaggio di testo
+            text = update.message.text
             
-            # Aggiungi la squadra al database solo se l'utente è un amministratore
-            from modules.db_manager import aggiungi_squadra
-            user_id = update.effective_user.id
-            
-            # Informa l'utente se non è un amministratore
-            if not is_admin(user_id):
-                await update.message.reply_text(
-                    "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
-                    "La squadra inserita sarà utilizzata solo per questa partita."
+            # Se siamo in modalità ricerca, usa il testo come query di ricerca
+            if context.user_data.get('team_search_mode') == 'squadra3':
+                context.user_data['team_search'] = text
+                context.user_data['team_page'] = 1
+                context.user_data.pop('team_search_mode', None)
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione e ricerca, escludendo la prima e la seconda squadra
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1,
+                    search_query=text,
+                    exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')]
                 )
-            
-            aggiungi_squadra(squadra, user_id)
-            
-            # Verifica che la terza squadra sia diversa dalle altre
-            if squadra == context.user_data['squadra1'] or squadra == context.user_data['squadra2']:
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA3, context.user_data.get('tipo_partita', 'triangolare'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                messaggio += f"<b>Risultati per:</b> \"{text}\"\n\n"
+                messaggio += "<b>Seleziona la terza squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
                 await update.message.reply_text(
-                    "⚠️ La terza squadra deve essere diversa dalle altre. Inserisci un'altra squadra."
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
                 )
                 return SQUADRA3
+            else:
+                # Altrimenti, l'utente sta inserendo manualmente una squadra
+                squadra = text
+                
+                # Verifica che la terza squadra sia diversa dalle altre
+                if squadra == context.user_data.get('squadra1') or squadra == context.user_data.get('squadra2'):
+                    await update.message.reply_text(
+                        "⚠️ La terza squadra deve essere diversa dalle altre. Inserisci un'altra squadra."
+                    )
+                    return SQUADRA3
+                
+                # Aggiungi la squadra al database solo se l'utente è un amministratore
+                from modules.db_manager import aggiungi_squadra
+                user_id = update.effective_user.id
+                
+                # Informa l'utente se non è un amministratore
+                if not is_admin(user_id):
+                    await update.message.reply_text(
+                        "ℹ️ Nota: Solo gli amministratori possono aggiungere nuove squadre al database. "
+                        "La squadra inserita sarà utilizzata solo per questa partita."
+                    )
+                
+                aggiungi_squadra(squadra, user_id)
+                
+                # Salva la terza squadra
+                context.user_data['squadra3'] = squadra
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(DATA_PARTITA, context.user_data.get('tipo_partita', 'triangolare'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                context.user_data['stato_corrente'] = DATA_PARTITA
+                riepilogo = genera_riepilogo_dati(context)
+                
+                await update.message.reply_text(
+                    f"{barra_avanzamento}\n\n"
+                    "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                    f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                    "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
+                    "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
+                    parse_mode='HTML'
+                )
+                return DATA_PARTITA
             
-            await update.message.reply_text(
-                f"🏉 <b>Categoria:</b> {context.user_data['categoria']} - {context.user_data['genere']} 🏉\n"
-                f"<b>Prima squadra:</b> {context.user_data['squadra1']}\n"
-                f"<b>Seconda squadra:</b> {context.user_data['squadra2']}\n"
-                f"<b>Terza squadra:</b> {squadra}\n\n"
-                "<b>Inserisci la data della partita (formato: GG/MM/AAAA):</b>\n\n"
-                "<i>Puoi annullare in qualsiasi momento con /annulla</i>",
-                parse_mode='HTML'
-            )
-        
-        context.user_data['squadra3'] = squadra
-        context.user_data['stato_corrente'] = DATA_PARTITA
         return DATA_PARTITA
     except Exception as e:
         logger.error(f"Errore nella selezione della terza squadra: {e}")

@@ -21,7 +21,7 @@
             <div class="card-body">
                 <form method="POST" action="{{ url_for('add_match') }}">
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="categoria" class="form-label">Categoria</label>
                             <select class="form-select" id="categoria" name="categoria" required>
                                 <option value="" selected disabled>Seleziona categoria</option>
@@ -30,13 +30,20 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="genere" class="form-label">Genere</label>
                             <select class="form-select" id="genere" name="genere" required>
                                 <option value="" selected disabled>Seleziona genere</option>
                                 <option value="Maschile">Maschile</option>
                                 <option value="Femminile">Femminile</option>
                                 <option value="Misto">Misto</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tipo_partita" class="form-label">Tipo Partita</label>
+                            <select class="form-select" id="tipo_partita" name="tipo_partita" required>
+                                <option value="normale" selected>Normale</option>
+                                <option value="triangolare">Triangolare</option>
                             </select>
                         </div>
                     </div>
@@ -47,7 +54,7 @@
                     </div>
                     
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="squadra1" class="form-label">Squadra 1</label>
                             <select class="form-select" id="squadra1" name="squadra1" required>
                                 <option value="" selected disabled>Seleziona squadra</option>
@@ -60,7 +67,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="squadra2" class="form-label">Squadra 2</label>
                             <select class="form-select" id="squadra2" name="squadra2" required>
                                 <option value="" selected disabled>Seleziona squadra</option>
@@ -73,24 +80,121 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="col-md-4 squadra3-container" style="display: none;">
+                            <label for="squadra3" class="form-label">Squadra 3</label>
+                            <select class="form-select" id="squadra3" name="squadra3">
+                                <option value="" selected disabled>Seleziona squadra</option>
+                                {% for categoria, lista_squadre in squadre.items() %}
+                                <optgroup label="{{ categoria }}">
+                                    {% for squadra in lista_squadre %}
+                                    <option value="{{ squadra }}">{{ squadra }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <label for="punteggio1" class="form-label">Punteggio Squadra 1</label>
-                            <input type="number" class="form-control" id="punteggio1" name="punteggio1" min="0" required>
+                    <!-- Campi per partita normale -->
+                    <div class="partita-normale">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="punteggio1" class="form-label">Punteggio Squadra 1</label>
+                                <input type="number" class="form-control" id="punteggio1" name="punteggio1" min="0" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="punteggio2" class="form-label">Punteggio Squadra 2</label>
+                                <input type="number" class="form-control" id="punteggio2" name="punteggio2" min="0" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="mete1" class="form-label">Mete Squadra 1</label>
+                                <input type="number" class="form-control" id="mete1" name="mete1" min="0" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="mete2" class="form-label">Mete Squadra 2</label>
+                                <input type="number" class="form-control" id="mete2" name="mete2" min="0" value="0">
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <label for="punteggio2" class="form-label">Punteggio Squadra 2</label>
-                            <input type="number" class="form-control" id="punteggio2" name="punteggio2" min="0" required>
+                    </div>
+                    
+                    <!-- Campi per partita triangolare -->
+                    <div class="partita-triangolare" style="display: none;">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Partita 1: <span class="squadra1-nome">Squadra 1</span> vs <span class="squadra2-nome">Squadra 2</span></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="partita1_punteggio1" class="form-label">Punteggio <span class="squadra1-nome">Squadra 1</span></label>
+                                        <input type="number" class="form-control" id="partita1_punteggio1" name="partita1_punteggio1" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita1_punteggio2" class="form-label">Punteggio <span class="squadra2-nome">Squadra 2</span></label>
+                                        <input type="number" class="form-control" id="partita1_punteggio2" name="partita1_punteggio2" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita1_mete1" class="form-label">Mete <span class="squadra1-nome">Squadra 1</span></label>
+                                        <input type="number" class="form-control" id="partita1_mete1" name="partita1_mete1" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita1_mete2" class="form-label">Mete <span class="squadra2-nome">Squadra 2</span></label>
+                                        <input type="number" class="form-control" id="partita1_mete2" name="partita1_mete2" min="0" value="0">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <label for="mete1" class="form-label">Mete Squadra 1</label>
-                            <input type="number" class="form-control" id="mete1" name="mete1" min="0" required>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Partita 2: <span class="squadra1-nome">Squadra 1</span> vs <span class="squadra3-nome">Squadra 3</span></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="partita2_punteggio1" class="form-label">Punteggio <span class="squadra1-nome">Squadra 1</span></label>
+                                        <input type="number" class="form-control" id="partita2_punteggio1" name="partita2_punteggio1" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita2_punteggio2" class="form-label">Punteggio <span class="squadra3-nome">Squadra 3</span></label>
+                                        <input type="number" class="form-control" id="partita2_punteggio2" name="partita2_punteggio2" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita2_mete1" class="form-label">Mete <span class="squadra1-nome">Squadra 1</span></label>
+                                        <input type="number" class="form-control" id="partita2_mete1" name="partita2_mete1" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita2_mete2" class="form-label">Mete <span class="squadra3-nome">Squadra 3</span></label>
+                                        <input type="number" class="form-control" id="partita2_mete2" name="partita2_mete2" min="0" value="0">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <label for="mete2" class="form-label">Mete Squadra 2</label>
-                            <input type="number" class="form-control" id="mete2" name="mete2" min="0" required>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Partita 3: <span class="squadra2-nome">Squadra 2</span> vs <span class="squadra3-nome">Squadra 3</span></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="partita3_punteggio1" class="form-label">Punteggio <span class="squadra2-nome">Squadra 2</span></label>
+                                        <input type="number" class="form-control" id="partita3_punteggio1" name="partita3_punteggio1" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita3_punteggio2" class="form-label">Punteggio <span class="squadra3-nome">Squadra 3</span></label>
+                                        <input type="number" class="form-control" id="partita3_punteggio2" name="partita3_punteggio2" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita3_mete1" class="form-label">Mete <span class="squadra2-nome">Squadra 2</span></label>
+                                        <input type="number" class="form-control" id="partita3_mete1" name="partita3_mete1" min="0" value="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="partita3_mete2" class="form-label">Mete <span class="squadra3-nome">Squadra 3</span></label>
+                                        <input type="number" class="form-control" id="partita3_mete2" name="partita3_mete2" min="0" value="0">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -118,34 +222,134 @@
         const formattedDate = today.toISOString().substr(0, 10);
         $('#data_partita').val(formattedDate);
         
+        // Gestione del cambio di tipo partita
+        $('#tipo_partita').change(function() {
+            const tipoPartita = $(this).val();
+            
+            if (tipoPartita === 'triangolare') {
+                $('.squadra3-container').show();
+                $('.partita-normale').hide();
+                $('.partita-triangolare').show();
+                $('#squadra3').prop('required', true);
+            } else {
+                $('.squadra3-container').hide();
+                $('.partita-normale').show();
+                $('.partita-triangolare').hide();
+                $('#squadra3').prop('required', false);
+            }
+        });
+        
+        // Aggiorna i nomi delle squadre nei form triangolari
+        function updateTeamNames() {
+            const squadra1 = $('#squadra1 option:selected').text();
+            const squadra2 = $('#squadra2 option:selected').text();
+            const squadra3 = $('#squadra3 option:selected').text();
+            
+            $('.squadra1-nome').text(squadra1 !== 'Seleziona squadra' ? squadra1 : 'Squadra 1');
+            $('.squadra2-nome').text(squadra2 !== 'Seleziona squadra' ? squadra2 : 'Squadra 2');
+            $('.squadra3-nome').text(squadra3 !== 'Seleziona squadra' ? squadra3 : 'Squadra 3');
+        }
+        
+        $('#squadra1, #squadra2, #squadra3').change(updateTeamNames);
+        
         // Verifica che le squadre selezionate siano diverse
         $('form').submit(function(e) {
+            const tipoPartita = $('#tipo_partita').val();
             const squadra1 = $('#squadra1').val();
             const squadra2 = $('#squadra2').val();
             
             if (squadra1 === squadra2) {
                 e.preventDefault();
-                alert('Le due squadre devono essere diverse!');
+                alert('Le squadre devono essere diverse tra loro!');
                 return false;
             }
             
-            // Verifica la congruenza tra punteggio e mete
-            const punteggio1 = parseInt($('#punteggio1').val());
-            const punteggio2 = parseInt($('#punteggio2').val());
-            const mete1 = parseInt($('#mete1').val());
-            const mete2 = parseInt($('#mete2').val());
-            
-            // Verifica che il punteggio sia almeno 5 punti per ogni meta
-            if (punteggio1 < mete1 * 5) {
-                e.preventDefault();
-                alert('Il punteggio della Squadra 1 deve essere almeno 5 punti per ogni meta!');
-                return false;
-            }
-            
-            if (punteggio2 < mete2 * 5) {
-                e.preventDefault();
-                alert('Il punteggio della Squadra 2 deve essere almeno 5 punti per ogni meta!');
-                return false;
+            if (tipoPartita === 'triangolare') {
+                const squadra3 = $('#squadra3').val();
+                
+                if (!squadra3) {
+                    e.preventDefault();
+                    alert('Per le partite triangolari è necessario selezionare la terza squadra!');
+                    return false;
+                }
+                
+                if (squadra1 === squadra3 || squadra2 === squadra3) {
+                    e.preventDefault();
+                    alert('Le tre squadre devono essere diverse tra loro!');
+                    return false;
+                }
+                
+                // Verifica la congruenza tra punteggio e mete per ogni partita del triangolare
+                const partita1_punteggio1 = parseInt($('#partita1_punteggio1').val());
+                const partita1_punteggio2 = parseInt($('#partita1_punteggio2').val());
+                const partita1_mete1 = parseInt($('#partita1_mete1').val());
+                const partita1_mete2 = parseInt($('#partita1_mete2').val());
+                
+                const partita2_punteggio1 = parseInt($('#partita2_punteggio1').val());
+                const partita2_punteggio2 = parseInt($('#partita2_punteggio2').val());
+                const partita2_mete1 = parseInt($('#partita2_mete1').val());
+                const partita2_mete2 = parseInt($('#partita2_mete2').val());
+                
+                const partita3_punteggio1 = parseInt($('#partita3_punteggio1').val());
+                const partita3_punteggio2 = parseInt($('#partita3_punteggio2').val());
+                const partita3_mete1 = parseInt($('#partita3_mete1').val());
+                const partita3_mete2 = parseInt($('#partita3_mete2').val());
+                
+                // Verifica che il punteggio sia almeno 5 punti per ogni meta
+                if (partita1_punteggio1 < partita1_mete1 * 5) {
+                    e.preventDefault();
+                    alert(`Il punteggio di ${squadra1} nella prima partita deve essere almeno 5 punti per ogni meta!`);
+                    return false;
+                }
+                
+                if (partita1_punteggio2 < partita1_mete2 * 5) {
+                    e.preventDefault();
+                    alert(`Il punteggio di ${squadra2} nella prima partita deve essere almeno 5 punti per ogni meta!`);
+                    return false;
+                }
+                
+                if (partita2_punteggio1 < partita2_mete1 * 5) {
+                    e.preventDefault();
+                    alert(`Il punteggio di ${squadra1} nella seconda partita deve essere almeno 5 punti per ogni meta!`);
+                    return false;
+                }
+                
+                if (partita2_punteggio2 < partita2_mete2 * 5) {
+                    e.preventDefault();
+                    alert(`Il punteggio di ${squadra3} nella seconda partita deve essere almeno 5 punti per ogni meta!`);
+                    return false;
+                }
+                
+                if (partita3_punteggio1 < partita3_mete1 * 5) {
+                    e.preventDefault();
+                    alert(`Il punteggio di ${squadra2} nella terza partita deve essere almeno 5 punti per ogni meta!`);
+                    return false;
+                }
+                
+                if (partita3_punteggio2 < partita3_mete2 * 5) {
+                    e.preventDefault();
+                    alert(`Il punteggio di ${squadra3} nella terza partita deve essere almeno 5 punti per ogni meta!`);
+                    return false;
+                }
+            } else {
+                // Verifica la congruenza tra punteggio e mete per partite normali
+                const punteggio1 = parseInt($('#punteggio1').val());
+                const punteggio2 = parseInt($('#punteggio2').val());
+                const mete1 = parseInt($('#mete1').val());
+                const mete2 = parseInt($('#mete2').val());
+                
+                // Verifica che il punteggio sia almeno 5 punti per ogni meta
+                if (punteggio1 < mete1 * 5) {
+                    e.preventDefault();
+                    alert('Il punteggio della Squadra 1 deve essere almeno 5 punti per ogni meta!');
+                    return false;
+                }
+                
+                if (punteggio2 < mete2 * 5) {
+                    e.preventDefault();
+                    alert('Il punteggio della Squadra 2 deve essere almeno 5 punti per ogni meta!');
+                    return false;
+                }
             }
         });
     });

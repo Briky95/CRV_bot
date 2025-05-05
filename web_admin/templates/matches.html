@@ -47,9 +47,36 @@
                         <td>{{ partita.get('data_partita', 'N/D') }}</td>
                         <td>{{ partita.get('categoria', 'N/D') }}</td>
                         <td>{{ partita.get('genere', 'N/D') }}</td>
-                        <td>{{ partita.get('squadra1', 'N/D') }} vs {{ partita.get('squadra2', 'N/D') }}</td>
-                        <td>{{ partita.get('punteggio1', 'N/D') }} - {{ partita.get('punteggio2', 'N/D') }}</td>
-                        <td>{{ partita.get('mete1', 'N/D') }} - {{ partita.get('mete2', 'N/D') }}</td>
+                        <td>
+                            {% if partita.get('tipo_partita') == 'triangolare' %}
+                                <span class="badge bg-info">Triangolare</span>
+                                {{ partita.get('squadra1', 'N/D') }} / {{ partita.get('squadra2', 'N/D') }} / {{ partita.get('squadra3', 'N/D') }}
+                            {% else %}
+                                {{ partita.get('squadra1', 'N/D') }} vs {{ partita.get('squadra2', 'N/D') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if partita.get('tipo_partita') == 'triangolare' %}
+                                <small>
+                                    {{ partita.get('squadra1', 'N/D') }}: {{ partita.get('punteggio1', 'N/D') }}<br>
+                                    {{ partita.get('squadra2', 'N/D') }}: {{ partita.get('punteggio2', 'N/D') }}<br>
+                                    {{ partita.get('squadra3', 'N/D') }}: {{ partita.get('punteggio3', 'N/D') }}
+                                </small>
+                            {% else %}
+                                {{ partita.get('punteggio1', 'N/D') }} - {{ partita.get('punteggio2', 'N/D') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if partita.get('tipo_partita') == 'triangolare' %}
+                                <small>
+                                    {{ partita.get('squadra1', 'N/D') }}: {{ partita.get('mete1', 'N/D') }}<br>
+                                    {{ partita.get('squadra2', 'N/D') }}: {{ partita.get('mete2', 'N/D') }}<br>
+                                    {{ partita.get('squadra3', 'N/D') }}: {{ partita.get('mete3', 'N/D') }}
+                                </small>
+                            {% else %}
+                                {{ partita.get('mete1', 'N/D') }} - {{ partita.get('mete2', 'N/D') }}
+                            {% endif %}
+                        </td>
                         <td>{{ partita.get('arbitro', 'N/D') }}</td>
                         <td>
                             <div class="btn-group">
