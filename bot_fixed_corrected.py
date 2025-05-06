@@ -3226,6 +3226,9 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     Returns:
         InlineKeyboardMarkup con le squadre paginate e i controlli di navigazione
     """
+    # Log per debug
+    logger.info(f"create_teams_keyboard: page={page}, teams_per_page={teams_per_page}, search_query={search_query}, exclude_team={exclude_team}, filter_letter={filter_letter}")
+    logger.info(f"Numero totale di squadre: {len(squadre)}")
     # Filtra le squadre in base alla query di ricerca o alla lettera iniziale
     if search_query:
         search_query = search_query.lower()
@@ -3250,8 +3253,14 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     # Ordina le squadre alfabeticamente
     filtered_squadre.sort()
     
+    # Log per debug
+    logger.info(f"Numero di squadre filtrate: {len(filtered_squadre)}")
+    if len(filtered_squadre) > 0:
+        logger.info(f"Prime 5 squadre filtrate: {filtered_squadre[:5]}")
+    
     # Calcola il numero totale di pagine
     total_pages = max(1, (len(filtered_squadre) + teams_per_page - 1) // teams_per_page)
+    logger.info(f"Numero totale di pagine: {total_pages}")
     
     # Assicurati che la pagina sia valida
     page = max(1, min(page, total_pages))
@@ -3375,11 +3384,16 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
 # Callback per la selezione della prima squadra
 async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gestisce la selezione della prima squadra."""
+    # Log per debug
+    logger.info("Inizio squadra1_callback")
     try:
         if update.callback_query:
             query = update.callback_query
             await query.answer()
             callback_data = query.data
+            
+            # Log per debug
+            logger.info(f"squadra1_callback: callback_data={callback_data}")
             
             # Gestione della paginazione
             if callback_data.startswith("page:"):
@@ -3596,6 +3610,7 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 return SQUADRA2
     except Exception as e:
         logger.error(f"Errore nella selezione della prima squadra: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         if update.callback_query:
             await update.callback_query.edit_message_text(
                 "Si è verificato un errore nella selezione della prima squadra. Riprova con /nuova."
@@ -3605,10 +3620,14 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "Si è verificato un errore nella selezione della prima squadra. Riprova con /nuova."
             )
         return ConversationHandler.END
+    finally:
+        logger.info("Fine squadra1_callback")
 
 # Callback per la selezione della seconda squadra
 async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gestisce la selezione della seconda squadra."""
+    # Log per debug
+    logger.info("Inizio squadra2_callback")
     try:
         if update.callback_query:
             query = update.callback_query
@@ -3971,6 +3990,7 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return DATA_PARTITA
     except Exception as e:
         logger.error(f"Errore nella selezione della seconda squadra: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         if update.callback_query:
             await update.callback_query.edit_message_text(
                 "Si è verificato un errore nella selezione della seconda squadra. Riprova con /nuova."
@@ -3980,10 +4000,14 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "Si è verificato un errore nella selezione della seconda squadra. Riprova con /nuova."
             )
         return ConversationHandler.END
+    finally:
+        logger.info("Fine squadra2_callback")
 
 # Callback per la selezione della terza squadra (solo per triangolari)
 async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gestisce la selezione della terza squadra per i triangolari."""
+    # Log per debug
+    logger.info("Inizio squadra3_callback")
     try:
         if update.callback_query:
             query = update.callback_query
@@ -4231,6 +4255,7 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return DATA_PARTITA
     except Exception as e:
         logger.error(f"Errore nella selezione della terza squadra: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         if update.callback_query:
             await update.callback_query.edit_message_text(
                 "Si è verificato un errore nella selezione della terza squadra. Riprova con /nuova."
@@ -4240,6 +4265,8 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "Si è verificato un errore nella selezione della terza squadra. Riprova con /nuova."
             )
         return ConversationHandler.END
+    finally:
+        logger.info("Fine squadra3_callback")
 
 # Callback per l'inserimento della data della partita
 async def data_partita_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
