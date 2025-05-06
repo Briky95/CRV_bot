@@ -1184,7 +1184,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "- Per problemi o suggerimenti, contatta un amministratore"
     )
     
-    await update.message.reply_html(help_text, parse_mode='HTML')
+    await update.message.reply_html(help_text)
     
     # Registra il completamento del comando
     bot_monitor.track_command_completion(start_time)
