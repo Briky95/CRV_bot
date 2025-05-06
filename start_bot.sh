@@ -11,7 +11,7 @@ elif [ -d "venv" ]; then
 fi
 
 # Avvia il bot
-python3 bot_fixed.py
+python3 bot_fixed_corrected.py
 
 # Se il bot si chiude, registra l'evento
 echo "Bot terminato alle $(date)" >> bot_log.txt

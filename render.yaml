@@ -4,7 +4,7 @@ services:
     name: crv-rugby-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python bot_fixed.py
+    startCommand: python bot_fixed_corrected.py
     plan: free
     autoDeploy: true
     envVars:
