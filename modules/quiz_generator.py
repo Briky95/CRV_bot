@@ -127,64 +127,179 @@ def generate_sample_quiz(category: str = None) -> Dict[str, Any]:
     if not category:
         category = random.choice(QUIZ_CATEGORIES)
     
-    # Dizionario di quiz di esempio per categoria
+    # Dizionario di quiz di esempio per categoria (ampliato con più opzioni per ogni categoria)
     sample_quizzes = {
-        "Regole del Rugby": {
-            "categoria": "Regole del Rugby",
-            "domanda": "Quanti giocatori compongono una squadra di rugby a 15?",
-            "opzioni": ["13 giocatori", "15 giocatori", "11 giocatori", "17 giocatori"],
-            "risposta_corretta": 1,
-            "spiegazione": "Una squadra di rugby a 15 è composta da 15 giocatori in campo. Ci sono 8 avanti (o 'forwards') e 7 trequarti (o 'backs'). Ogni squadra può anche avere fino a 8 giocatori di riserva."
-        },
-        "Storia del Rugby": {
-            "categoria": "Storia del Rugby",
-            "domanda": "In quale paese è nato il rugby?",
-            "opzioni": ["Francia", "Nuova Zelanda", "Inghilterra", "Australia"],
-            "risposta_corretta": 2,
-            "spiegazione": "Il rugby è nato in Inghilterra. Secondo la leggenda, il gioco è nato nel 1823 quando William Webb Ellis, uno studente della Rugby School, prese la palla durante una partita di calcio e corse con essa in mano, creando così un nuovo sport."
-        },
-        "Tecnica e Tattica": {
-            "categoria": "Tecnica e Tattica",
-            "domanda": "Cosa si intende per 'ruck' nel rugby?",
-            "opzioni": ["Un tipo di calcio", "Una formazione di gioco", "Una fase di gioco dopo un placcaggio", "Un fallo di gioco"],
-            "risposta_corretta": 2,
-            "spiegazione": "Il ruck è una fase di gioco che si forma dopo un placcaggio quando uno o più giocatori di ciascuna squadra sono in piedi e in contatto fisico, chiudendosi attorno alla palla a terra. I giocatori devono usare i piedi per conquistare o mantenere il possesso della palla."
-        },
-        "Rugby Veneto": {
-            "categoria": "Rugby Veneto",
-            "domanda": "Quale squadra veneta ha vinto più scudetti nel rugby italiano?",
-            "opzioni": ["Petrarca Rugby", "Benetton Rugby Treviso", "Rugby Rovigo", "Rugby San Donà"],
-            "risposta_corretta": 2,
-            "spiegazione": "Il Rugby Rovigo è la squadra veneta con più scudetti nel rugby italiano. Conosciuti come 'Bersaglieri', hanno una lunga tradizione nel rugby italiano e rappresentano una delle città con maggiore passione per questo sport in Italia."
-        },
-        "Giocatori Famosi": {
-            "categoria": "Giocatori Famosi",
-            "domanda": "Chi è il giocatore che ha segnato più mete nella storia della Coppa del Mondo di rugby?",
-            "opzioni": ["Jonah Lomu", "Bryan Habana", "Doug Howlett", "Shane Williams"],
-            "risposta_corretta": 1,
-            "spiegazione": "Bryan Habana, ex ala sudafricana, detiene il record di mete segnate nella Coppa del Mondo di rugby insieme a Jonah Lomu, entrambi con 15 mete. Habana ha raggiunto questo record nel 2015, eguagliando il primato stabilito dalla leggenda neozelandese Lomu."
-        },
-        "Competizioni Internazionali": {
-            "categoria": "Competizioni Internazionali",
-            "domanda": "Quale nazione ha vinto più edizioni del Sei Nazioni (includendo il Cinque Nazioni)?",
-            "opzioni": ["Inghilterra", "Galles", "Francia", "Irlanda"],
-            "risposta_corretta": 1,
-            "spiegazione": "Il Galles ha vinto più edizioni del Sei Nazioni (includendo il Cinque Nazioni e le precedenti versioni del torneo). Il torneo è una delle competizioni più antiche e prestigiose del rugby, iniziato nel 1883 come Home Nations Championship tra le quattro nazioni britanniche."
-        },
-        "Curiosità sul Rugby": {
-            "categoria": "Curiosità sul Rugby",
-            "domanda": "Quale oggetto viene tradizionalmente consegnato al giocatore che fa il suo debutto nella nazionale neozelandese (All Blacks)?",
-            "opzioni": ["Una felce d'argento", "Un cappello nero", "Una maglia speciale", "Un primo cap"],
-            "risposta_corretta": 0,
-            "spiegazione": "Ai giocatori che fanno il loro debutto con gli All Blacks viene tradizionalmente consegnata una felce d'argento. Questo simbolo è molto importante nella cultura neozelandese e rappresenta l'onore di indossare la maglia nera della nazionale."
-        }
+        "Regole del Rugby": [
+            {
+                "categoria": "Regole del Rugby",
+                "domanda": "Quanti giocatori compongono una squadra di rugby a 15?",
+                "opzioni": ["13 giocatori", "15 giocatori", "11 giocatori", "17 giocatori"],
+                "risposta_corretta": 1,
+                "spiegazione": "Una squadra di rugby a 15 è composta da 15 giocatori in campo. Ci sono 8 avanti (o 'forwards') e 7 trequarti (o 'backs'). Ogni squadra può anche avere fino a 8 giocatori di riserva."
+            },
+            {
+                "categoria": "Regole del Rugby",
+                "domanda": "Quanto dura una partita di rugby a 15?",
+                "opzioni": ["60 minuti", "70 minuti", "80 minuti", "90 minuti"],
+                "risposta_corretta": 2,
+                "spiegazione": "Una partita di rugby a 15 dura 80 minuti, divisi in due tempi da 40 minuti ciascuno con un intervallo di 10-15 minuti tra i due tempi."
+            },
+            {
+                "categoria": "Regole del Rugby",
+                "domanda": "Quanti punti vale una meta nel rugby?",
+                "opzioni": ["3 punti", "5 punti", "7 punti", "10 punti"],
+                "risposta_corretta": 1,
+                "spiegazione": "Una meta nel rugby vale 5 punti. Dopo una meta, la squadra ha la possibilità di calciare per la trasformazione che vale ulteriori 2 punti."
+            }
+        ],
+        "Storia del Rugby": [
+            {
+                "categoria": "Storia del Rugby",
+                "domanda": "In quale paese è nato il rugby?",
+                "opzioni": ["Francia", "Nuova Zelanda", "Inghilterra", "Australia"],
+                "risposta_corretta": 2,
+                "spiegazione": "Il rugby è nato in Inghilterra. Secondo la leggenda, il gioco è nato nel 1823 quando William Webb Ellis, uno studente della Rugby School, prese la palla durante una partita di calcio e corse con essa in mano, creando così un nuovo sport."
+            },
+            {
+                "categoria": "Storia del Rugby",
+                "domanda": "In che anno si è disputata la prima Coppa del Mondo di rugby?",
+                "opzioni": ["1975", "1987", "1991", "1995"],
+                "risposta_corretta": 1,
+                "spiegazione": "La prima Coppa del Mondo di rugby si è disputata nel 1987, organizzata congiuntamente da Australia e Nuova Zelanda. La Nuova Zelanda vinse il torneo battendo la Francia in finale."
+            },
+            {
+                "categoria": "Storia del Rugby",
+                "domanda": "Quale squadra ha vinto più Coppe del Mondo di rugby?",
+                "opzioni": ["Australia", "Nuova Zelanda", "Sudafrica", "Inghilterra"],
+                "risposta_corretta": 1,
+                "spiegazione": "La Nuova Zelanda (All Blacks) ha vinto più Coppe del Mondo di rugby, con tre vittorie (1987, 2011 e 2015). Il Sudafrica ha vinto tre volte (1995, 2007 e 2019), l'Australia due volte (1991 e 1999) e l'Inghilterra una volta (2003)."
+            }
+        ],
+        "Tecnica e Tattica": [
+            {
+                "categoria": "Tecnica e Tattica",
+                "domanda": "Cosa si intende per 'ruck' nel rugby?",
+                "opzioni": ["Un tipo di calcio", "Una formazione di gioco", "Una fase di gioco dopo un placcaggio", "Un fallo di gioco"],
+                "risposta_corretta": 2,
+                "spiegazione": "Il ruck è una fase di gioco che si forma dopo un placcaggio quando uno o più giocatori di ciascuna squadra sono in piedi e in contatto fisico, chiudendosi attorno alla palla a terra. I giocatori devono usare i piedi per conquistare o mantenere il possesso della palla."
+            },
+            {
+                "categoria": "Tecnica e Tattica",
+                "domanda": "Cosa si intende per 'maul' nel rugby?",
+                "opzioni": ["Un tipo di calcio", "Una formazione di gioco statica", "Un giocatore placcato a terra", "Un fallo di gioco"],
+                "risposta_corretta": 1,
+                "spiegazione": "Il maul è una formazione di gioco statica che si crea quando un giocatore in possesso della palla è trattenuto da uno o più avversari, e uno o più compagni di squadra si legano al portatore della palla. La palla non deve toccare terra e il maul deve muoversi verso una linea di meta."
+            },
+            {
+                "categoria": "Tecnica e Tattica",
+                "domanda": "Quale di queste non è una posizione nel rugby a 15?",
+                "opzioni": ["Pilone", "Mediano di mischia", "Ala", "Libero"],
+                "risposta_corretta": 3,
+                "spiegazione": "Il 'Libero' non è una posizione nel rugby a 15. Le posizioni tradizionali includono: piloni, tallonatore, seconde linee, flanker, numero 8, mediano di mischia, mediano d'apertura, centri, ali e estremo."
+            }
+        ],
+        "Rugby Veneto": [
+            {
+                "categoria": "Rugby Veneto",
+                "domanda": "Quale squadra veneta ha vinto più scudetti nel rugby italiano?",
+                "opzioni": ["Petrarca Rugby", "Benetton Rugby Treviso", "Rugby Rovigo", "Rugby San Donà"],
+                "risposta_corretta": 2,
+                "spiegazione": "Il Rugby Rovigo è la squadra veneta con più scudetti nel rugby italiano. Conosciuti come 'Bersaglieri', hanno una lunga tradizione nel rugby italiano e rappresentano una delle città con maggiore passione per questo sport in Italia."
+            },
+            {
+                "categoria": "Rugby Veneto",
+                "domanda": "Quale città veneta ospita una squadra che partecipa al campionato United Rugby Championship?",
+                "opzioni": ["Padova", "Rovigo", "Treviso", "Verona"],
+                "risposta_corretta": 2,
+                "spiegazione": "Treviso, con la squadra Benetton Rugby, partecipa al campionato United Rugby Championship (ex Pro14), competizione internazionale che include squadre da Italia, Irlanda, Galles, Scozia e Sudafrica."
+            },
+            {
+                "categoria": "Rugby Veneto",
+                "domanda": "Quale di queste squadre venete non ha mai vinto il campionato italiano di rugby?",
+                "opzioni": ["Petrarca Rugby", "Benetton Rugby", "Rugby San Donà", "Rugby Rovigo"],
+                "risposta_corretta": 2,
+                "spiegazione": "Il Rugby San Donà non ha mai vinto il campionato italiano di rugby. Petrarca Rugby (Padova), Benetton Rugby (Treviso) e Rugby Rovigo hanno invece vinto più volte il titolo nazionale."
+            }
+        ],
+        "Giocatori Famosi": [
+            {
+                "categoria": "Giocatori Famosi",
+                "domanda": "Chi è il giocatore che ha segnato più mete nella storia della Coppa del Mondo di rugby?",
+                "opzioni": ["Jonah Lomu", "Bryan Habana", "Doug Howlett", "Shane Williams"],
+                "risposta_corretta": 1,
+                "spiegazione": "Bryan Habana, ex ala sudafricana, detiene il record di mete segnate nella Coppa del Mondo di rugby insieme a Jonah Lomu, entrambi con 15 mete. Habana ha raggiunto questo record nel 2015, eguagliando il primato stabilito dalla leggenda neozelandese Lomu."
+            },
+            {
+                "categoria": "Giocatori Famosi",
+                "domanda": "Quale giocatore italiano ha disputato più partite con la nazionale di rugby?",
+                "opzioni": ["Sergio Parisse", "Martin Castrogiovanni", "Alessandro Zanni", "Leonardo Ghiraldini"],
+                "risposta_corretta": 0,
+                "spiegazione": "Sergio Parisse detiene il record di presenze con la nazionale italiana di rugby, con oltre 140 caps. È considerato uno dei migliori numeri 8 al mondo e ha giocato in diversi club prestigiosi, tra cui lo Stade Français."
+            },
+            {
+                "categoria": "Giocatori Famosi",
+                "domanda": "Chi è stato nominato 'World Rugby Player of the Year' più volte?",
+                "opzioni": ["Jonny Wilkinson", "Richie McCaw", "Dan Carter", "Brian O'Driscoll"],
+                "risposta_corretta": 1,
+                "spiegazione": "Richie McCaw, ex capitano degli All Blacks, è stato nominato 'World Rugby Player of the Year' tre volte (2006, 2009 e 2010), più di qualsiasi altro giocatore. Ha guidato la Nuova Zelanda alla vittoria in due Coppe del Mondo consecutive (2011 e 2015)."
+            }
+        ],
+        "Competizioni Internazionali": [
+            {
+                "categoria": "Competizioni Internazionali",
+                "domanda": "Quale nazione ha vinto più edizioni del Sei Nazioni (includendo il Cinque Nazioni)?",
+                "opzioni": ["Inghilterra", "Galles", "Francia", "Irlanda"],
+                "risposta_corretta": 1,
+                "spiegazione": "Il Galles ha vinto più edizioni del Sei Nazioni (includendo il Cinque Nazioni e le precedenti versioni del torneo). Il torneo è una delle competizioni più antiche e prestigiose del rugby, iniziato nel 1883 come Home Nations Championship tra le quattro nazioni britanniche."
+            },
+            {
+                "categoria": "Competizioni Internazionali",
+                "domanda": "Quale trofeo viene assegnato alla squadra vincitrice della Coppa del Mondo di rugby?",
+                "opzioni": ["Coppa Webb Ellis", "Trofeo Calcutta", "Six Nations Trophy", "Rugby Championship Trophy"],
+                "risposta_corretta": 0,
+                "spiegazione": "La Coppa Webb Ellis viene assegnata alla squadra vincitrice della Coppa del Mondo di rugby. Il nome del trofeo è un omaggio a William Webb Ellis, a cui viene attribuita l'invenzione del rugby."
+            },
+            {
+                "categoria": "Competizioni Internazionali",
+                "domanda": "Quale competizione ha sostituito il Tri Nations nel rugby dell'emisfero sud?",
+                "opzioni": ["Super Rugby", "Rugby Championship", "Pacific Nations Cup", "Rugby World Cup"],
+                "risposta_corretta": 1,
+                "spiegazione": "Il Rugby Championship ha sostituito il Tri Nations nel 2012, quando l'Argentina si è unita a Nuova Zelanda, Australia e Sudafrica. In precedenza, il Tri Nations era disputato solo dalle tre nazioni dell'emisfero sud dal 1996."
+            }
+        ],
+        "Curiosità sul Rugby": [
+            {
+                "categoria": "Curiosità sul Rugby",
+                "domanda": "Quale oggetto viene tradizionalmente consegnato al giocatore che fa il suo debutto nella nazionale neozelandese (All Blacks)?",
+                "opzioni": ["Una felce d'argento", "Un cappello nero", "Una maglia speciale", "Un primo cap"],
+                "risposta_corretta": 0,
+                "spiegazione": "Ai giocatori che fanno il loro debutto con gli All Blacks viene tradizionalmente consegnata una felce d'argento. Questo simbolo è molto importante nella cultura neozelandese e rappresenta l'onore di indossare la maglia nera della nazionale."
+            },
+            {
+                "categoria": "Curiosità sul Rugby",
+                "domanda": "Quale danza tradizionale eseguono gli All Blacks prima delle partite?",
+                "opzioni": ["Siva Tau", "Cibi", "Haka", "Sipi Tau"],
+                "risposta_corretta": 2,
+                "spiegazione": "Gli All Blacks eseguono l'Haka, una danza tradizionale maori, prima delle partite. Esistono diverse versioni dell'Haka, ma quella più comunemente eseguita è la 'Ka Mate'. Altre nazionali del Pacifico hanno danze simili: Samoa esegue il Siva Tau, Fiji il Cibi e Tonga il Sipi Tau."
+            },
+            {
+                "categoria": "Curiosità sul Rugby",
+                "domanda": "Quale nazione ha la percentuale più alta di vittorie nella storia del rugby internazionale?",
+                "opzioni": ["Sudafrica", "Nuova Zelanda", "Inghilterra", "Australia"],
+                "risposta_corretta": 1,
+                "spiegazione": "La Nuova Zelanda (All Blacks) ha la percentuale più alta di vittorie nella storia del rugby internazionale, con oltre il 75% di partite vinte. Questo li rende una delle squadre sportive di maggior successo in qualsiasi sport a livello mondiale."
+            }
+        ]
     }
     
     # Seleziona un quiz dalla categoria specificata o uno casuale se la categoria non è disponibile
     if category in sample_quizzes:
-        quiz = dict(sample_quizzes[category])  # Crea una copia del dizionario
+        # Seleziona un quiz casuale dalla lista di quiz disponibili per quella categoria
+        quiz = dict(random.choice(sample_quizzes[category]))  # Crea una copia del dizionario
     else:
-        quiz = dict(random.choice(list(sample_quizzes.values())))  # Crea una copia del dizionario
+        # Seleziona una categoria casuale e poi un quiz casuale da quella categoria
+        random_category = random.choice(list(sample_quizzes.keys()))
+        quiz = dict(random.choice(sample_quizzes[random_category]))  # Crea una copia del dizionario
     
     # Aggiungi la data di generazione e un indicatore che è un quiz di esempio
     quiz["generato_il"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -436,67 +551,109 @@ def generate_quiz(category: str = None) -> Dict[str, Any]:
     """Genera un quiz utilizzando il provider configurato."""
     # Usa Gemini se configurato
     if USE_GEMINI and GEMINI_API_KEY:
-        logger.info("Utilizzo Google Gemini per generare il quiz")
-        quiz = generate_quiz_with_gemini(category)
-        if quiz:
-            return quiz
+        try:
+            logger.info("Utilizzo Google Gemini per generare il quiz")
+            # Verifica che la libreria sia installata
+            try:
+                import google.generativeai as genai
+            except ImportError:
+                logger.error("Libreria 'google-generativeai' non installata. Passaggio a OpenAI o quiz di esempio.")
+                raise ImportError("Libreria google-generativeai non installata")
+                
+            quiz = generate_quiz_with_gemini(category)
+            if quiz:
+                logger.info("Quiz generato con successo usando Gemini")
+                return quiz
+            else:
+                logger.warning("Gemini non ha generato un quiz valido, passaggio a OpenAI")
+        except Exception as e:
+            logger.error(f"Errore durante l'utilizzo di Gemini: {e}")
+            logger.info("Passaggio a OpenAI dopo errore con Gemini")
     
-    # Altrimenti usa OpenAI
+    # Prova con OpenAI se Gemini fallisce o non è configurato
     if OPENAI_API_KEY:
-        logger.info("Utilizzo OpenAI per generare il quiz")
-        quiz = generate_quiz_with_openai(category)
-        if quiz:
-            return quiz
+        try:
+            logger.info("Utilizzo OpenAI per generare il quiz")
+            quiz = generate_quiz_with_openai(category)
+            if quiz:
+                logger.info("Quiz generato con successo usando OpenAI")
+                return quiz
+            else:
+                logger.warning("OpenAI non ha generato un quiz valido, passaggio ai quiz di esempio")
+        except Exception as e:
+            logger.error(f"Errore durante l'utilizzo di OpenAI: {e}")
+    else:
+        logger.warning("Chiave API OpenAI non configurata")
     
     # Fallback ai quiz di esempio
-    logger.info("Utilizzo quiz di esempio")
+    logger.info("Utilizzo quiz di esempio come fallback")
     return generate_sample_quiz(category)
 
 def generate_multiple_quizzes(num_quizzes: int = 5, category: str = None) -> List[Dict[str, Any]]:
     """Genera più quiz e li salva nel file dei quiz in attesa."""
     generated_quizzes = []
     errors = 0
+    online_generated = 0
+    sample_generated = 0
     
-    # Se non è possibile generare quiz online, genera quiz di esempio
-    use_sample = False
+    # Verifica iniziale delle API disponibili
+    api_available = True
     
-    try:
-        # Prova a generare il primo quiz per verificare se le API funzionano
-        if USE_GEMINI and GEMINI_API_KEY:
-            try:
-                # Importa la libreria solo se necessario
-                import google.generativeai as genai
-                # Verifica che la libreria sia installata correttamente
-            except ImportError:
-                logger.error("Libreria 'google-generativeai' non installata. Utilizzo quiz di esempio.")
-                use_sample = True
-        elif not OPENAI_API_KEY:
-            logger.warning("Nessuna API configurata. Utilizzo quiz di esempio.")
-            use_sample = True
-    except Exception as e:
-        logger.error(f"Errore nella verifica delle API: {e}")
-        use_sample = True
+    # Verifica se le API sono configurate correttamente
+    if USE_GEMINI and GEMINI_API_KEY:
+        try:
+            # Verifica che la libreria Gemini sia installata
+            import google.generativeai as genai
+            logger.info("Google Gemini API configurata correttamente")
+        except ImportError:
+            logger.error("Libreria 'google-generativeai' non installata. Utilizzo OpenAI o quiz di esempio.")
+            if not OPENAI_API_KEY:
+                api_available = False
+                logger.warning("Anche OpenAI non è configurato. Verranno generati solo quiz di esempio.")
+    elif not OPENAI_API_KEY:
+        api_available = False
+        logger.warning("Nessuna API configurata. Verranno generati solo quiz di esempio.")
     
+    # Genera i quiz richiesti
     for i in range(num_quizzes):
         try:
-            if use_sample:
-                # Genera un quiz di esempio
-                quiz = generate_sample_quiz(category)
+            # Se le API non sono disponibili o se abbiamo già avuto troppi errori, usa i quiz di esempio
+            if not api_available or (errors > 2 and online_generated == 0):
+                # Genera un quiz di esempio con categoria casuale se non specificata
+                current_category = category if category else random.choice(QUIZ_CATEGORIES)
+                quiz = generate_sample_quiz(current_category)
+                if quiz:
+                    # Aggiungi una nota che indica che è un quiz di esempio
+                    quiz["nota"] = f"Quiz di esempio (categoria: {current_category})"
+                    sample_generated += 1
+                    logger.info(f"Generato quiz di esempio {i+1}/{num_quizzes} (categoria: {current_category})")
             else:
                 # Prova a generare un quiz online
                 quiz = generate_quiz(category)
-                
+                if quiz:
+                    online_generated += 1
+                    logger.info(f"Generato quiz online {i+1}/{num_quizzes}")
+            
+            # Aggiungi il quiz alla lista se è stato generato correttamente
             if quiz:
+                # Assicurati che ogni quiz abbia un timestamp unico
+                quiz["generato_il"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
                 generated_quizzes.append(quiz)
             else:
                 errors += 1
                 logger.error(f"Errore nella generazione del quiz {i+1}/{num_quizzes}")
+                
         except Exception as e:
             errors += 1
             logger.error(f"Eccezione nella generazione del quiz {i+1}/{num_quizzes}: {e}")
-            # Se fallisce il primo quiz, passa ai quiz di esempio per i successivi
-            if i == 0:
-                use_sample = True
+            
+            # Se abbiamo troppi errori consecutivi, passa ai quiz di esempio
+            if errors > 2 and online_generated == 0:
+                api_available = False
+                logger.warning("Troppi errori consecutivi. Passaggio ai quiz di esempio per i rimanenti.")
+                
+    # Log riassuntivo
+    logger.info(f"Generazione completata: {len(generated_quizzes)} quiz totali, {online_generated} online, {sample_generated} di esempio, {errors} errori")
     
     # Salva i quiz generati nel file dei quiz in attesa
     if generated_quizzes:

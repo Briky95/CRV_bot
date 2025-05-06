@@ -3269,30 +3269,8 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     start_idx = (page - 1) * teams_per_page
     end_idx = min(start_idx + teams_per_page, len(filtered_squadre))
     
-    # Seleziona le squadre per la pagina corrente
-    current_page_teams = filtered_squadre[start_idx:end_idx]
-    
-    # Crea la tastiera con le squadre (1 per riga per maggiore leggibilità)
+    # Inizializza la tastiera
     keyboard = []
-    for team in current_page_teams:
-        keyboard.append([InlineKeyboardButton(team, callback_data=team)])
-    
-    # Aggiungi i controlli di navigazione
-    nav_row = []
-    
-    # Pulsante pagina precedente
-    if page > 1:
-        nav_row.append(InlineKeyboardButton("⬅️ Prec", callback_data=f"page:{page-1}"))
-    
-    # Indicatore di pagina
-    nav_row.append(InlineKeyboardButton(f"📄 {page}/{total_pages}", callback_data="noop"))
-    
-    # Pulsante pagina successiva
-    if page < total_pages:
-        nav_row.append(InlineKeyboardButton("Succ ➡️", callback_data=f"page:{page+1}"))
-    
-    if nav_row:
-        keyboard.append(nav_row)
     
     # Aggiungi pulsanti per la ricerca alfabetica in modo più compatto
     # Dividi l'alfabeto in gruppi di lettere
@@ -3315,15 +3293,41 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
         else:  # Restanti gruppi nella seconda riga
             alphabet_row2.append(InlineKeyboardButton(button_text, callback_data=callback_data))
     
-    # Aggiungi le righe dell'alfabeto alla tastiera
+    # Aggiungi le righe dell'alfabeto alla tastiera (sopra all'elenco delle squadre)
     keyboard.append(alphabet_row1)
     keyboard.append(alphabet_row2)
     
     # Aggiungi pulsante per mostrare tutte le squadre
     keyboard.append([InlineKeyboardButton("🔄 Tutte le squadre", callback_data="filter:all")])
     
-    # Aggiungi pulsanti per la ricerca e l'inserimento manuale
+    # Aggiungi pulsanti per la ricerca
     keyboard.append([InlineKeyboardButton("🔍 Cerca squadra", callback_data="search_team")])
+    
+    # Seleziona le squadre per la pagina corrente
+    current_page_teams = filtered_squadre[start_idx:end_idx]
+    
+    # Aggiungi le squadre alla tastiera (1 per riga per maggiore leggibilità)
+    for team in current_page_teams:
+        keyboard.append([InlineKeyboardButton(team, callback_data=team)])
+    
+    # Aggiungi i controlli di navigazione
+    nav_row = []
+    
+    # Pulsante pagina precedente
+    if page > 1:
+        nav_row.append(InlineKeyboardButton("⬅️ Prec", callback_data=f"page:{page-1}"))
+    
+    # Indicatore di pagina (con callback_data che non fa nulla ma è riconoscibile)
+    nav_row.append(InlineKeyboardButton(f"📄 {page}/{total_pages}", callback_data="page:current"))
+    
+    # Pulsante pagina successiva
+    if page < total_pages:
+        nav_row.append(InlineKeyboardButton("Succ ➡️", callback_data=f"page:{page+1}"))
+    
+    if nav_row:
+        keyboard.append(nav_row)
+    
+    # Aggiungi pulsante per l'inserimento manuale (in fondo)
     keyboard.append([InlineKeyboardButton("➕ Altra squadra", callback_data="altra_squadra")])
     
     return InlineKeyboardMarkup(keyboard)
@@ -3398,8 +3402,12 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # Gestione della paginazione
             if callback_data.startswith("page:"):
                 # Estrai il numero di pagina
-                page = int(callback_data.split(":")[1])
-                context.user_data['team_page'] = page
+                if callback_data == "page:current":
+                    # Non fare nulla, mantieni la pagina corrente
+                    page = context.user_data.get('team_page', 1)
+                else:
+                    page = int(callback_data.split(":")[1])
+                    context.user_data['team_page'] = page
                 
                 # Carica le squadre disponibili
                 squadre = get_squadre_list()
@@ -3489,7 +3497,7 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 return SQUADRA1
                 
             # Ignora il click sul pulsante di pagina corrente
-            elif callback_data == "noop":
+            elif callback_data == "page:current":
                 return SQUADRA1
                 
             # Altrimenti, l'utente ha selezionato una squadra
@@ -3637,8 +3645,12 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # Gestione della paginazione
             if callback_data.startswith("page:"):
                 # Estrai il numero di pagina
-                page = int(callback_data.split(":")[1])
-                context.user_data['team_page'] = page
+                if callback_data == "page:current":
+                    # Non fare nulla, mantieni la pagina corrente
+                    page = context.user_data.get('team_page', 1)
+                else:
+                    page = int(callback_data.split(":")[1])
+                    context.user_data['team_page'] = page
                 
                 # Carica le squadre disponibili
                 squadre = get_squadre_list()
@@ -3731,7 +3743,7 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 return SQUADRA2
                 
             # Ignora il click sul pulsante di pagina corrente
-            elif callback_data == "noop":
+            elif callback_data == "page:current":
                 return SQUADRA2
                 
             # Se l'utente ha confermato una nuova squadra
@@ -4017,8 +4029,12 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # Gestione della paginazione
             if callback_data.startswith("page:"):
                 # Estrai il numero di pagina
-                page = int(callback_data.split(":")[1])
-                context.user_data['team_page'] = page
+                if callback_data == "page:current":
+                    # Non fare nulla, mantieni la pagina corrente
+                    page = context.user_data.get('team_page', 1)
+                else:
+                    page = int(callback_data.split(":")[1])
+                    context.user_data['team_page'] = page
                 
                 # Carica le squadre disponibili
                 squadre = get_squadre_list()
@@ -4112,7 +4128,7 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 return SQUADRA3
                 
             # Ignora il click sul pulsante di pagina corrente
-            elif callback_data == "noop":
+            elif callback_data == "page:current":
                 return SQUADRA3
                 
             # Altrimenti, l'utente ha selezionato una squadra
