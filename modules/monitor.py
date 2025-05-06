@@ -206,7 +206,20 @@ class BotMonitor:
             dict: Dizionario con tutte le metriche di salute
         """
         # Aggiorna le metriche di sistema
-        self._update_system_metrics()
+        try:
+            self._update_system_metrics()
+        except Exception as e:
+            logger.error(f"Errore nell'aggiornamento delle metriche di sistema: {e}")
+            # Imposta valori di default in caso di errore
+            self.system_metrics = {
+                'cpu_percent': 0,
+                'memory_percent': 0,
+                'memory_used': "N/A",
+                'memory_total': "N/A",
+                'disk_percent': 0,
+                'disk_used': "N/A",
+                'disk_total': "N/A"
+            }
         
         # Calcola l'uptime
         uptime_seconds = time.time() - self.start_time
@@ -216,7 +229,7 @@ class BotMonitor:
         uptime_str = f"{int(days)}d {int(hours)}h {int(minutes)}m {int(seconds)}s"
         
         # Calcola il tempo medio di risposta
-        avg_response_time = sum(self.response_times) / len(self.response_times) if self.response_times else 0
+        avg_response_time = sum(self.response_times) / max(len(self.response_times), 1) if self.response_times else 0
         
         # Determina lo stato di salute
         if PSUTIL_AVAILABLE:
@@ -240,10 +253,10 @@ class BotMonitor:
                 health_status = "healthy"
         
         # Comandi più utilizzati (top 5)
-        top_commands = sorted(self.command_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_commands = sorted(self.command_counts.items(), key=lambda x: x[1], reverse=True)[:5] if self.command_counts else []
         
         # Ultimi errori (top 5)
-        recent_errors = list(self.error_history)[-5:] if self.error_history else []
+        recent_errors = list(self.error_history)[-5:] if self.error_history and len(self.error_history) > 0 else []
         
         return {
             'status': health_status,
@@ -322,7 +335,12 @@ class BotMonitor:
         if health['recent_errors']:
             message += "\n<b>Errori recenti:</b>\n"
             for error in health['recent_errors']:
-                message += f"• {error['timestamp']} - {error['error_type']}: {error['error_message'][:50]}...\n"
+                error_msg = error.get('error_message', 'Nessun messaggio')
+                if len(error_msg) > 50:
+                    error_msg = f"{error_msg[:50]}..."
+                timestamp = error.get('timestamp', 'N/A')
+                error_type = error.get('error_type', 'Errore sconosciuto')
+                message += f"• {timestamp} - {error_type}: {error_msg}\n"
         
         # Statistiche sistema
         message += f"\n<b>💻 SISTEMA</b>\n"

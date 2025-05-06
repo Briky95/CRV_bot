@@ -1215,7 +1215,11 @@ async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     
     # Ottieni e formatta il messaggio di stato
-    health_message = bot_monitor.format_health_message()
+    try:
+        health_message = bot_monitor.format_health_message()
+    except Exception as e:
+        logger.error(f"Errore nella formattazione del messaggio di stato: {e}")
+        health_message = "⚠️ <b>ERRORE</b>\n\nSi è verificato un errore durante la generazione del messaggio di stato."
     
     # Crea pulsanti per azioni aggiuntive
     keyboard = [
@@ -1254,7 +1258,11 @@ async def health_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     if action == "refresh":
         # Aggiorna le metriche e mostra il messaggio aggiornato
-        health_message = bot_monitor.format_health_message()
+        try:
+            health_message = bot_monitor.format_health_message()
+        except Exception as e:
+            logger.error(f"Errore nella formattazione del messaggio di stato: {e}")
+            health_message = "⚠️ <b>ERRORE</b>\n\nSi è verificato un errore durante la generazione del messaggio di stato."
         
         keyboard = [
             [InlineKeyboardButton("🔄 Aggiorna", callback_data="health_refresh")],
@@ -1273,8 +1281,17 @@ async def health_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     elif action == "export":
         # Esporta i dati di monitoraggio in formato JSON
-        health_data = bot_monitor.get_health_status()
-        json_data = json.dumps(health_data, indent=2, default=str)
+        try:
+            health_data = bot_monitor.get_health_status()
+            json_data = json.dumps(health_data, indent=2, default=str)
+        except Exception as e:
+            logger.error(f"Errore nell'esportazione dei dati di monitoraggio: {e}")
+            await query.edit_message_text(
+                "⚠️ <b>ERRORE</b>\n\nSi è verificato un errore durante l'esportazione dei dati di monitoraggio.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Torna al monitoraggio", callback_data="health_refresh")]]),
+                parse_mode='HTML'
+            )
+            return
         
         # Crea un file temporaneo
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as temp_file:
@@ -3218,6 +3235,9 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     Returns:
         InlineKeyboardMarkup con le squadre paginate e i controlli di navigazione
     """
+    # Forza teams_per_page a 10 per garantire coerenza in tutte le visualizzazioni
+    teams_per_page = 10
+    
     # Log per debug
     logger.info(f"create_teams_keyboard: page={page}, teams_per_page={teams_per_page}, search_query={search_query}, exclude_team={exclude_team}, filter_letter={filter_letter}")
     logger.info(f"Numero totale di squadre: {len(squadre)}")
@@ -3351,7 +3371,12 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         squadre = get_squadre_list()
         
         # Crea la tastiera con paginazione
-        reply_markup = create_teams_keyboard(squadre, page=1, filter_letter=None)
+        reply_markup = create_teams_keyboard(
+            squadre, 
+            page=1, 
+            teams_per_page=10,  # Assicuriamoci di usare lo stesso numero di squadre per pagina
+            filter_letter=None
+        )
         
         # Prepara il messaggio con barra di avanzamento e riepilogo
         messaggio = f"{barra_avanzamento}\n\n"
@@ -3655,6 +3680,35 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     exclude_team=context.user_data.get('squadra1'),
                     filter_letter=context.user_data.get('filter_letter')
                 )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA2, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                # Aggiungi informazioni sulla ricerca o filtro se presente
+                if context.user_data.get('team_search'):
+                    messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                elif context.user_data.get('filter_letter'):
+                    messaggio += f"<b>Filtro:</b> Squadre che iniziano con '{context.user_data['filter_letter']}'\n\n"
+                
+                messaggio += "<b>Seleziona la seconda squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await query.edit_message_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA2
             
             # Gestione del filtro alfabetico
             elif callback_data.startswith("filter:"):
@@ -4045,6 +4099,35 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')],
                     filter_letter=context.user_data.get('filter_letter')
                 )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA3, context.user_data.get('tipo_partita', 'triangolare'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                # Aggiungi informazioni sulla ricerca o filtro se presente
+                if context.user_data.get('team_search'):
+                    messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                elif context.user_data.get('filter_letter'):
+                    messaggio += f"<b>Filtro:</b> Squadre che iniziano con '{context.user_data['filter_letter']}'\n\n"
+                
+                messaggio += "<b>Seleziona la terza squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await query.edit_message_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA3
             
             # Gestione del filtro alfabetico
             elif callback_data.startswith("filter:"):
