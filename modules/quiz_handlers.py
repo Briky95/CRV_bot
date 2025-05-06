@@ -528,42 +528,56 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
             if success:
                 await query.answer("Quiz approvato con successo!")
                 logger.info(f"Quiz approvato con successo (indice: {index})")
+                
+                # Aggiorna la visualizzazione
+                pending_count = get_pending_quiz_count()
+                
+                if pending_count > 0:
+                    # Mostra il prossimo quiz
+                    await query.edit_message_text(
+                        "<b>✅ Quiz approvato con successo!</b>\n\n"
+                        "Il quiz è stato aggiunto al database principale.",
+                        parse_mode='HTML',
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("👁️ Visualizza altri quiz in attesa", callback_data="quiz_gen_view")],
+                            [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                        ])
+                    )
+                else:
+                    # Non ci sono più quiz in attesa
+                    await query.edit_message_text(
+                        "<b>✅ Quiz approvato con successo!</b>\n\n"
+                        "Non ci sono più quiz in attesa di approvazione.",
+                        parse_mode='HTML',
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("🔄 Genera altri quiz", callback_data="quiz_admin_genera")],
+                            [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                        ])
+                    )
             else:
                 await query.answer("Errore nell'approvazione del quiz")
                 logger.error(f"Errore nell'approvazione del quiz (indice: {index})")
-                return
+                await query.edit_message_text(
+                    "<b>❌ Errore nell'approvazione del quiz</b>\n\n"
+                    "Si è verificato un errore durante l'approvazione del quiz.",
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("👁️ Visualizza quiz in attesa", callback_data="quiz_gen_view")],
+                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                    ])
+                )
         except Exception as e:
             logger.error(f"Errore durante l'approvazione del quiz: {e}")
             await query.answer(f"Errore: {str(e)[:200]}")
-            return
-            
-            # Aggiorna la visualizzazione
-            pending_count = get_pending_quiz_count()
-            
-            if pending_count > 0:
-                # Mostra il prossimo quiz
-                await query.edit_message_text(
-                    "<b>✅ Quiz approvato con successo!</b>\n\n"
-                    "Il quiz è stato aggiunto al database principale.",
-                    parse_mode='HTML',
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("👁️ Visualizza altri quiz in attesa", callback_data="quiz_gen_view")],
-                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
-                    ])
-                )
-            else:
-                # Non ci sono più quiz in attesa
-                await query.edit_message_text(
-                    "<b>✅ Quiz approvato con successo!</b>\n\n"
-                    "Non ci sono più quiz in attesa di approvazione.",
-                    parse_mode='HTML',
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🔄 Genera altri quiz", callback_data="quiz_admin_genera")],
-                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
-                    ])
-                )
-        else:
-            await query.answer("Errore nell'approvazione del quiz")
+            await query.edit_message_text(
+                f"<b>❌ Errore durante l'approvazione del quiz</b>\n\n"
+                f"Si è verificato un errore: {str(e)[:100]}...",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("👁️ Visualizza quiz in attesa", callback_data="quiz_gen_view")],
+                    [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                ])
+            )
     
     elif action == "reject":
         # Rifiuta un quiz
@@ -576,42 +590,56 @@ async def quiz_generator_callback(update: Update, context: ContextTypes.DEFAULT_
             if success:
                 await query.answer("Quiz rifiutato")
                 logger.info(f"Quiz rifiutato con successo (indice: {index})")
+                
+                # Aggiorna la visualizzazione
+                pending_count = get_pending_quiz_count()
+                
+                if pending_count > 0:
+                    # Mostra il prossimo quiz
+                    await query.edit_message_text(
+                        "<b>❌ Quiz rifiutato</b>\n\n"
+                        "Il quiz è stato rimosso dalla lista dei quiz in attesa.",
+                        parse_mode='HTML',
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("👁️ Visualizza altri quiz in attesa", callback_data="quiz_gen_view")],
+                            [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                        ])
+                    )
+                else:
+                    # Non ci sono più quiz in attesa
+                    await query.edit_message_text(
+                        "<b>❌ Quiz rifiutato</b>\n\n"
+                        "Non ci sono più quiz in attesa di approvazione.",
+                        parse_mode='HTML',
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("🔄 Genera altri quiz", callback_data="quiz_admin_genera")],
+                            [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                        ])
+                    )
             else:
                 await query.answer("Errore nel rifiuto del quiz")
                 logger.error(f"Errore nel rifiuto del quiz (indice: {index})")
-                return
+                await query.edit_message_text(
+                    "<b>❌ Errore nel rifiuto del quiz</b>\n\n"
+                    "Si è verificato un errore durante il rifiuto del quiz.",
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("👁️ Visualizza quiz in attesa", callback_data="quiz_gen_view")],
+                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                    ])
+                )
         except Exception as e:
             logger.error(f"Errore durante il rifiuto del quiz: {e}")
             await query.answer(f"Errore: {str(e)[:200]}")
-            return
-            
-            # Aggiorna la visualizzazione
-            pending_count = get_pending_quiz_count()
-            
-            if pending_count > 0:
-                # Mostra il prossimo quiz
-                await query.edit_message_text(
-                    "<b>❌ Quiz rifiutato</b>\n\n"
-                    "Il quiz è stato rimosso dalla lista dei quiz in attesa.",
-                    parse_mode='HTML',
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("👁️ Visualizza altri quiz in attesa", callback_data="quiz_gen_view")],
-                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
-                    ])
-                )
-            else:
-                # Non ci sono più quiz in attesa
-                await query.edit_message_text(
-                    "<b>❌ Quiz rifiutato</b>\n\n"
-                    "Non ci sono più quiz in attesa di approvazione.",
-                    parse_mode='HTML',
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🔄 Genera altri quiz", callback_data="quiz_admin_genera")],
-                        [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
-                    ])
-                )
-        else:
-            await query.answer("Errore nel rifiuto del quiz")
+            await query.edit_message_text(
+                f"<b>❌ Errore durante il rifiuto del quiz</b>\n\n"
+                f"Si è verificato un errore: {str(e)[:100]}...",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("👁️ Visualizza quiz in attesa", callback_data="quiz_gen_view")],
+                    [InlineKeyboardButton("◀️ Torna al menu", callback_data="quiz_admin_menu")]
+                ])
+            )
     
     elif action == "nav":
         # Navigazione tra i quiz in attesa

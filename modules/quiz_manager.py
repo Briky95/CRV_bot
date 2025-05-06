@@ -177,15 +177,48 @@ def salva_statistiche_quiz(stats_data):
         return False
 
 # Funzione per ottenere un quiz casuale da una categoria
-def ottieni_quiz_casuale(categoria=None):
-    """Ottiene un quiz casuale, opzionalmente da una categoria specifica."""
+def ottieni_quiz_casuale(categoria=None, evita_ripetizioni=True):
+    """
+    Ottiene un quiz casuale, opzionalmente da una categoria specifica.
+    
+    Args:
+        categoria: Nome della categoria da cui selezionare il quiz (opzionale)
+        evita_ripetizioni: Se True, evita di selezionare quiz già inviati recentemente
+        
+    Returns:
+        Tuple (quiz, categoria): Il quiz selezionato e la sua categoria
+    """
     quiz_data = carica_quiz()
+    
+    # Carica le statistiche per verificare i quiz già inviati
+    stats = carica_statistiche_quiz()
+    quiz_recenti = []
+    
+    # Estrai le domande dei quiz inviati negli ultimi 30 giorni
+    if evita_ripetizioni:
+        for quiz_giornaliero in stats["quiz_giornalieri"]:
+            quiz_recenti.append(quiz_giornaliero.get("domanda", ""))
+    
+    # Funzione per filtrare i quiz non recenti
+    def filtra_quiz_non_recenti(quiz_list):
+        return [q for q in quiz_list if q["domanda"] not in quiz_recenti]
     
     if categoria:
         # Cerca la categoria specificata
         for cat in quiz_data["categorie"]:
             if cat["nome"] == categoria and cat["quiz"]:
-                return random.choice(cat["quiz"]), cat["nome"]
+                # Filtra i quiz non recenti
+                quiz_disponibili = cat["quiz"]
+                if evita_ripetizioni:
+                    quiz_non_recenti = filtra_quiz_non_recenti(quiz_disponibili)
+                    # Se tutti i quiz sono stati usati recentemente, usa tutti i quiz
+                    if quiz_non_recenti:
+                        quiz_disponibili = quiz_non_recenti
+                
+                if not quiz_disponibili:
+                    return None, None
+                
+                return random.choice(quiz_disponibili), cat["nome"]
         
         # Se la categoria non esiste o non ha quiz, ritorna None
         return None, None
@@ -195,11 +228,29 @@ def ottieni_quiz_casuale(categoria=None):
         if not categorie_con_quiz:
             return None, None
         
+        # Prova a trovare quiz non recenti in qualsiasi categoria
+        if evita_ripetizioni:
+            # Crea una lista di tutte le categorie con i loro quiz non recenti
+            categorie_con_quiz_non_recenti = []
+            for cat in categorie_con_quiz:
+                quiz_non_recenti = filtra_quiz_non_recenti(cat["quiz"])
+                if quiz_non_recenti:
+                    categorie_con_quiz_non_recenti.append({
+                        "nome": cat["nome"],
+                        "quiz": quiz_non_recenti
+                    })
+            
+            # Se ci sono categorie con quiz non recenti, usa quelle
+            if categorie_con_quiz_non_recenti:
+                categoria_scelta = random.choice(categorie_con_quiz_non_recenti)
+                return random.choice(categoria_scelta["quiz"]), categoria_scelta["nome"]
+        
+        # Se non ci sono quiz non recenti o non stiamo evitando ripetizioni, usa tutti i quiz
         categoria_scelta = random.choice(categorie_con_quiz)
         return random.choice(categoria_scelta["quiz"]), categoria_scelta["nome"]
 
 # Funzione per creare un messaggio di quiz per il canale
-async def invia_quiz_al_canale(context: ContextTypes.DEFAULT_TYPE, channel_id, quiz_specifico=None):
+async def invia_quiz_al_canale(context: ContextTypes.DEFAULT_TYPE, channel_id, quiz_specifico=None, evita_ripetizioni=True):
     """
     Invia un quiz al canale specificato.
     
@@ -207,6 +258,7 @@ async def invia_quiz_al_canale(context: ContextTypes.DEFAULT_TYPE, channel_id, q
         context: Il contesto del bot Telegram
         channel_id: L'ID del canale a cui inviare il quiz
         quiz_specifico: Un quiz specifico da inviare (opzionale). Se None, ne verrà scelto uno casuale.
+        evita_ripetizioni: Se True, evita di selezionare quiz già inviati recentemente
     
     Returns:
         bool: True se l'invio è riuscito, False altrimenti
@@ -216,8 +268,29 @@ async def invia_quiz_al_canale(context: ContextTypes.DEFAULT_TYPE, channel_id, q
         quiz = quiz_specifico["quiz"]
         categoria = quiz_specifico["categoria"]
     else:
-        # Scegli un quiz casuale
-        quiz, categoria = ottieni_quiz_casuale()
+        # Scegli un quiz casuale, evitando ripetizioni
+        quiz, categoria = ottieni_quiz_casuale(evita_ripetizioni=evita_ripetizioni)
+        
+        # Log per debug
+        logger.info(f"Quiz selezionato: {quiz['domanda'] if quiz else 'Nessun quiz disponibile'}")
+        
+        # Verifica se il quiz è già stato inviato recentemente
+        if evita_ripetizioni and quiz:
+            stats = carica_statistiche_quiz()
+            for quiz_giornaliero in stats["quiz_giornalieri"]:
+                if quiz_giornaliero.get("domanda") == quiz["domanda"]:
+                    logger.info(f"Quiz già inviato il {quiz_giornaliero.get('data')}, selezionando un altro quiz...")
+                    # Prova a selezionare un altro quiz
+                    tentativi = 0
+                    while tentativi < 5:  # Limita i tentativi per evitare loop infiniti
+                        nuovo_quiz, nuova_categoria = ottieni_quiz_casuale(evita_ripetizioni=True)
+                        if nuovo_quiz and nuovo_quiz["domanda"] != quiz["domanda"]:
+                            quiz = nuovo_quiz
+                            categoria = nuova_categoria
+                            logger.info(f"Nuovo quiz selezionato: {quiz['domanda']}")
+                            break
+                        tentativi += 1
+                    break
     
     if not quiz:
         logger.error("Nessun quiz disponibile da inviare al canale")
@@ -571,7 +644,7 @@ def configura_job_quiz(application, channel_id):
         try:
             # Funzione wrapper per il job
             async def job_invia_quiz(context):
-                await invia_quiz_al_canale(context, channel_id)
+                await invia_quiz_al_canale(context, channel_id, evita_ripetizioni=True)
             
             # Pianifica il job giornaliero
             application.job_queue.run_daily(
@@ -618,7 +691,7 @@ def configura_job_quiz(application, channel_id):
                             self.bot_data = {}
                     
                     fake_context = FakeContext(application.bot)
-                    await invia_quiz_al_canale(fake_context, channel_id)
+                    await invia_quiz_al_canale(fake_context, channel_id, evita_ripetizioni=True)
                 
                 # Wrapper per mostrare i risultati
                 async def job_mostra_risultati_wrapper(context_data):
