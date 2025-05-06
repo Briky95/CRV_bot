@@ -3211,7 +3211,7 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ConversationHandler.END
 
 # Funzione per creare la tastiera delle squadre con paginazione
-def create_teams_keyboard(squadre, page=1, teams_per_page=8, search_query=None, exclude_team=None):
+def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None, exclude_team=None, filter_letter=None):
     """
     Crea una tastiera con paginazione per la selezione delle squadre.
     
@@ -3221,14 +3221,18 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=8, search_query=None, 
         teams_per_page: Numero di squadre per pagina
         search_query: Query di ricerca per filtrare le squadre
         exclude_team: Squadra da escludere dalla lista (es. prima squadra già selezionata)
+        filter_letter: Lettera iniziale per filtrare le squadre (A-Z)
     
     Returns:
         InlineKeyboardMarkup con le squadre paginate e i controlli di navigazione
     """
-    # Filtra le squadre in base alla query di ricerca
+    # Filtra le squadre in base alla query di ricerca o alla lettera iniziale
     if search_query:
         search_query = search_query.lower()
         filtered_squadre = [s for s in squadre if search_query in s.lower()]
+    elif filter_letter and filter_letter.upper() in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        filter_letter = filter_letter.upper()
+        filtered_squadre = [s for s in squadre if s.upper().startswith(filter_letter)]
     else:
         filtered_squadre = squadre.copy()
     
@@ -3252,13 +3256,10 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=8, search_query=None, 
     # Seleziona le squadre per la pagina corrente
     current_page_teams = filtered_squadre[start_idx:end_idx]
     
-    # Crea la tastiera con le squadre (2 per riga)
+    # Crea la tastiera con le squadre (1 per riga per maggiore leggibilità)
     keyboard = []
-    for i in range(0, len(current_page_teams), 2):
-        row = [InlineKeyboardButton(current_page_teams[i], callback_data=current_page_teams[i])]
-        if i + 1 < len(current_page_teams):
-            row.append(InlineKeyboardButton(current_page_teams[i + 1], callback_data=current_page_teams[i + 1]))
-        keyboard.append(row)
+    for team in current_page_teams:
+        keyboard.append([InlineKeyboardButton(team, callback_data=team)])
     
     # Aggiungi i controlli di navigazione
     nav_row = []
@@ -3276,6 +3277,31 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=8, search_query=None, 
     
     if nav_row:
         keyboard.append(nav_row)
+    
+    # Aggiungi pulsanti per la ricerca alfabetica
+    alphabet_row1 = []
+    alphabet_row2 = []
+    alphabet_row3 = []
+    
+    # Prima riga: A-H
+    for letter in "ABCDEFGH":
+        alphabet_row1.append(InlineKeyboardButton(letter, callback_data=f"filter:{letter}"))
+    
+    # Seconda riga: I-P
+    for letter in "IJKLMNOP":
+        alphabet_row2.append(InlineKeyboardButton(letter, callback_data=f"filter:{letter}"))
+    
+    # Terza riga: Q-Z
+    for letter in "QRSTUVWXYZ":
+        alphabet_row3.append(InlineKeyboardButton(letter, callback_data=f"filter:{letter}"))
+    
+    # Aggiungi le righe dell'alfabeto alla tastiera
+    keyboard.append(alphabet_row1)
+    keyboard.append(alphabet_row2)
+    keyboard.append(alphabet_row3)
+    
+    # Aggiungi pulsante per mostrare tutte le squadre
+    keyboard.append([InlineKeyboardButton("🔄 Tutte le squadre", callback_data="filter:all")])
     
     # Aggiungi pulsanti per la ricerca e l'inserimento manuale
     keyboard.append([InlineKeyboardButton("🔍 Cerca squadra", callback_data="search_team")])
@@ -3310,7 +3336,7 @@ async def tipo_partita_callback(update: Update, context: ContextTypes.DEFAULT_TY
         squadre = get_squadre_list()
         
         # Crea la tastiera con paginazione
-        reply_markup = create_teams_keyboard(squadre, page=1)
+        reply_markup = create_teams_keyboard(squadre, page=1, filter_letter=None)
         
         # Prepara il messaggio con barra di avanzamento e riepilogo
         messaggio = f"{barra_avanzamento}\n\n"
@@ -3358,7 +3384,33 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 reply_markup = create_teams_keyboard(
                     squadre, 
                     page=page,
-                    search_query=context.user_data.get('team_search')
+                    search_query=context.user_data.get('team_search'),
+                    filter_letter=context.user_data.get('filter_letter')
+                )
+            
+            # Gestione del filtro alfabetico
+            elif callback_data.startswith("filter:"):
+                # Estrai la lettera di filtro
+                filter_value = callback_data.split(":")[1]
+                
+                # Se è "all", rimuovi il filtro
+                if filter_value == "all":
+                    context.user_data.pop('filter_letter', None)
+                else:
+                    context.user_data['filter_letter'] = filter_value
+                
+                # Resetta la pagina a 1
+                context.user_data['team_page'] = 1
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione e filtro
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1,
+                    search_query=context.user_data.get('team_search'),
+                    filter_letter=context.user_data.get('filter_letter')
                 )
                 
                 # Genera la barra di avanzamento
@@ -3374,9 +3426,11 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 if riepilogo:
                     messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
                 
-                # Aggiungi informazioni sulla ricerca se presente
+                # Aggiungi informazioni sulla ricerca o filtro se presente
                 if context.user_data.get('team_search'):
                     messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                elif context.user_data.get('filter_letter'):
+                    messaggio += f"<b>Filtro:</b> Squadre che iniziano con '{context.user_data['filter_letter']}'\n\n"
                 
                 messaggio += "<b>Seleziona la prima squadra:</b>\n\n"
                 messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
@@ -3565,7 +3619,34 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     squadre, 
                     page=page,
                     search_query=context.user_data.get('team_search'),
-                    exclude_team=context.user_data.get('squadra1')
+                    exclude_team=context.user_data.get('squadra1'),
+                    filter_letter=context.user_data.get('filter_letter')
+                )
+            
+            # Gestione del filtro alfabetico
+            elif callback_data.startswith("filter:"):
+                # Estrai la lettera di filtro
+                filter_value = callback_data.split(":")[1]
+                
+                # Se è "all", rimuovi il filtro
+                if filter_value == "all":
+                    context.user_data.pop('filter_letter', None)
+                else:
+                    context.user_data['filter_letter'] = filter_value
+                
+                # Resetta la pagina a 1
+                context.user_data['team_page'] = 1
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione e filtro
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1,
+                    search_query=context.user_data.get('team_search'),
+                    exclude_team=context.user_data.get('squadra1'),
+                    filter_letter=context.user_data.get('filter_letter')
                 )
                 
                 # Genera la barra di avanzamento
@@ -3581,9 +3662,11 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 if riepilogo:
                     messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
                 
-                # Aggiungi informazioni sulla ricerca se presente
+                # Aggiungi informazioni sulla ricerca o filtro se presente
                 if context.user_data.get('team_search'):
                     messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                elif context.user_data.get('filter_letter'):
+                    messaggio += f"<b>Filtro:</b> Squadre che iniziano con '{context.user_data['filter_letter']}'\n\n"
                 
                 messaggio += "<b>Seleziona la seconda squadra:</b>\n\n"
                 messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
@@ -3658,7 +3741,8 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     squadre, 
                     page=context.user_data.get('team_page', 1),
                     search_query=context.user_data.get('team_search'),
-                    exclude_team=context.user_data.get('squadra1')
+                    exclude_team=context.user_data.get('squadra1'),
+                    filter_letter=context.user_data.get('filter_letter')
                 )
                 
                 await query.edit_message_text(
@@ -3716,7 +3800,8 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 reply_markup = create_teams_keyboard(
                     squadre, 
                     page=1, 
-                    exclude_team=[context.user_data['squadra1'], squadra]
+                    exclude_team=[context.user_data['squadra1'], squadra],
+                    filter_letter=context.user_data.get('filter_letter')
                 )
                 
                 # Genera la barra di avanzamento
@@ -3763,7 +3848,8 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     squadre, 
                     page=1,
                     search_query=text,
-                    exclude_team=context.user_data.get('squadra1')
+                    exclude_team=context.user_data.get('squadra1'),
+                    filter_letter=context.user_data.get('filter_letter')
                 )
                 
                 # Genera la barra di avanzamento
@@ -3825,7 +3911,8 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     reply_markup = create_teams_keyboard(
                         squadre, 
                         page=1, 
-                        exclude_team=[context.user_data['squadra1'], squadra]
+                        exclude_team=[context.user_data['squadra1'], squadra],
+                        filter_letter=context.user_data.get('filter_letter')
                     )
                     
                     # Genera la barra di avanzamento
@@ -3907,7 +3994,34 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     squadre, 
                     page=page,
                     search_query=context.user_data.get('team_search'),
-                    exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')]
+                    exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')],
+                    filter_letter=context.user_data.get('filter_letter')
+                )
+            
+            # Gestione del filtro alfabetico
+            elif callback_data.startswith("filter:"):
+                # Estrai la lettera di filtro
+                filter_value = callback_data.split(":")[1]
+                
+                # Se è "all", rimuovi il filtro
+                if filter_value == "all":
+                    context.user_data.pop('filter_letter', None)
+                else:
+                    context.user_data['filter_letter'] = filter_value
+                
+                # Resetta la pagina a 1
+                context.user_data['team_page'] = 1
+                
+                # Carica le squadre disponibili
+                squadre = get_squadre_list()
+                
+                # Crea la tastiera con paginazione e filtro
+                reply_markup = create_teams_keyboard(
+                    squadre, 
+                    page=1,
+                    search_query=context.user_data.get('team_search'),
+                    exclude_team=[context.user_data.get('squadra1'), context.user_data.get('squadra2')],
+                    filter_letter=context.user_data.get('filter_letter')
                 )
                 
                 # Genera la barra di avanzamento
@@ -3923,9 +4037,11 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 if riepilogo:
                     messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
                 
-                # Aggiungi informazioni sulla ricerca se presente
+                # Aggiungi informazioni sulla ricerca o filtro se presente
                 if context.user_data.get('team_search'):
                     messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                elif context.user_data.get('filter_letter'):
+                    messaggio += f"<b>Filtro:</b> Squadre che iniziano con '{context.user_data['filter_letter']}'\n\n"
                 
                 messaggio += "<b>Seleziona la terza squadra:</b>\n\n"
                 messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
