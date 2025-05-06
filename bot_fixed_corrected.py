@@ -3171,20 +3171,12 @@ async def genere_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Carica le squadre disponibili
             squadre = get_squadre_list()
             
-            # Crea una tastiera con le squadre (2 per riga)
-            keyboard = []
-            for i in range(0, len(squadre), 2):
-                row = []
-                # Aggiungi la prima squadra della riga
-                row.append(InlineKeyboardButton(squadre[i], callback_data=squadre[i]))
-                if i + 1 < len(squadre):
-                    row.append(InlineKeyboardButton(squadre[i + 1], callback_data=squadre[i + 1]))
-                keyboard.append(row)
-            
-            # Aggiungi un pulsante per inserire manualmente una squadra
-            keyboard.append([InlineKeyboardButton("Altra squadra", callback_data="altra_squadra")])
-            
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            # Crea la tastiera con paginazione e filtri
+            reply_markup = create_teams_keyboard(
+                squadre, 
+                page=1,
+                teams_per_page=10
+            )
             
             # Prepara il messaggio con barra di avanzamento e riepilogo
             messaggio = f"{barra_avanzamento}\n\n"
@@ -3766,6 +3758,12 @@ async def squadra2_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 # Continua con la selezione della squadra
                 callback_data = squadra
             
+            # Verifica se il callback è un comando speciale
+            elif callback_data.startswith("filter:") or callback_data.startswith("page:") or callback_data == "search_team" or callback_data == "altra_squadra" or callback_data.startswith("conferma_"):
+                # Questi casi sono già gestiti sopra, ma aggiungiamo questo controllo per sicurezza
+                logger.info(f"Callback speciale già gestito: {callback_data}")
+                return SQUADRA2
+                
             # Altrimenti, l'utente ha selezionato una squadra
             squadra = callback_data
             
@@ -4129,6 +4127,12 @@ async def squadra3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 
             # Ignora il click sul pulsante di pagina corrente
             elif callback_data == "page:current":
+                return SQUADRA3
+                
+            # Verifica se il callback è un comando speciale
+            elif callback_data.startswith("filter:") or callback_data.startswith("page:") or callback_data == "search_team" or callback_data == "altra_squadra":
+                # Questi casi sono già gestiti sopra, ma aggiungiamo questo controllo per sicurezza
+                logger.info(f"Callback speciale già gestito: {callback_data}")
                 return SQUADRA3
                 
             # Altrimenti, l'utente ha selezionato una squadra
