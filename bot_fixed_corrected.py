@@ -3285,26 +3285,29 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     if nav_row:
         keyboard.append(nav_row)
     
-    # Aggiungi pulsanti per la ricerca alfabetica
+    # Aggiungi pulsanti per la ricerca alfabetica in modo più compatto
+    # Dividi l'alfabeto in gruppi di lettere
+    alphabet_groups = [
+        "ABC", "DEF", "GHI", "JKL", "MNO", "PQR", "STU", "VWX", "YZ"
+    ]
+    
+    # Crea due righe di pulsanti per i gruppi di lettere
     alphabet_row1 = []
     alphabet_row2 = []
-    alphabet_row3 = []
     
-    # Prima riga: A-H
-    for letter in "ABCDEFGH":
-        alphabet_row1.append(InlineKeyboardButton(letter, callback_data=f"filter:{letter}"))
-    
-    # Seconda riga: I-P
-    for letter in "IJKLMNOP":
-        alphabet_row2.append(InlineKeyboardButton(letter, callback_data=f"filter:{letter}"))
-    
-    # Terza riga: Q-Z
-    for letter in "QRSTUVWXYZ":
-        alphabet_row3.append(InlineKeyboardButton(letter, callback_data=f"filter:{letter}"))
+    # Distribuisci i gruppi su due righe
+    for i, group in enumerate(alphabet_groups):
+        button_text = group
+        # Il callback_data sarà la prima lettera del gruppo
+        callback_data = f"filter:{group[0]}"
+        
+        if i < 5:  # Prime 5 gruppi nella prima riga
+            alphabet_row1.append(InlineKeyboardButton(button_text, callback_data=callback_data))
+        else:  # Restanti gruppi nella seconda riga
+            alphabet_row2.append(InlineKeyboardButton(button_text, callback_data=callback_data))
     
     # Aggiungi le righe dell'alfabeto alla tastiera
     keyboard.append(alphabet_row1)
-    keyboard.append(alphabet_row2)
     keyboard.append(alphabet_row3)
     
     # Aggiungi pulsante per mostrare tutte le squadre
