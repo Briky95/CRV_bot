@@ -3230,15 +3230,22 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     if search_query:
         search_query = search_query.lower()
         filtered_squadre = [s for s in squadre if search_query in s.lower()]
-    elif filter_letter and filter_letter.upper() in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+    elif filter_letter and isinstance(filter_letter, str) and filter_letter.upper() in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
         filter_letter = filter_letter.upper()
-        filtered_squadre = [s for s in squadre if s.upper().startswith(filter_letter)]
+        filtered_squadre = [s for s in squadre if isinstance(s, str) and s.upper().startswith(filter_letter)]
     else:
         filtered_squadre = squadre.copy()
     
-    # Rimuovi la squadra da escludere se specificata
-    if exclude_team and exclude_team in filtered_squadre:
-        filtered_squadre.remove(exclude_team)
+    # Rimuovi la squadra o le squadre da escludere se specificate
+    if exclude_team:
+        if isinstance(exclude_team, list):
+            # Se è una lista, rimuovi tutte le squadre nella lista
+            for team in exclude_team:
+                if team in filtered_squadre:
+                    filtered_squadre.remove(team)
+        elif exclude_team in filtered_squadre:
+            # Se è una singola squadra, rimuovila
+            filtered_squadre.remove(exclude_team)
     
     # Ordina le squadre alfabeticamente
     filtered_squadre.sort()
