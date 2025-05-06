@@ -3317,7 +3317,7 @@ def create_teams_keyboard(squadre, page=1, teams_per_page=10, search_query=None,
     
     # Aggiungi le righe dell'alfabeto alla tastiera
     keyboard.append(alphabet_row1)
-    keyboard.append(alphabet_row3)
+    keyboard.append(alphabet_row2)
     
     # Aggiungi pulsante per mostrare tutte le squadre
     keyboard.append([InlineKeyboardButton("🔄 Tutte le squadre", callback_data="filter:all")])
