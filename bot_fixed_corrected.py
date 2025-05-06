@@ -1207,8 +1207,7 @@ async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not is_admin(user_id):
         await update.message.reply_html(
             "⚠️ <b>Accesso non autorizzato</b>\n\n"
-            "Solo gli amministratori possono visualizzare lo stato di salute del bot.",
-            parse_mode='HTML'
+            "Solo gli amministratori possono visualizzare lo stato di salute del bot."
         )
         # Traccia l'errore
         bot_monitor.track_error("Accesso non autorizzato", "Tentativo di accesso non autorizzato al comando /health", user_id, "/health")
@@ -1234,8 +1233,7 @@ async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Invia il messaggio con i pulsanti
     await update.message.reply_html(
         health_message,
-        reply_markup=reply_markup,
-        parse_mode='HTML'
+        reply_markup=reply_markup
     )
     
     # Registra il completamento del comando
@@ -3436,6 +3434,35 @@ async def squadra1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     search_query=context.user_data.get('team_search'),
                     filter_letter=context.user_data.get('filter_letter')
                 )
+                
+                # Genera la barra di avanzamento
+                barra_avanzamento = genera_barra_avanzamento(SQUADRA1, context.user_data.get('tipo_partita', 'normale'))
+                
+                # Genera il riepilogo dei dati inseriti finora
+                riepilogo = genera_riepilogo_dati(context)
+                
+                # Prepara il messaggio con barra di avanzamento e riepilogo
+                messaggio = f"{barra_avanzamento}\n\n"
+                messaggio += "🏉 <b>NUOVA PARTITA</b> 🏉\n\n"
+                
+                if riepilogo:
+                    messaggio += f"<b>DATI INSERITI:</b>\n{riepilogo}\n"
+                
+                # Aggiungi informazioni sulla ricerca o filtro se presente
+                if context.user_data.get('team_search'):
+                    messaggio += f"<b>Ricerca:</b> \"{context.user_data['team_search']}\"\n\n"
+                elif context.user_data.get('filter_letter'):
+                    messaggio += f"<b>Filtro:</b> Squadre che iniziano con '{context.user_data['filter_letter']}'\n\n"
+                
+                messaggio += "<b>Seleziona la prima squadra:</b>\n\n"
+                messaggio += "<i>Puoi annullare in qualsiasi momento con /annulla</i>"
+                
+                await query.edit_message_text(
+                    messaggio,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                return SQUADRA1
             
             # Gestione del filtro alfabetico
             elif callback_data.startswith("filter:"):
