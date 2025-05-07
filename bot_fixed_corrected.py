@@ -387,6 +387,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Crea i pulsanti per le funzioni standard
     keyboard = [
         [InlineKeyboardButton("📝 Inserisci nuova partita", callback_data="menu_nuova")],
+        [InlineKeyboardButton("🔄 Modifica risultato", callback_data="menu_modifica")],
         [InlineKeyboardButton("🏁 Ultimi risultati", callback_data="menu_risultati")],
         [InlineKeyboardButton("📊 Statistiche", callback_data="menu_statistiche")],
         [InlineKeyboardButton("👤 Dashboard personale", callback_data="menu_dashboard")]
@@ -536,41 +537,15 @@ async def invia_risultato_partita(bot, risultato):
         # Aggiungi un disclaimer
         messaggio += "\n<i>⚠️ Risultato in attesa di omologazione ufficiale</i>"
         
-        # Crea i pulsanti di reazione
-        keyboard = crea_pulsanti_reazione()
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        # Invia il messaggio al canale
+        # Invia il messaggio al canale senza pulsanti di reazione
         sent_message = await bot.send_message(
             chat_id=CHANNEL_ID,
             text=messaggio,
-            parse_mode='HTML',
-            reply_markup=reply_markup
+            parse_mode='HTML'
         )
         
-        # Salva l'ID del messaggio e aggiorna i pulsanti con l'ID
+        # Salva l'ID del messaggio
         message_id = sent_message.message_id
-        keyboard = crea_pulsanti_reazione(message_id)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await bot.edit_message_reply_markup(
-            chat_id=CHANNEL_ID,
-            message_id=message_id,
-            reply_markup=reply_markup
-        )
-        
-        # Inizializza le reazioni per questo messaggio
-        reazioni = carica_reazioni()
-        message_id_str = str(message_id)
-        if message_id_str not in reazioni:
-            reazioni[message_id_str] = {
-                "like": [],
-                "love": [],
-                "fire": [],
-                "clap": [],
-                "rugby": []
-            }
-            salva_reazioni(reazioni)
         
         logger.info(f"Messaggio inviato al canale {CHANNEL_ID} con ID {message_id}")
         return sent_message
@@ -829,28 +804,15 @@ async def pubblica_riepilogo_callback(update: Update, context: ContextTypes.DEFA
             )
             return
         
-        # Crea i pulsanti di reazione con opzioni di esportazione per il riepilogo del weekend
-        keyboard = crea_pulsanti_reazione(include_export=True)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        # Invia il messaggio al canale con i pulsanti di reazione e di esportazione
+        # Invia il messaggio al canale senza pulsanti di reazione
         sent_message = await context.bot.send_message(
             chat_id=CHANNEL_ID,
             text=messaggio,
-            parse_mode='HTML',
-            reply_markup=reply_markup
+            parse_mode='HTML'
         )
         
-        # Salva l'ID del messaggio e aggiorna i pulsanti con l'ID
+        # Salva l'ID del messaggio
         message_id = sent_message.message_id
-        keyboard = crea_pulsanti_reazione(message_id, include_export=True)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await context.bot.edit_message_reply_markup(
-            chat_id=CHANNEL_ID,
-            message_id=message_id,
-            reply_markup=reply_markup
-        )
         
         # Notifica l'utente
         await query.edit_message_text(
@@ -892,28 +854,15 @@ async def invia_riepilogo_automatico(context: ContextTypes.DEFAULT_TYPE) -> None
             logger.error(f"Impossibile accedere al canale {CHANNEL_ID}: {chat_error}")
             return
             
-        # Crea i pulsanti di reazione con opzioni di esportazione per il riepilogo del weekend
-        keyboard = crea_pulsanti_reazione(include_export=True)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        # Invia il messaggio al canale con i pulsanti di reazione e di esportazione
+        # Invia il messaggio al canale senza pulsanti di reazione
         sent_message = await context.bot.send_message(
             chat_id=CHANNEL_ID,
             text=messaggio,
-            parse_mode='HTML',
-            reply_markup=reply_markup
+            parse_mode='HTML'
         )
         
-        # Salva l'ID del messaggio e aggiorna i pulsanti con l'ID
+        # Salva l'ID del messaggio
         message_id = sent_message.message_id
-        keyboard = crea_pulsanti_reazione(message_id, include_export=True)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await context.bot.edit_message_reply_markup(
-            chat_id=CHANNEL_ID,
-            message_id=message_id,
-            reply_markup=reply_markup
-        )
         
         logger.info(f"Riepilogo del weekend pubblicato automaticamente sul canale {CHANNEL_ID}")
         
@@ -1769,6 +1718,13 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         # Il codice qui è mantenuto solo per compatibilità con versioni precedenti
         await query.edit_message_text(
             "Per inserire una nuova partita, usa il comando /nuova",
+            parse_mode='HTML'
+        )
+        
+    elif azione == "modifica":
+        # Questo caso è gestito direttamente dal ConversationHandler per la modifica
+        await query.edit_message_text(
+            "Per modificare un risultato esistente, usa il comando /modifica",
             parse_mode='HTML'
         )
     
@@ -5601,6 +5557,15 @@ def main() -> None:
         logger.info("Funzionalità quiz registrate con successo")
     except Exception as e:
         logger.error(f"Errore nella registrazione delle funzionalità quiz: {e}")
+        
+    # Registra i gestori per la modifica dei risultati
+    try:
+        from modules.edit_manager import register_edit_handlers
+        register_edit_handlers(application)
+        
+        logger.info("Funzionalità di modifica dei risultati registrate con successo")
+    except Exception as e:
+        logger.error(f"Errore nella registrazione delle funzionalità di modifica dei risultati: {e}")
     
     # Configura il job per inviare automaticamente il riepilogo ogni domenica alle 18:00
     try:

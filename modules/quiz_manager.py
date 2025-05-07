@@ -633,101 +633,47 @@ def aggiungi_quiz(categoria, domanda, opzioni, risposta_corretta, spiegazione):
 
 # Funzione per configurare i job per l'invio automatico dei quiz
 def configura_job_quiz(application, channel_id):
-    """Configura i job per l'invio automatico dei quiz."""
+    """
+    Questa funzione è stata modificata per disabilitare l'invio programmato dei quiz.
+    L'invio automatico dei quiz giornalieri è stato disattivato come richiesto.
+    """
+    # Rimuovi eventuali job esistenti relativi ai quiz
     try:
-        from datetime import time as dt_time
-        
-        # Orario per l'invio del quiz giornaliero (12:00)
-        job_time = dt_time(hour=12, minute=0, second=0)
-        
-        # Prova prima con il job_queue standard
+        # Prova a rimuovere i job dalla job_queue standard
         try:
-            # Funzione wrapper per il job
-            async def job_invia_quiz(context):
-                await invia_quiz_al_canale(context, channel_id, evita_ripetizioni=True)
-            
-            # Pianifica il job giornaliero
-            application.job_queue.run_daily(
-                job_invia_quiz,
-                time=job_time,
-                name="quiz_giornaliero"
-            )
-            
-            # Pianifica anche il job per mostrare i risultati dopo 24 ore
-            async def job_mostra_risultati(context):
-                stats = carica_statistiche_quiz()
-                ieri = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            if hasattr(application, 'job_queue'):
+                jobs = application.job_queue.get_jobs_by_name("quiz_giornaliero")
+                for job in jobs:
+                    job.schedule_removal()
                 
-                for quiz in stats["quiz_giornalieri"]:
-                    if quiz.get("data") == ieri and quiz.get("message_id"):
-                        await mostra_risultati_quiz(context, channel_id, quiz.get("message_id"))
-            
-            # Pianifica il job per mostrare i risultati (alle 11:55, prima del nuovo quiz)
-            risultati_time = dt_time(hour=11, minute=55, second=0)
-            application.job_queue.run_daily(
-                job_mostra_risultati,
-                time=risultati_time,
-                name="mostra_risultati_quiz"
-            )
-            
-            logger.info(f"Job per quiz giornaliero configurato con successo per le {job_time} usando job_queue standard")
-            return True
-            
+                jobs = application.job_queue.get_jobs_by_name("mostra_risultati_quiz")
+                for job in jobs:
+                    job.schedule_removal()
+                
+                logger.info("Job esistenti rimossi dalla job_queue standard")
         except Exception as e:
-            logger.warning(f"Impossibile utilizzare job_queue standard: {e}. Provo con JobManager alternativo...")
+            logger.warning(f"Impossibile rimuovere i job dalla job_queue standard: {e}")
+        
+        # Prova a rimuovere i job dal JobManager alternativo
+        try:
+            from modules.job_manager import job_manager
             
-            # Utilizza il JobManager alternativo
-            try:
-                from modules.job_manager import job_manager
-                
-                # Wrapper per adattare la funzione al formato richiesto dal JobManager
-                async def job_invia_quiz_wrapper(context_data):
-                    # Crea un contesto fittizio con il bot
-                    class FakeContext:
-                        def __init__(self, bot):
-                            self.bot = bot
-                            self.user_data = {}
-                            self.chat_data = {}
-                            self.bot_data = {}
-                    
-                    fake_context = FakeContext(application.bot)
-                    await invia_quiz_al_canale(fake_context, channel_id, evita_ripetizioni=True)
-                
-                # Wrapper per mostrare i risultati
-                async def job_mostra_risultati_wrapper(context_data):
-                    class FakeContext:
-                        def __init__(self, bot):
-                            self.bot = bot
-                            self.user_data = {}
-                            self.chat_data = {}
-                            self.bot_data = {}
-                    
-                    fake_context = FakeContext(application.bot)
-                    stats = carica_statistiche_quiz()
-                    ieri = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-                    
-                    for quiz in stats["quiz_giornalieri"]:
-                        if quiz.get("data") == ieri and quiz.get("message_id"):
-                            await mostra_risultati_quiz(fake_context, channel_id, quiz.get("message_id"))
-                
-                # Pianifica i job con il JobManager alternativo
-                # Tutti i giorni della settimana (0-6)
-                all_days = list(range(7))
-                job_manager.run_daily(job_invia_quiz_wrapper, job_time, days=all_days, name="quiz_giornaliero")
-                
-                risultati_time = dt_time(hour=11, minute=55, second=0)
-                job_manager.run_daily(job_mostra_risultati_wrapper, risultati_time, days=all_days, name="mostra_risultati_quiz")
-                
-                logger.info(f"Job per quiz giornaliero configurato con successo per le {job_time} usando JobManager alternativo")
-                return True
-                
-            except Exception as alt_error:
-                logger.error(f"Errore nella configurazione del job con JobManager alternativo: {alt_error}")
-                return False
-                
+            # Rimuovi i job dal JobManager alternativo
+            for job in job_manager.get_jobs_by_name("quiz_giornaliero"):
+                job_manager.remove_job(job)
+            
+            for job in job_manager.get_jobs_by_name("mostra_risultati_quiz"):
+                job_manager.remove_job(job)
+            
+            logger.info("Job esistenti rimossi dal JobManager alternativo")
+        except Exception as alt_error:
+            logger.warning(f"Impossibile rimuovere i job dal JobManager alternativo: {alt_error}")
+    
     except Exception as e:
-        logger.error(f"Errore nella configurazione del job per i quiz: {e}")
-        return False
+        logger.error(f"Errore nella rimozione dei job esistenti: {e}")
+    
+    logger.info("L'invio programmato dei quiz giornalieri è stato disattivato.")
+    return True
 
 # Inizializza i quiz all'avvio del modulo
 inizializza_quiz()

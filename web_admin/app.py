@@ -1481,16 +1481,47 @@ def approve_pending_quiz_route_impl():
     """Approva un quiz in attesa."""
     try:
         data = request.get_json()
-        index = int(data.get('index', 0))
+        if not data:
+            app.logger.error("Nessun dato JSON ricevuto nella richiesta")
+            return jsonify({"success": False, "message": "Nessun dato ricevuto"})
         
+        app.logger.info(f"Dati ricevuti per l'approvazione: {data}")
+        
+        if 'index' not in data:
+            app.logger.error("Campo 'index' mancante nei dati")
+            return jsonify({"success": False, "message": "Campo 'index' mancante"})
+        
+        try:
+            index = int(data.get('index', 0))
+        except (ValueError, TypeError) as e:
+            app.logger.error(f"Errore nella conversione dell'indice a intero: {e}")
+            return jsonify({"success": False, "message": f"Indice non valido: {data.get('index')}"})
+        
+        app.logger.info(f"Tentativo di approvazione del quiz con indice: {index}")
+        
+        # Verifica che l'indice sia valido
+        pending_data = load_pending_quizzes()
+        if not pending_data or "quiz_pending" not in pending_data or not isinstance(pending_data["quiz_pending"], list):
+            app.logger.error("Dati dei quiz in attesa non validi")
+            return jsonify({"success": False, "message": "Dati dei quiz in attesa non validi"})
+        
+        if index < 0 or index >= len(pending_data["quiz_pending"]):
+            app.logger.error(f"Indice fuori range: {index} (totale quiz: {len(pending_data['quiz_pending'])})")
+            return jsonify({"success": False, "message": f"Indice fuori range: {index}"})
+        
+        # Approva il quiz
         success = approve_pending_quiz(index)
         
         if success:
-            return jsonify({"success": True})
+            app.logger.info(f"Quiz approvato con successo (indice: {index})")
+            return jsonify({"success": True, "message": "Quiz approvato con successo"})
         else:
+            app.logger.error(f"Errore nell'approvazione del quiz (indice: {index})")
             return jsonify({"success": False, "message": "Errore nell'approvazione del quiz"})
     except Exception as e:
         app.logger.error(f"Errore nell'approvazione di un quiz in attesa: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(e)})
 
 @app.route('/quizzes/reject_pending', methods=['POST'])
@@ -1499,16 +1530,47 @@ def reject_pending_quiz_route_impl():
     """Rifiuta un quiz in attesa."""
     try:
         data = request.get_json()
-        index = int(data.get('index', 0))
+        if not data:
+            app.logger.error("Nessun dato JSON ricevuto nella richiesta")
+            return jsonify({"success": False, "message": "Nessun dato ricevuto"})
         
+        app.logger.info(f"Dati ricevuti per il rifiuto: {data}")
+        
+        if 'index' not in data:
+            app.logger.error("Campo 'index' mancante nei dati")
+            return jsonify({"success": False, "message": "Campo 'index' mancante"})
+        
+        try:
+            index = int(data.get('index', 0))
+        except (ValueError, TypeError) as e:
+            app.logger.error(f"Errore nella conversione dell'indice a intero: {e}")
+            return jsonify({"success": False, "message": f"Indice non valido: {data.get('index')}"})
+        
+        app.logger.info(f"Tentativo di rifiuto del quiz con indice: {index}")
+        
+        # Verifica che l'indice sia valido
+        pending_data = load_pending_quizzes()
+        if not pending_data or "quiz_pending" not in pending_data or not isinstance(pending_data["quiz_pending"], list):
+            app.logger.error("Dati dei quiz in attesa non validi")
+            return jsonify({"success": False, "message": "Dati dei quiz in attesa non validi"})
+        
+        if index < 0 or index >= len(pending_data["quiz_pending"]):
+            app.logger.error(f"Indice fuori range: {index} (totale quiz: {len(pending_data['quiz_pending'])})")
+            return jsonify({"success": False, "message": f"Indice fuori range: {index}"})
+        
+        # Rifiuta il quiz
         success = reject_pending_quiz(index)
         
         if success:
-            return jsonify({"success": True})
+            app.logger.info(f"Quiz rifiutato con successo (indice: {index})")
+            return jsonify({"success": True, "message": "Quiz rifiutato con successo"})
         else:
+            app.logger.error(f"Errore nel rifiuto del quiz (indice: {index})")
             return jsonify({"success": False, "message": "Errore nel rifiuto del quiz"})
     except Exception as e:
         app.logger.error(f"Errore nel rifiuto di un quiz in attesa: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": str(e)})
 
 @app.route('/quizzes/send_test/<category>/<int:index>')

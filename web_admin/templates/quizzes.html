@@ -560,6 +560,25 @@
         
         function approveQuiz(index) {
             console.log("Approvazione quiz con indice:", index);
+            
+            // Disabilita i pulsanti per evitare clic multipli
+            const approveButtons = document.querySelectorAll('.approve-quiz');
+            const rejectButtons = document.querySelectorAll('.reject-quiz');
+            
+            approveButtons.forEach(btn => btn.disabled = true);
+            rejectButtons.forEach(btn => btn.disabled = true);
+            
+            // Mostra un indicatore di caricamento
+            const card = document.querySelector(`.approve-quiz[data-index="${index}"]`).closest('.card');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'text-center p-3';
+            loadingDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Caricamento...</span></div><p class="mt-2">Approvazione in corso...</p>';
+            
+            // Sostituisci temporaneamente il contenuto della card con l'indicatore di caricamento
+            const originalContent = card.innerHTML;
+            card.innerHTML = '';
+            card.appendChild(loadingDiv);
+            
             fetch('{{ url_for("approve_pending_quiz_route_impl") }}', {
                 method: 'POST',
                 headers: {
@@ -569,24 +588,72 @@
             })
             .then(response => {
                 console.log("Risposta ricevuta:", response);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
                 return response.json();
             })
             .then(data => {
                 console.log("Dati ricevuti:", data);
                 if (data.success) {
-                    window.location.reload();
+                    // Mostra un messaggio di successo
+                    card.innerHTML = '';
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'alert alert-success m-3';
+                    successDiv.innerHTML = '<i class="fas fa-check-circle"></i> Quiz approvato con successo!';
+                    card.appendChild(successDiv);
+                    
+                    // Ricarica la pagina dopo un breve ritardo
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else {
+                    // Ripristina il contenuto originale in caso di errore
+                    card.innerHTML = originalContent;
+                    
+                    // Riabilita i pulsanti
+                    approveButtons.forEach(btn => btn.disabled = false);
+                    rejectButtons.forEach(btn => btn.disabled = false);
+                    
+                    // Mostra l'errore
                     alert('Errore: ' + (data.message || 'Errore sconosciuto'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                
+                // Ripristina il contenuto originale in caso di errore
+                card.innerHTML = originalContent;
+                
+                // Riabilita i pulsanti
+                approveButtons.forEach(btn => btn.disabled = false);
+                rejectButtons.forEach(btn => btn.disabled = false);
+                
                 alert('Si è verificato un errore durante l\'approvazione del quiz: ' + error.message);
             });
         }
         
         function rejectQuiz(index) {
             console.log("Rifiuto quiz con indice:", index);
+            
+            // Disabilita i pulsanti per evitare clic multipli
+            const approveButtons = document.querySelectorAll('.approve-quiz');
+            const rejectButtons = document.querySelectorAll('.reject-quiz');
+            
+            approveButtons.forEach(btn => btn.disabled = true);
+            rejectButtons.forEach(btn => btn.disabled = true);
+            
+            // Mostra un indicatore di caricamento
+            const card = document.querySelector(`.reject-quiz[data-index="${index}"]`).closest('.card');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'text-center p-3';
+            loadingDiv.innerHTML = '<div class="spinner-border text-danger" role="status"><span class="visually-hidden">Caricamento...</span></div><p class="mt-2">Rifiuto in corso...</p>';
+            
+            // Sostituisci temporaneamente il contenuto della card con l'indicatore di caricamento
+            const originalContent = card.innerHTML;
+            card.innerHTML = '';
+            card.appendChild(loadingDiv);
+            
             fetch('{{ url_for("reject_pending_quiz_route_impl") }}', {
                 method: 'POST',
                 headers: {
@@ -596,18 +663,47 @@
             })
             .then(response => {
                 console.log("Risposta ricevuta:", response);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
                 return response.json();
             })
             .then(data => {
                 console.log("Dati ricevuti:", data);
                 if (data.success) {
-                    window.location.reload();
+                    // Mostra un messaggio di successo
+                    card.innerHTML = '';
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'alert alert-warning m-3';
+                    successDiv.innerHTML = '<i class="fas fa-times-circle"></i> Quiz rifiutato con successo!';
+                    card.appendChild(successDiv);
+                    
+                    // Ricarica la pagina dopo un breve ritardo
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else {
+                    // Ripristina il contenuto originale in caso di errore
+                    card.innerHTML = originalContent;
+                    
+                    // Riabilita i pulsanti
+                    approveButtons.forEach(btn => btn.disabled = false);
+                    rejectButtons.forEach(btn => btn.disabled = false);
+                    
+                    // Mostra l'errore
                     alert('Errore: ' + (data.message || 'Errore sconosciuto'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                
+                // Ripristina il contenuto originale in caso di errore
+                card.innerHTML = originalContent;
+                
+                // Riabilita i pulsanti
+                approveButtons.forEach(btn => btn.disabled = false);
+                rejectButtons.forEach(btn => btn.disabled = false);
+                
                 alert('Si è verificato un errore durante il rifiuto del quiz: ' + error.message);
             });
         }

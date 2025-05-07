@@ -129,10 +129,6 @@ async def invia_messaggio_canale(context, risultato, channel_id=None):
             # Usa la funzione di formattazione migliorata per partite normali
             messaggio = formatta_messaggio_partita_normale(risultato)
         
-        # Crea i pulsanti di reazione
-        keyboard = crea_pulsanti_reazione()
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
         # Verifica che il bot abbia accesso al canale prima di inviare il messaggio
         try:
             # Verifica che il canale esista e che il bot abbia i permessi necessari
@@ -147,37 +143,15 @@ async def invia_messaggio_canale(context, risultato, channel_id=None):
             logger.error(f"Errore nella verifica del canale: {e}")
             return False, f"Impossibile accedere al canale: {e}"
         
-        # Invia il messaggio al canale
+        # Invia il messaggio al canale senza pulsanti di reazione
         sent_message = await context.bot.send_message(
             chat_id=channel_id,
             text=messaggio,
-            parse_mode='HTML',
-            reply_markup=reply_markup
+            parse_mode='HTML'
         )
         
-        # Salva l'ID del messaggio e aggiorna i pulsanti con l'ID
+        # Salva l'ID del messaggio
         message_id = sent_message.message_id
-        keyboard = crea_pulsanti_reazione(message_id)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await context.bot.edit_message_reply_markup(
-            chat_id=channel_id,
-            message_id=message_id,
-            reply_markup=reply_markup
-        )
-        
-        # Inizializza le reazioni per questo messaggio
-        reazioni = carica_reazioni()
-        message_id_str = str(message_id)
-        if message_id_str not in reazioni:
-            reazioni[message_id_str] = {
-                "like": [],
-                "love": [],
-                "fire": [],
-                "clap": [],
-                "rugby": []
-            }
-            salva_reazioni(reazioni)
         
         logger.info(f"Messaggio inviato al canale {channel_id} con ID {message_id}")
         return True, message_id
