@@ -674,6 +674,198 @@ def aggiungi_squadra(nome_squadra: str, user_id: int = None) -> bool:
     # Salva le squadre aggiornate
     return salva_squadre(squadre)
 
+# Funzioni per la gestione dei gironi
+def carica_gironi_da_db() -> Dict[str, Any]:
+    """Carica i gironi dal database Supabase."""
+    if not is_supabase_configured():
+        return None
+    
+    try:
+        # Carica i tornei
+        tornei_response = supabase.table('tornei').select('*').execute()
+        tornei_data = tornei_response.data
+        
+        # Struttura di base
+        gironi_data = {"tornei": []}
+        
+        # Per ogni torneo, carica i suoi gironi
+        for torneo in tornei_data:
+            torneo_id = torneo.get('id')
+            
+            # Carica i gironi del torneo
+            gironi_response = supabase.table('gironi').select('*').eq('torneo_id', torneo_id).execute()
+            gironi_list = gironi_response.data
+            
+            # Prepara la struttura del torneo
+            torneo_obj = {
+                "id": torneo_id,
+                "nome": torneo.get('nome'),
+                "categoria": torneo.get('categoria'),
+                "genere": torneo.get('genere'),
+                "data_inizio": torneo.get('data_inizio'),
+                "data_fine": torneo.get('data_fine'),
+                "descrizione": torneo.get('descrizione', ''),
+                "gironi": []
+            }
+            
+            # Per ogni girone, carica le squadre e le partite
+            for girone in gironi_list:
+                girone_id = girone.get('id')
+                
+                # Carica le squadre del girone
+                squadre_response = supabase.table('girone_squadre').select('squadra').eq('girone_id', girone_id).execute()
+                squadre = [item.get('squadra') for item in squadre_response.data]
+                
+                # Carica le partite del girone
+                partite_response = supabase.table('partite_girone').select('*').eq('girone_id', girone_id).execute()
+                partite = partite_response.data
+                
+                # Prepara la struttura del girone
+                girone_obj = {
+                    "id": girone_id,
+                    "nome": girone.get('nome'),
+                    "descrizione": girone.get('descrizione', ''),
+                    "squadre": squadre,
+                    "partite": partite
+                }
+                
+                # Aggiungi il girone al torneo
+                torneo_obj["gironi"].append(girone_obj)
+            
+            # Aggiungi il torneo alla struttura principale
+            gironi_data["tornei"].append(torneo_obj)
+        
+        return gironi_data
+    except Exception as e:
+        print(f"Errore nel caricamento dei gironi da Supabase: {e}")
+        return None
+
+def salva_gironi_su_db(gironi_data: Dict[str, Any]) -> bool:
+    """Salva i gironi nel database Supabase."""
+    if not is_supabase_configured():
+        return False
+    
+    try:
+        # Ottieni tutti i tornei
+        tornei = gironi_data.get("tornei", [])
+        
+        # Per ogni torneo
+        for torneo in tornei:
+            torneo_id = torneo.get("id")
+            
+            # Verifica se il torneo esiste già
+            torneo_exists = False
+            try:
+                response = supabase.table('tornei').select('id').eq('id', torneo_id).execute()
+                torneo_exists = len(response.data) > 0
+            except:
+                torneo_exists = False
+            
+            # Dati del torneo
+            torneo_data = {
+                "nome": torneo.get("nome"),
+                "categoria": torneo.get("categoria"),
+                "genere": torneo.get("genere"),
+                "data_inizio": torneo.get("data_inizio"),
+                "data_fine": torneo.get("data_fine"),
+                "descrizione": torneo.get("descrizione", "")
+            }
+            
+            # Crea o aggiorna il torneo
+            if torneo_exists:
+                supabase.table('tornei').update(torneo_data).eq('id', torneo_id).execute()
+            else:
+                torneo_data["id"] = torneo_id
+                supabase.table('tornei').insert(torneo_data).execute()
+            
+            # Ottieni i gironi del torneo
+            gironi = torneo.get("gironi", [])
+            
+            # Per ogni girone
+            for girone in gironi:
+                girone_id = girone.get("id")
+                
+                # Verifica se il girone esiste già
+                girone_exists = False
+                try:
+                    response = supabase.table('gironi').select('id').eq('id', girone_id).execute()
+                    girone_exists = len(response.data) > 0
+                except:
+                    girone_exists = False
+                
+                # Dati del girone
+                girone_data = {
+                    "torneo_id": torneo_id,
+                    "nome": girone.get("nome"),
+                    "descrizione": girone.get("descrizione", "")
+                }
+                
+                # Crea o aggiorna il girone
+                if girone_exists:
+                    supabase.table('gironi').update(girone_data).eq('id', girone_id).execute()
+                else:
+                    girone_data["id"] = girone_id
+                    supabase.table('gironi').insert(girone_data).execute()
+                
+                # Gestisci le squadre del girone
+                squadre = girone.get("squadre", [])
+                
+                # Elimina tutte le squadre esistenti per questo girone
+                supabase.table('girone_squadre').delete().eq('girone_id', girone_id).execute()
+                
+                # Inserisci le nuove squadre
+                for squadra in squadre:
+                    supabase.table('girone_squadre').insert({
+                        "girone_id": girone_id,
+                        "squadra": squadra
+                    }).execute()
+                
+                # Gestisci le partite del girone
+                partite = girone.get("partite", [])
+                
+                # Elimina tutte le partite esistenti per questo girone
+                supabase.table('partite_girone').delete().eq('girone_id', girone_id).execute()
+                
+                # Inserisci le nuove partite
+                for partita in partite:
+                    partita_data = {
+                        "girone_id": girone_id,
+                        "data_partita": partita.get("data_partita"),
+                        "squadra1": partita.get("squadra1"),
+                        "squadra2": partita.get("squadra2"),
+                        "punteggio1": partita.get("punteggio1"),
+                        "punteggio2": partita.get("punteggio2"),
+                        "mete1": partita.get("mete1"),
+                        "mete2": partita.get("mete2"),
+                        "luogo": partita.get("luogo", ""),
+                        "ora": partita.get("ora", "")
+                    }
+                    
+                    # Aggiungi l'ID se presente
+                    if "id" in partita:
+                        partita_data["id"] = partita.get("id")
+                    
+                    supabase.table('partite_girone').insert(partita_data).execute()
+        
+        return True
+    except Exception as e:
+        print(f"Errore nel salvataggio dei gironi su Supabase: {e}")
+        traceback.print_exc()
+        return False
+
+def migra_gironi_a_supabase() -> bool:
+    """Migra i gironi dal file JSON a Supabase."""
+    from modules.gironi_manager import carica_gironi as _carica_gironi_da_file
+    
+    # Carica i gironi dal file
+    gironi = _carica_gironi_da_file()
+    if not gironi:
+        print("Nessun girone da migrare.")
+        return True
+    
+    # Salva i gironi nel database
+    return salva_gironi_su_db(gironi)
+
 # Funzioni per la gestione degli amministratori
 def carica_admin_users() -> List[Dict[str, Any]]:
     """Carica gli amministratori dal database o dal file JSON."""

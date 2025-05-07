@@ -96,13 +96,33 @@
                     <i class="fas fa-exclamation-triangle"></i> <strong>Attenzione:</strong> La migrazione sovrascriverà tutti i dati esistenti nel database Supabase.
                 </div>
                 
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Importante:</strong> Prima di migrare i dati, assicurati di aver creato le tabelle necessarie in Supabase.
+                    <a href="{{ url_for('supabase_tables') }}" class="btn btn-sm btn-info mt-2">
+                        <i class="fas fa-table"></i> Istruzioni per Creare le Tabelle
+                    </a>
+                </div>
+                
                 <p>Tabelle che verranno create:</p>
                 <ul>
                     <li><strong>utenti</strong> - Utenti autorizzati e in attesa</li>
                     <li><strong>risultati</strong> - Risultati delle partite</li>
                     <li><strong>squadre</strong> - Elenco delle squadre</li>
                     <li><strong>admin_users</strong> - Amministratori dell'interfaccia web</li>
+                    <li><strong>tornei</strong> - Tornei</li>
+                    <li><strong>gironi</strong> - Gironi dei tornei</li>
+                    <li><strong>girone_squadre</strong> - Squadre nei gironi</li>
+                    <li><strong>partite_girone</strong> - Partite dei gironi</li>
                 </ul>
+                
+                <div class="mt-4">
+                    <h6>Migrazione Gironi</h6>
+                    <form method="post" action="{{ url_for('migra_gironi') }}">
+                        <button type="submit" class="btn btn-warning btn-block">
+                            <i class="fas fa-sync-alt"></i> Migra Solo Gironi
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
         

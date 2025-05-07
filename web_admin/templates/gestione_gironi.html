@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Gironi - {{ torneo.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-users"></i> Gestione Gironi - {{ torneo.nome }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                <a href="{{ url_for('gironi') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna ai Tornei
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#newGironeModal">
+                    <i class="fas fa-plus"></i> Nuovo Girone
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> Informazioni Torneo
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Nome:</strong> {{ torneo.nome }}</p>
+                            <p><strong>Categoria:</strong> {{ torneo.categoria }}</p>
+                            <p><strong>Genere:</strong> {{ torneo.genere }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Data Inizio:</strong> {{ torneo.data_inizio }}</p>
+                            <p><strong>Data Fine:</strong> {{ torneo.data_fine }}</p>
+                            <p><strong>Gironi:</strong> {{ torneo.gironi|length }}</p>
+                        </div>
+                    </div>
+                    {% if torneo.descrizione %}
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p><strong>Descrizione:</strong> {{ torneo.descrizione }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if torneo.gironi %}
+    <div class="row">
+        {% for girone in torneo.gironi %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-users"></i> {{ girone.nome }}</span>
+                    <div class="btn-group">
+                        <a href="{{ url_for('visualizza_girone', torneo_id=torneo.id, girone_id=girone.id) }}" class="btn btn-sm btn-info">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editGironeModal{{ girone.id }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteGironeModal{{ girone.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if girone.descrizione %}
+                    <p><strong>Descrizione:</strong> {{ girone.descrizione }}</p>
+                    {% endif %}
+                    
+                    <h5>Squadre ({{ girone.squadre|length }})</h5>
+                    {% if girone.squadre %}
+                    <ul class="list-group mb-3">
+                        {% for squadra in girone.squadre %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ squadra }}
+                            <a href="{{ url_for('rimuovi_squadra', torneo_id=torneo.id, girone_id=girone.id, squadra=squadra) }}" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler rimuovere questa squadra dal girone?')">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">Nessuna squadra in questo girone.</p>
+                    {% endif %}
+                    
+                    <button type="button" class="btn btn-sm btn-success" data-toggle="modal" data-target="#addSquadraModal{{ girone.id }}">
+                        <i class="fas fa-plus"></i> Aggiungi Squadra
+                    </button>
+                    
+                    <h5 class="mt-3">Partite ({{ girone.partite|length }})</h5>
+                    {% if girone.partite %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Squadre</th>
+                                    <th>Risultato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for partita in girone.partite %}
+                                <tr>
+                                    <td>{{ partita.data_partita }}</td>
+                                    <td>{{ partita.squadra1 }} vs {{ partita.squadra2 }}</td>
+                                    <td>
+                                        {% if partita.punteggio1 is defined and partita.punteggio2 is defined %}
+                                        {{ partita.punteggio1 }}-{{ partita.punteggio2 }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('modifica_partita', torneo_id=torneo.id, girone_id=girone.id, partita_id=partita.id) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('elimina_partita', torneo_id=torneo.id, girone_id=girone.id, partita_id=partita.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler eliminare questa partita?')">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Nessuna partita in questo girone.</p>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('nuova_partita', torneo_id=torneo.id, girone_id=girone.id) }}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus"></i> Aggiungi Partita
+                    </a>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('classifica_girone', torneo_id=torneo.id, girone_id=girone.id) }}" class="btn btn-sm btn-info">
+                        <i class="fas fa-table"></i> Visualizza Classifica
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal per modificare il girone -->
+        <div class="modal fade" id="editGironeModal{{ girone.id }}" tabindex="-1" role="dialog" aria-labelledby="editGironeModalLabel{{ girone.id }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editGironeModalLabel{{ girone.id }}">Modifica Girone</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ url_for('salva_girone', torneo_id=torneo.id, girone_id=girone.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="nome{{ girone.id }}">Nome del Girone</label>
+                                <input type="text" class="form-control" id="nome{{ girone.id }}" name="nome" value="{{ girone.nome }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="descrizione{{ girone.id }}">Descrizione</label>
+                                <textarea class="form-control" id="descrizione{{ girone.id }}" name="descrizione" rows="3">{{ girone.descrizione }}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal per eliminare il girone -->
+        <div class="modal fade" id="deleteGironeModal{{ girone.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteGironeModalLabel{{ girone.id }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteGironeModalLabel{{ girone.id }}">Conferma Eliminazione</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        Sei sicuro di voler eliminare il girone <strong>{{ girone.nome }}</strong>?<br>
+                        Questa azione eliminerà anche tutte le partite associate.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                        <a href="{{ url_for('elimina_girone', torneo_id=torneo.id, girone_id=girone.id) }}" class="btn btn-danger">Elimina</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal per aggiungere una squadra al girone -->
+        <div class="modal fade" id="addSquadraModal{{ girone.id }}" tabindex="-1" role="dialog" aria-labelledby="addSquadraModalLabel{{ girone.id }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addSquadraModalLabel{{ girone.id }}">Aggiungi Squadra</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ url_for('aggiungi_squadra', torneo_id=torneo.id, girone_id=girone.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="squadra{{ girone.id }}">Squadra</label>
+                                <select class="form-control" id="squadra{{ girone.id }}" name="squadra" required>
+                                    <option value="">Seleziona una squadra</option>
+                                    {% for squadra in squadre %}
+                                    {% if squadra not in girone.squadre %}
+                                    <option value="{{ squadra }}">{{ squadra }}</option>
+                                    {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Aggiungi</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                Non ci sono gironi in questo torneo. Usa il pulsante "Nuovo Girone" per crearne uno.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Modal per creare un nuovo girone -->
+    <div class="modal fade" id="newGironeModal" tabindex="-1" role="dialog" aria-labelledby="newGironeModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newGironeModalLabel">Nuovo Girone</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{{ url_for('nuovo_girone', torneo_id=torneo.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="nome">Nome del Girone</label>
+                            <input type="text" class="form-control" id="nome" name="nome" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="descrizione">Descrizione</label>
+                            <textarea class="form-control" id="descrizione" name="descrizione" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Crea Girone</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

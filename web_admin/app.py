@@ -48,6 +48,13 @@ except ImportError:
 
 from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_riepilogo_weekend
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre, carica_admin_users, salva_admin_users, is_supabase_configured, migra_dati_a_supabase
+from modules.gironi_manager import (
+    carica_gironi, salva_gironi, crea_torneo, elimina_torneo, modifica_torneo,
+    crea_girone, elimina_girone, modifica_girone, aggiungi_squadra_a_girone,
+    rimuovi_squadra_da_girone, aggiungi_partita_a_girone, modifica_partita_girone,
+    elimina_partita_girone, calcola_classifica_girone, ottieni_tornei_attivi,
+    ottieni_prossime_partite, ottieni_ultimi_risultati
+)
 from modules.data_manager import ottieni_risultati_weekend
 from modules.quiz_manager import carica_quiz, salva_quiz, carica_statistiche_quiz, invia_quiz_al_canale
 from modules.quiz_generator import load_pending_quizzes, save_pending_quizzes, generate_multiple_quizzes, approve_pending_quiz, reject_pending_quiz
@@ -238,6 +245,304 @@ def logout():
     logout_user()
     flash('Logout effettuato con successo!', 'success')
     return redirect(url_for('login'))
+
+# Rotte per la gestione dei gironi
+@app.route('/gironi')
+@login_required
+def gironi():
+    """Mostra la pagina principale di gestione dei gironi."""
+    try:
+        # Carica i dati dei gironi
+        gironi_data = carica_gironi()
+        tornei = gironi_data.get("tornei", [])
+        
+        # Ottieni le prossime partite e gli ultimi risultati
+        prossime_partite = ottieni_prossime_partite(giorni=7)
+        ultimi_risultati = ottieni_ultimi_risultati(giorni=7)
+        
+        return render_template('gironi.html', 
+                              tornei=tornei,
+                              prossime_partite=prossime_partite,
+                              ultimi_risultati=ultimi_risultati)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina gironi: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('dashboard'))
+
+@app.route('/gironi/nuovo_torneo', methods=['GET'])
+@login_required
+def nuovo_torneo():
+    """Mostra il form per creare un nuovo torneo."""
+    try:
+        # Carica le categorie dal modulo config
+        from modules.config import CATEGORIE
+        
+        return render_template('torneo_form.html', 
+                              torneo=None,
+                              categorie=CATEGORIE)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina nuovo torneo: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gironi'))
+
+@app.route('/gironi/salva_torneo', methods=['POST'])
+@app.route('/gironi/salva_torneo/<int:torneo_id>', methods=['POST'])
+@login_required
+def salva_torneo(torneo_id=None):
+    """Salva un nuovo torneo o modifica un torneo esistente."""
+    try:
+        # Ottieni i dati dal form
+        nome = request.form.get('nome')
+        categoria = request.form.get('categoria')
+        genere = request.form.get('genere')
+        data_inizio = request.form.get('data_inizio')
+        data_fine = request.form.get('data_fine')
+        descrizione = request.form.get('descrizione')
+        
+        # Converti le date dal formato ISO (YYYY-MM-DD) al formato italiano (DD/MM/YYYY)
+        data_inizio_it = datetime.strptime(data_inizio, '%Y-%m-%d').strftime('%d/%m/%Y')
+        data_fine_it = datetime.strptime(data_fine, '%Y-%m-%d').strftime('%d/%m/%Y')
+        
+        if torneo_id is None:
+            # Crea un nuovo torneo
+            torneo_id = crea_torneo(nome, categoria, genere, data_inizio_it, data_fine_it, descrizione)
+            flash(f"Torneo '{nome}' creato con successo!", "success")
+        else:
+            # Modifica un torneo esistente
+            modifica_torneo(torneo_id, nome, categoria, genere, data_inizio_it, data_fine_it, descrizione)
+            flash(f"Torneo '{nome}' modificato con successo!", "success")
+        
+        return redirect(url_for('gironi'))
+    except Exception as e:
+        app.logger.error(f"Errore nel salvataggio del torneo: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gironi'))
+
+@app.route('/gironi/modifica_torneo/<int:torneo_id>')
+@login_required
+def modifica_torneo(torneo_id):
+    """Mostra il form per modificare un torneo esistente."""
+    try:
+        # Carica i dati dei gironi
+        gironi_data = carica_gironi()
+        
+        # Trova il torneo
+        torneo = None
+        for t in gironi_data.get("tornei", []):
+            if t.get("id") == torneo_id:
+                torneo = t
+                break
+        
+        if not torneo:
+            flash("Torneo non trovato!", "danger")
+            return redirect(url_for('gironi'))
+        
+        # Aggiungi le date in formato ISO per il form
+        torneo["data_inizio_iso"] = datetime.strptime(torneo["data_inizio"], '%d/%m/%Y').strftime('%Y-%m-%d')
+        torneo["data_fine_iso"] = datetime.strptime(torneo["data_fine"], '%d/%m/%Y').strftime('%Y-%m-%d')
+        
+        # Carica le categorie dal modulo config
+        from modules.config import CATEGORIE
+        
+        return render_template('torneo_form.html', 
+                              torneo=torneo,
+                              categorie=CATEGORIE)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina modifica torneo: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gironi'))
+
+@app.route('/gironi/elimina_torneo/<int:torneo_id>')
+@login_required
+def elimina_torneo(torneo_id):
+    """Elimina un torneo."""
+    try:
+        # Elimina il torneo
+        if elimina_torneo(torneo_id):
+            flash("Torneo eliminato con successo!", "success")
+        else:
+            flash("Impossibile eliminare il torneo!", "danger")
+        
+        return redirect(url_for('gironi'))
+    except Exception as e:
+        app.logger.error(f"Errore nell'eliminazione del torneo: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gironi'))
+
+@app.route('/gironi/gestisci_gironi/<int:torneo_id>')
+@login_required
+def gestisci_gironi(torneo_id):
+    """Mostra la pagina di gestione dei gironi di un torneo."""
+    try:
+        # Carica i dati dei gironi
+        gironi_data = carica_gironi()
+        
+        # Trova il torneo
+        torneo = None
+        for t in gironi_data.get("tornei", []):
+            if t.get("id") == torneo_id:
+                torneo = t
+                break
+        
+        if not torneo:
+            flash("Torneo non trovato!", "danger")
+            return redirect(url_for('gironi'))
+        
+        # Carica le squadre
+        squadre = carica_squadre()
+        
+        return render_template('gestione_gironi.html', 
+                              torneo=torneo,
+                              squadre=squadre)
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina gestione gironi: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gironi'))
+
+@app.route('/gironi/nuovo_girone/<int:torneo_id>', methods=['POST'])
+@login_required
+def nuovo_girone(torneo_id):
+    """Crea un nuovo girone in un torneo."""
+    try:
+        # Ottieni i dati dal form
+        nome = request.form.get('nome')
+        descrizione = request.form.get('descrizione', '')
+        
+        # Crea il girone
+        girone_id = crea_girone(torneo_id, nome, descrizione)
+        
+        if girone_id:
+            flash(f"Girone '{nome}' creato con successo!", "success")
+        else:
+            flash("Impossibile creare il girone!", "danger")
+        
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+    except Exception as e:
+        app.logger.error(f"Errore nella creazione del girone: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+
+@app.route('/gironi/salva_girone/<int:torneo_id>/<int:girone_id>', methods=['POST'])
+@login_required
+def salva_girone(torneo_id, girone_id):
+    """Modifica un girone esistente."""
+    try:
+        # Ottieni i dati dal form
+        nome = request.form.get('nome')
+        descrizione = request.form.get('descrizione', '')
+        
+        # Modifica il girone
+        if modifica_girone(torneo_id, girone_id, nome, descrizione):
+            flash(f"Girone '{nome}' modificato con successo!", "success")
+        else:
+            flash("Impossibile modificare il girone!", "danger")
+        
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+    except Exception as e:
+        app.logger.error(f"Errore nella modifica del girone: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+
+@app.route('/gironi/elimina_girone/<int:torneo_id>/<int:girone_id>')
+@login_required
+def elimina_girone(torneo_id, girone_id):
+    """Elimina un girone."""
+    try:
+        # Elimina il girone
+        if elimina_girone(torneo_id, girone_id):
+            flash("Girone eliminato con successo!", "success")
+        else:
+            flash("Impossibile eliminare il girone!", "danger")
+        
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+    except Exception as e:
+        app.logger.error(f"Errore nell'eliminazione del girone: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+
+@app.route('/gironi/aggiungi_squadra/<int:torneo_id>/<int:girone_id>', methods=['POST'])
+@login_required
+def aggiungi_squadra(torneo_id, girone_id):
+    """Aggiunge una squadra a un girone."""
+    try:
+        # Ottieni i dati dal form
+        squadra = request.form.get('squadra')
+        
+        # Aggiungi la squadra al girone
+        if aggiungi_squadra_a_girone(torneo_id, girone_id, squadra):
+            flash(f"Squadra '{squadra}' aggiunta con successo!", "success")
+        else:
+            flash("Impossibile aggiungere la squadra!", "danger")
+        
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+    except Exception as e:
+        app.logger.error(f"Errore nell'aggiunta della squadra: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+
+@app.route('/gironi/rimuovi_squadra/<int:torneo_id>/<int:girone_id>/<squadra>')
+@login_required
+def rimuovi_squadra(torneo_id, girone_id, squadra):
+    """Rimuove una squadra da un girone."""
+    try:
+        # Rimuovi la squadra dal girone
+        if rimuovi_squadra_da_girone(torneo_id, girone_id, squadra):
+            flash(f"Squadra '{squadra}' rimossa con successo!", "success")
+        else:
+            flash("Impossibile rimuovere la squadra!", "danger")
+        
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+    except Exception as e:
+        app.logger.error(f"Errore nella rimozione della squadra: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+
+@app.route('/gironi/classifica/<int:torneo_id>/<int:girone_id>')
+@login_required
+def classifica_girone(torneo_id, girone_id):
+    """Mostra la classifica di un girone."""
+    try:
+        # Carica i dati dei gironi
+        gironi_data = carica_gironi()
+        
+        # Trova il torneo
+        torneo = None
+        for t in gironi_data.get("tornei", []):
+            if t.get("id") == torneo_id:
+                torneo = t
+                break
+        
+        if not torneo:
+            flash("Torneo non trovato!", "danger")
+            return redirect(url_for('gironi'))
+        
+        # Trova il girone
+        girone = None
+        for g in torneo.get("gironi", []):
+            if g.get("id") == girone_id:
+                girone = g
+                break
+        
+        if not girone:
+            flash("Girone non trovato!", "danger")
+            return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
+        
+        # Calcola la classifica
+        classifica = calcola_classifica_girone(torneo_id, girone_id)
+        
+        # Aggiungi la posizione
+        classifica_con_posizione = []
+        for i, squadra in enumerate(classifica, 1):
+            classifica_con_posizione.append((i, squadra))
+        
+        return render_template('classifica_girone.html', 
+                              torneo=torneo,
+                              girone=girone,
+                              classifica=classifica_con_posizione)
+    except Exception as e:
+        app.logger.error(f"Errore nella visualizzazione della classifica: {e}")
+        flash(f"Si è verificato un errore: {e}", "danger")
+        return redirect(url_for('gestisci_gironi', torneo_id=torneo_id))
 
 # Rotta per la dashboard
 @app.route('/')
@@ -1740,7 +2045,7 @@ def backup_data():
         # Crea un file zip con i dati
         with zipfile.ZipFile(backup_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Aggiungi i file JSON
-            for file in ['utenti.json', 'risultati.json', 'squadre.json', 'admin_users.json', 'reazioni.json']:
+            for file in ['utenti.json', 'risultati.json', 'squadre.json', 'admin_users.json', 'reazioni.json', 'gironi.json']:
                 file_path = os.path.join(root_dir, file)
                 if os.path.exists(file_path):
                     zipf.write(file_path, file)
@@ -2638,8 +2943,14 @@ def supabase_config():
                 # Esegui la migrazione
                 success = migra_dati_a_supabase()
                 
-                if success:
+                # Migra anche i gironi
+                from modules.db_manager import migra_gironi_a_supabase
+                gironi_success = migra_gironi_a_supabase()
+                
+                if success and gironi_success:
                     flash('Configurazione Supabase aggiornata e migrazione completata con successo!', 'success')
+                elif success:
+                    flash('Configurazione Supabase aggiornata e dati principali migrati, ma si è verificato un errore durante la migrazione dei gironi.', 'warning')
                 else:
                     flash('Configurazione Supabase aggiornata, ma si è verificato un errore durante la migrazione.', 'warning')
             except Exception as e:
@@ -2656,6 +2967,52 @@ def supabase_config():
                           supabase_url=supabase_url,
                           supabase_key=supabase_key,
                           supabase_configured=supabase_configured)
+
+# Rotta per la pagina delle tabelle Supabase
+@app.route('/supabase_tables')
+@login_required
+def supabase_tables():
+    """Mostra la pagina con le istruzioni per creare le tabelle in Supabase."""
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono accedere a questa pagina.', 'danger')
+            return redirect(url_for('dashboard'))
+        
+        return render_template('supabase_tables.html')
+    except Exception as e:
+        app.logger.error(f"Errore nella pagina delle tabelle Supabase: {e}")
+        flash(f'Si è verificato un errore: {str(e)}', 'danger')
+        return redirect(url_for('supabase_config'))
+
+# Rotta per la migrazione dei gironi
+@app.route('/migra_gironi', methods=['POST'])
+@login_required
+def migra_gironi():
+    """Migra i gironi a Supabase."""
+    try:
+        # Verifica che l'utente sia un amministratore
+        if not current_user.is_admin:
+            flash('Solo gli amministratori possono migrare i dati.', 'danger')
+            return redirect(url_for('supabase_config'))
+        
+        # Verifica che Supabase sia configurato
+        if not is_supabase_configured():
+            flash('Supabase non è configurato. Configura Supabase prima di migrare i dati.', 'warning')
+            return redirect(url_for('supabase_config'))
+        
+        # Migra i gironi
+        from modules.db_manager import migra_gironi_a_supabase
+        if migra_gironi_a_supabase():
+            flash('Gironi migrati con successo!', 'success')
+        else:
+            flash('Si è verificato un errore durante la migrazione dei gironi.', 'danger')
+        
+        return redirect(url_for('supabase_config'))
+    except Exception as e:
+        app.logger.error(f"Errore nella migrazione dei gironi: {e}")
+        flash(f'Si è verificato un errore: {str(e)}', 'danger')
+        return redirect(url_for('supabase_config'))
 
 # Configurazione per l'ambiente serverless
 def configure_app_for_lambda():

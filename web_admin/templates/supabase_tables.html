@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Tabelle Supabase - Rugby Bot Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Tabelle Supabase</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group mr-2">
+            <a href="{{ url_for('supabase_config') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Torna alla Configurazione
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-table"></i> Creazione Tabelle per i Gironi</h5>
+            </div>
+            <div class="card-body">
+                <p>Per utilizzare la sincronizzazione dei gironi con Supabase, è necessario creare le seguenti tabelle nel database:</p>
+                
+                <ul>
+                    <li><strong>tornei</strong> - Memorizza i dati dei tornei</li>
+                    <li><strong>gironi</strong> - Memorizza i gironi all'interno dei tornei</li>
+                    <li><strong>girone_squadre</strong> - Memorizza le squadre assegnate a ciascun girone</li>
+                    <li><strong>partite_girone</strong> - Memorizza le partite di ciascun girone</li>
+                </ul>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Puoi creare queste tabelle utilizzando l'interfaccia di Supabase o eseguendo lo script SQL fornito di seguito.
+                </div>
+                
+                <h5 class="mt-4">Istruzioni per la creazione delle tabelle:</h5>
+                
+                <ol>
+                    <li>Accedi al pannello di controllo di Supabase</li>
+                    <li>Vai alla sezione "SQL Editor"</li>
+                    <li>Crea un nuovo script SQL</li>
+                    <li>Copia e incolla il codice SQL seguente</li>
+                    <li>Esegui lo script</li>
+                </ol>
+                
+                <div class="mt-4">
+                    <h5>Script SQL:</h5>
+                    <pre class="bg-light p-3" style="max-height: 400px; overflow-y: auto;"><code>-- Tabella per i tornei
+CREATE TABLE IF NOT EXISTS tornei (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    genere TEXT NOT NULL,
+    data_inizio TEXT NOT NULL,
+    data_fine TEXT NOT NULL,
+    descrizione TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabella per i gironi
+CREATE TABLE IF NOT EXISTS gironi (
+    id INTEGER PRIMARY KEY,
+    torneo_id INTEGER NOT NULL REFERENCES tornei(id) ON DELETE CASCADE,
+    nome TEXT NOT NULL,
+    descrizione TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabella per le squadre nei gironi
+CREATE TABLE IF NOT EXISTS girone_squadre (
+    id SERIAL PRIMARY KEY,
+    girone_id INTEGER NOT NULL REFERENCES gironi(id) ON DELETE CASCADE,
+    squadra TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(girone_id, squadra)
+);
+
+-- Tabella per le partite dei gironi
+CREATE TABLE IF NOT EXISTS partite_girone (
+    id SERIAL PRIMARY KEY,
+    girone_id INTEGER NOT NULL REFERENCES gironi(id) ON DELETE CASCADE,
+    data_partita TEXT NOT NULL,
+    ora TEXT,
+    squadra1 TEXT NOT NULL,
+    squadra2 TEXT NOT NULL,
+    punteggio1 INTEGER,
+    punteggio2 INTEGER,
+    mete1 INTEGER,
+    mete2 INTEGER,
+    luogo TEXT,
+    note TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indici per migliorare le prestazioni
+CREATE INDEX IF NOT EXISTS idx_gironi_torneo_id ON gironi(torneo_id);
+CREATE INDEX IF NOT EXISTS idx_girone_squadre_girone_id ON girone_squadre(girone_id);
+CREATE INDEX IF NOT EXISTS idx_partite_girone_girone_id ON partite_girone(girone_id);
+
+-- Trigger per aggiornare automaticamente il campo updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_tornei_updated_at
+BEFORE UPDATE ON tornei
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_gironi_updated_at
+BEFORE UPDATE ON gironi
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_partite_girone_updated_at
+BEFORE UPDATE ON partite_girone
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+-- Politiche di sicurezza Row Level Security (RLS)
+-- Abilita RLS per tutte le tabelle
+ALTER TABLE tornei ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gironi ENABLE ROW LEVEL SECURITY;
+ALTER TABLE girone_squadre ENABLE ROW LEVEL SECURITY;
+ALTER TABLE partite_girone ENABLE ROW LEVEL SECURITY;
+
+-- Crea politiche che consentono l'accesso completo all'utente autenticato
+-- Nota: in un ambiente di produzione, dovresti limitare l'accesso in base ai ruoli
+CREATE POLICY tornei_policy ON tornei FOR ALL USING (true);
+CREATE POLICY gironi_policy ON gironi FOR ALL USING (true);
+CREATE POLICY girone_squadre_policy ON girone_squadre FOR ALL USING (true);
+CREATE POLICY partite_girone_policy ON partite_girone FOR ALL USING (true);</code></pre>
+                </div>
+                
+                <div class="alert alert-warning mt-4">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Attenzione:</strong> Esegui questo script solo una volta. Se lo esegui più volte, non ci saranno problemi, ma verranno ricreati i trigger e le politiche di sicurezza.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-check-circle"></i> Verifica delle Tabelle</h5>
+            </div>
+            <div class="card-body">
+                <p>Dopo aver creato le tabelle, puoi verificare che siano state create correttamente:</p>
+                
+                <ol>
+                    <li>Vai alla sezione "Table Editor" nel pannello di controllo di Supabase</li>
+                    <li>Dovresti vedere le tabelle <strong>tornei</strong>, <strong>gironi</strong>, <strong>girone_squadre</strong> e <strong>partite_girone</strong></li>
+                    <li>Puoi fare clic su ciascuna tabella per visualizzarne la struttura</li>
+                </ol>
+                
+                <p>Una volta verificato che le tabelle siano state create correttamente, puoi tornare alla pagina di configurazione di Supabase e migrare i dati dei gironi.</p>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('supabase_config') }}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> Torna alla Configurazione
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

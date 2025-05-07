@@ -20,6 +20,13 @@ from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_ri
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre
 from modules.data_manager import carica_reazioni, salva_reazioni
 from modules.monitor import bot_monitor
+from modules.gironi_manager import (
+    carica_gironi, salva_gironi, crea_torneo, elimina_torneo, modifica_torneo,
+    crea_girone, elimina_girone, modifica_girone, aggiungi_squadra_a_girone,
+    rimuovi_squadra_da_girone, aggiungi_partita_a_girone, modifica_partita_girone,
+    elimina_partita_girone, calcola_classifica_girone, ottieni_tornei_attivi,
+    ottieni_prossime_partite, ottieni_ultimi_risultati
+)
 from conferma_callback import conferma_callback
 
 # Abilita logging
@@ -30,7 +37,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Stati della conversazione
-CATEGORIA, GENERE, TIPO_PARTITA, SQUADRA1, SQUADRA2, SQUADRA3, DATA_PARTITA, PUNTEGGIO1, PUNTEGGIO2, PUNTEGGIO3, METE1, METE2, METE3, ARBITRO, SEZIONE_ARBITRALE, CONFERMA = range(16)
+CATEGORIA, GENERE, TIPO_PARTITA, SQUADRA1, SQUADRA2, SQUADRA3, DATA_PARTITA, PUNTEGGIO1, PUNTEGGIO2, PUNTEGGIO3, METE1, METE2, METE3, ARBITRO, SEZIONE_ARBITRALE, CONFERMA, SELEZIONE_PARTITA, SELEZIONE_CAMPO, MODIFICA_VALORE, CONFERMA_MODIFICA = range(20)
+
+# Stati della conversazione per la gestione dei gironi
+(TORNEO_NOME, TORNEO_CATEGORIA, TORNEO_GENERE, TORNEO_DATA_INIZIO, TORNEO_DATA_FINE, TORNEO_DESCRIZIONE, 
+ GIRONE_NOME, GIRONE_DESCRIZIONE, GIRONE_SQUADRA, GIRONE_PARTITA_SQUADRA1, GIRONE_PARTITA_SQUADRA2, 
+ GIRONE_PARTITA_DATA, GIRONE_PARTITA_ORA, GIRONE_PARTITA_LUOGO, GIRONE_PARTITA_ARBITRO, 
+ GIRONE_PARTITA_PUNTEGGIO1, GIRONE_PARTITA_PUNTEGGIO2, GIRONE_PARTITA_CONFERMA) = range(20, 38)
 
 # Categorie di rugby predefinite
 CATEGORIE = ["Serie A Elite", "Serie A", "Serie B", "Serie C1", "U18 Nazionale", "U18", "U16", "U14"]
@@ -183,6 +196,516 @@ def is_admin(user_id):
 
 # Le funzioni carica_reazioni e salva_reazioni sono ora importate dal modulo data_manager
 
+# Comando /gironi
+async def gironi_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Mostra il menu di gestione dei gironi."""
+    user_id = update.effective_user.id
+    
+    # Verifica che l'utente sia autorizzato (solo admin)
+    if not is_admin(user_id):
+        await update.message.reply_html(
+            "⚠️ <b>Accesso non autorizzato</b>\n\n"
+            "Solo gli amministratori possono gestire i gironi.\n"
+            "Usa /start per richiedere l'accesso."
+        )
+        return
+    
+    # Crea i pulsanti per le funzioni di gestione dei gironi
+    keyboard = [
+        [InlineKeyboardButton("🏆 Gestione Tornei", callback_data="gironi_tornei")],
+        [InlineKeyboardButton("👥 Gestione Gironi", callback_data="gironi_gironi")],
+        [InlineKeyboardButton("📊 Visualizza Classifiche", callback_data="gironi_classifiche")],
+        [InlineKeyboardButton("📅 Prossime Partite", callback_data="gironi_prossime")],
+        [InlineKeyboardButton("🏁 Ultimi Risultati", callback_data="gironi_risultati")],
+        [InlineKeyboardButton("◀️ Torna al menu", callback_data="menu_torna")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_html(
+        "🏆 <b>GESTIONE GIRONI</b> 🏆\n\n"
+        "Benvenuto nel sistema di gestione dei gironi.\n"
+        "Seleziona un'opzione:",
+        reply_markup=reply_markup
+    )
+
+# Callback per la gestione dei gironi
+async def gironi_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce i callback del menu gironi."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    # Verifica che l'utente sia autorizzato (solo admin)
+    if not is_admin(user_id):
+        await query.edit_message_text(
+            "⚠️ <b>Accesso non autorizzato</b>\n\n"
+            "Solo gli amministratori possono gestire i gironi.\n"
+            "Usa /start per richiedere l'accesso.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Estrai l'azione dal callback data
+    azione = query.data.replace("gironi_", "")
+    
+    if azione == "tornei":
+        # Mostra il menu di gestione dei tornei
+        tornei = carica_gironi().get("tornei", [])
+        
+        # Crea i pulsanti per le azioni sui tornei
+        keyboard = [
+            [InlineKeyboardButton("➕ Nuovo Torneo", callback_data="torneo_nuovo")]
+        ]
+        
+        # Aggiungi i tornei esistenti
+        for torneo in tornei:
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{torneo.get('nome')} ({torneo.get('categoria')} {torneo.get('genere')})",
+                    callback_data=f"torneo_{torneo.get('id')}"
+                )
+            ])
+        
+        # Aggiungi il pulsante per tornare indietro
+        keyboard.append([InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "🏆 <b>GESTIONE TORNEI</b> 🏆\n\n"
+            "Seleziona un torneo esistente o crea un nuovo torneo:",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione == "gironi":
+        # Mostra il menu di gestione dei gironi
+        tornei = carica_gironi().get("tornei", [])
+        
+        if not tornei:
+            # Se non ci sono tornei, mostra un messaggio
+            await query.edit_message_text(
+                "⚠️ <b>Nessun torneo disponibile</b>\n\n"
+                "Prima di gestire i gironi, devi creare almeno un torneo.\n"
+                "Usa l'opzione 'Gestione Tornei' per creare un nuovo torneo.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+            )
+            return
+        
+        # Crea i pulsanti per selezionare il torneo
+        keyboard = []
+        for torneo in tornei:
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{torneo.get('nome')} ({torneo.get('categoria')} {torneo.get('genere')})",
+                    callback_data=f"gironi_torneo_{torneo.get('id')}"
+                )
+            ])
+        
+        # Aggiungi il pulsante per tornare indietro
+        keyboard.append([InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "👥 <b>GESTIONE GIRONI</b> 👥\n\n"
+            "Seleziona il torneo per gestire i suoi gironi:",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione == "classifiche":
+        # Mostra il menu delle classifiche
+        tornei = carica_gironi().get("tornei", [])
+        
+        if not tornei:
+            # Se non ci sono tornei, mostra un messaggio
+            await query.edit_message_text(
+                "⚠️ <b>Nessun torneo disponibile</b>\n\n"
+                "Non ci sono tornei con classifiche da visualizzare.\n"
+                "Usa l'opzione 'Gestione Tornei' per creare un nuovo torneo.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+            )
+            return
+        
+        # Crea i pulsanti per selezionare il torneo
+        keyboard = []
+        for torneo in tornei:
+            if torneo.get("gironi"):  # Mostra solo tornei con gironi
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"{torneo.get('nome')} ({torneo.get('categoria')} {torneo.get('genere')})",
+                        callback_data=f"classifica_torneo_{torneo.get('id')}"
+                    )
+                ])
+        
+        if not keyboard:
+            # Se non ci sono tornei con gironi, mostra un messaggio
+            await query.edit_message_text(
+                "⚠️ <b>Nessun girone disponibile</b>\n\n"
+                "Non ci sono gironi con classifiche da visualizzare.\n"
+                "Usa l'opzione 'Gestione Gironi' per creare nuovi gironi.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+            )
+            return
+        
+        # Aggiungi il pulsante per tornare indietro
+        keyboard.append([InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "📊 <b>CLASSIFICHE</b> 📊\n\n"
+            "Seleziona il torneo per visualizzare le classifiche dei suoi gironi:",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione == "prossime":
+        # Mostra le prossime partite
+        prossime_partite = ottieni_prossime_partite(giorni=7)
+        
+        if not prossime_partite:
+            # Se non ci sono partite, mostra un messaggio
+            await query.edit_message_text(
+                "⚠️ <b>Nessuna partita in programma</b>\n\n"
+                "Non ci sono partite in programma nei prossimi 7 giorni.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+            )
+            return
+        
+        # Prepara il messaggio con le prossime partite
+        messaggio = "📅 <b>PROSSIME PARTITE</b> 📅\n\n"
+        
+        # Raggruppa le partite per data
+        partite_per_data = {}
+        for partita in prossime_partite:
+            data = partita.get("data_partita")
+            if data not in partite_per_data:
+                partite_per_data[data] = []
+            partite_per_data[data].append(partita)
+        
+        # Ordina le date
+        date_ordinate = sorted(partite_per_data.keys(), key=lambda x: datetime.strptime(x, "%d/%m/%Y"))
+        
+        # Aggiungi le partite al messaggio
+        for data in date_ordinate:
+            messaggio += f"<b>{data}</b>\n"
+            for partita in partite_per_data[data]:
+                torneo_nome = partita.get("torneo_nome")
+                girone_nome = partita.get("girone_nome")
+                squadra1 = partita.get("squadra1")
+                squadra2 = partita.get("squadra2")
+                ora = partita.get("ora", "")
+                luogo = partita.get("luogo", "")
+                
+                messaggio += f"• {squadra1} vs {squadra2}"
+                if ora:
+                    messaggio += f" - {ora}"
+                if luogo:
+                    messaggio += f" - {luogo}"
+                messaggio += f" ({torneo_nome}, {girone_nome})\n"
+            messaggio += "\n"
+        
+        # Aggiungi il pulsante per tornare indietro
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione == "risultati":
+        # Mostra gli ultimi risultati
+        ultimi_risultati = ottieni_ultimi_risultati(giorni=7)
+        
+        if not ultimi_risultati:
+            # Se non ci sono risultati, mostra un messaggio
+            await query.edit_message_text(
+                "⚠️ <b>Nessun risultato recente</b>\n\n"
+                "Non ci sono risultati registrati negli ultimi 7 giorni.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+            )
+            return
+        
+        # Prepara il messaggio con gli ultimi risultati
+        messaggio = "🏁 <b>ULTIMI RISULTATI</b> 🏁\n\n"
+        
+        # Raggruppa i risultati per data
+        risultati_per_data = {}
+        for risultato in ultimi_risultati:
+            data = risultato.get("data_partita")
+            if data not in risultati_per_data:
+                risultati_per_data[data] = []
+            risultati_per_data[data].append(risultato)
+        
+        # Ordina le date (dalla più recente alla meno recente)
+        date_ordinate = sorted(risultati_per_data.keys(), key=lambda x: datetime.strptime(x, "%d/%m/%Y"), reverse=True)
+        
+        # Aggiungi i risultati al messaggio
+        for data in date_ordinate:
+            messaggio += f"<b>{data}</b>\n"
+            for risultato in risultati_per_data[data]:
+                torneo_nome = risultato.get("torneo_nome")
+                girone_nome = risultato.get("girone_nome")
+                squadra1 = risultato.get("squadra1")
+                squadra2 = risultato.get("squadra2")
+                punteggio1 = risultato.get("punteggio1", "")
+                punteggio2 = risultato.get("punteggio2", "")
+                
+                messaggio += f"• {squadra1} {punteggio1}-{punteggio2} {squadra2} ({torneo_nome}, {girone_nome})\n"
+            messaggio += "\n"
+        
+        # Aggiungi il pulsante per tornare indietro
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione == "menu":
+        # Torna al menu principale dei gironi
+        keyboard = [
+            [InlineKeyboardButton("🏆 Gestione Tornei", callback_data="gironi_tornei")],
+            [InlineKeyboardButton("👥 Gestione Gironi", callback_data="gironi_gironi")],
+            [InlineKeyboardButton("📊 Visualizza Classifiche", callback_data="gironi_classifiche")],
+            [InlineKeyboardButton("📅 Prossime Partite", callback_data="gironi_prossime")],
+            [InlineKeyboardButton("🏁 Ultimi Risultati", callback_data="gironi_risultati")],
+            [InlineKeyboardButton("◀️ Torna al menu", callback_data="menu_torna")]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "🏆 <b>GESTIONE GIRONI</b> 🏆\n\n"
+            "Benvenuto nel sistema di gestione dei gironi.\n"
+            "Seleziona un'opzione:",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    
+    elif azione.startswith("torneo_"):
+        # Gestione di un torneo specifico
+        await gestisci_torneo_callback(update, context)
+    
+    elif azione.startswith("gironi_torneo_"):
+        # Gestione dei gironi di un torneo specifico
+        await gestisci_gironi_torneo_callback(update, context)
+    
+    elif azione.startswith("classifica_torneo_"):
+        # Visualizzazione delle classifiche di un torneo specifico
+        await visualizza_classifiche_torneo_callback(update, context)
+    
+    else:
+        # Azione non riconosciuta
+        await query.edit_message_text(
+            "⚠️ <b>Errore</b>\n\n"
+            "Azione non riconosciuta. Riprova.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_menu")]])
+        )
+
+# Callback per la gestione di un torneo specifico
+async def gestisci_torneo_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce i callback per un torneo specifico."""
+    query = update.callback_query
+    
+    # Estrai l'ID del torneo dal callback data
+    callback_data = query.data.replace("torneo_", "")
+    
+    if callback_data == "nuovo":
+        # Avvia la creazione di un nuovo torneo
+        await query.edit_message_text(
+            "🏆 <b>NUOVO TORNEO</b> 🏆\n\n"
+            "Per creare un nuovo torneo, inserisci il nome del torneo:",
+            parse_mode='HTML'
+        )
+        return TORNEO_NOME
+    
+    # Altrimenti, è un torneo esistente
+    try:
+        torneo_id = int(callback_data)
+    except ValueError:
+        await query.edit_message_text(
+            "⚠️ <b>Errore</b>\n\n"
+            "ID torneo non valido. Riprova.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_tornei")]])
+        )
+        return
+    
+    # Trova il torneo
+    gironi = carica_gironi()
+    torneo = None
+    for t in gironi.get("tornei", []):
+        if t.get("id") == torneo_id:
+            torneo = t
+            break
+    
+    if not torneo:
+        await query.edit_message_text(
+            "⚠️ <b>Errore</b>\n\n"
+            "Torneo non trovato. Riprova.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_tornei")]])
+        )
+        return
+    
+    # Mostra i dettagli del torneo e le opzioni di gestione
+    messaggio = f"🏆 <b>TORNEO: {torneo.get('nome')}</b> 🏆\n\n"
+    messaggio += f"<b>Categoria:</b> {torneo.get('categoria')}\n"
+    messaggio += f"<b>Genere:</b> {torneo.get('genere')}\n"
+    messaggio += f"<b>Data inizio:</b> {torneo.get('data_inizio')}\n"
+    messaggio += f"<b>Data fine:</b> {torneo.get('data_fine')}\n"
+    
+    if torneo.get('descrizione'):
+        messaggio += f"<b>Descrizione:</b> {torneo.get('descrizione')}\n"
+    
+    messaggio += f"<b>Gironi:</b> {len(torneo.get('gironi', []))}\n\n"
+    
+    # Crea i pulsanti per le azioni sul torneo
+    keyboard = [
+        [InlineKeyboardButton("✏️ Modifica", callback_data=f"torneo_modifica_{torneo_id}")],
+        [InlineKeyboardButton("🗑️ Elimina", callback_data=f"torneo_elimina_{torneo_id}")],
+        [InlineKeyboardButton("👥 Gestisci Gironi", callback_data=f"gironi_torneo_{torneo_id}")],
+        [InlineKeyboardButton("◀️ Indietro", callback_data="gironi_tornei")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        messaggio,
+        reply_markup=reply_markup,
+        parse_mode='HTML'
+    )
+
+# Callback per la gestione dei gironi di un torneo specifico
+async def gestisci_gironi_torneo_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce i callback per i gironi di un torneo specifico."""
+    query = update.callback_query
+    
+    # Estrai l'ID del torneo dal callback data
+    torneo_id = int(query.data.replace("gironi_torneo_", ""))
+    
+    # Trova il torneo
+    gironi = carica_gironi()
+    torneo = None
+    for t in gironi.get("tornei", []):
+        if t.get("id") == torneo_id:
+            torneo = t
+            break
+    
+    if not torneo:
+        await query.edit_message_text(
+            "⚠️ <b>Errore</b>\n\n"
+            "Torneo non trovato. Riprova.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_gironi")]])
+        )
+        return
+    
+    # Mostra i gironi del torneo
+    messaggio = f"👥 <b>GIRONI DEL TORNEO: {torneo.get('nome')}</b> 👥\n\n"
+    
+    if not torneo.get('gironi'):
+        messaggio += "Non ci sono ancora gironi in questo torneo.\n"
+    else:
+        messaggio += "Gironi disponibili:\n"
+        for girone in torneo.get('gironi', []):
+            messaggio += f"• {girone.get('nome')} - {len(girone.get('squadre', []))} squadre, {len(girone.get('partite', []))} partite\n"
+    
+    # Crea i pulsanti per le azioni sui gironi
+    keyboard = [
+        [InlineKeyboardButton("➕ Nuovo Girone", callback_data=f"girone_nuovo_{torneo_id}")]
+    ]
+    
+    # Aggiungi i gironi esistenti
+    for girone in torneo.get('gironi', []):
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{girone.get('nome')}",
+                callback_data=f"girone_{torneo_id}_{girone.get('id')}"
+            )
+        ])
+    
+    # Aggiungi il pulsante per tornare indietro
+    keyboard.append([InlineKeyboardButton("◀️ Indietro", callback_data="gironi_gironi")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        messaggio,
+        reply_markup=reply_markup,
+        parse_mode='HTML'
+    )
+
+# Callback per la visualizzazione delle classifiche di un torneo specifico
+async def visualizza_classifiche_torneo_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestisce i callback per la visualizzazione delle classifiche di un torneo specifico."""
+    query = update.callback_query
+    
+    # Estrai l'ID del torneo dal callback data
+    torneo_id = int(query.data.replace("classifica_torneo_", ""))
+    
+    # Trova il torneo
+    gironi = carica_gironi()
+    torneo = None
+    for t in gironi.get("tornei", []):
+        if t.get("id") == torneo_id:
+            torneo = t
+            break
+    
+    if not torneo:
+        await query.edit_message_text(
+            "⚠️ <b>Errore</b>\n\n"
+            "Torneo non trovato. Riprova.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_classifiche")]])
+        )
+        return
+    
+    # Verifica se ci sono gironi nel torneo
+    if not torneo.get('gironi'):
+        await query.edit_message_text(
+            "⚠️ <b>Nessun girone disponibile</b>\n\n"
+            f"Non ci sono gironi nel torneo '{torneo.get('nome')}'.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Indietro", callback_data="gironi_classifiche")]])
+        )
+        return
+    
+    # Crea i pulsanti per selezionare il girone
+    keyboard = []
+    for girone in torneo.get('gironi', []):
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{girone.get('nome')}",
+                callback_data=f"classifica_girone_{torneo_id}_{girone.get('id')}"
+            )
+        ])
+    
+    # Aggiungi il pulsante per tornare indietro
+    keyboard.append([InlineKeyboardButton("◀️ Indietro", callback_data="gironi_classifiche")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"📊 <b>CLASSIFICHE DEL TORNEO: {torneo.get('nome')}</b> 📊\n\n"
+        "Seleziona un girone per visualizzare la sua classifica:",
+        reply_markup=reply_markup,
+        parse_mode='HTML'
+    )
+
 # Funzione per aggiungere una reazione
 def aggiungi_reazione(message_id, user_id, user_name, reaction_type):
     """Aggiunge una reazione a un messaggio."""
@@ -327,10 +850,13 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     keyboard = [
         [
             InlineKeyboardButton("🆕 Nuova Partita", callback_data="dashboard_nuova"),
-            InlineKeyboardButton("📋 Risultati", callback_data="dashboard_risultati")
+            InlineKeyboardButton("🔄 Modifica", callback_data="dashboard_modifica")
         ],
         [
-            InlineKeyboardButton("📊 Statistiche", callback_data="dashboard_statistiche"),
+            InlineKeyboardButton("📋 Risultati", callback_data="dashboard_risultati"),
+            InlineKeyboardButton("📊 Statistiche", callback_data="dashboard_statistiche")
+        ],
+        [
             InlineKeyboardButton("⚙️ Menu Principale", callback_data="dashboard_menu")
         ]
     ]
@@ -1379,6 +1905,12 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # un reindirizzamento esplicito per sicurezza
         await nuova_partita(update, context)
     
+    elif azione == "modifica":
+        # Avvia il processo di modifica di un risultato esistente
+        # Questo caso dovrebbe essere gestito dal ConversationHandler, ma aggiungiamo
+        # un reindirizzamento esplicito per sicurezza
+        await modifica_risultato(update, context)
+    
     elif azione == "risultati":
         # Mostra gli ultimi risultati
         risultati = carica_risultati()
@@ -1442,6 +1974,7 @@ async def dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # Crea i pulsanti per le funzioni standard
         keyboard = [
             [InlineKeyboardButton("📝 Inserisci nuova partita", callback_data="menu_nuova")],
+            [InlineKeyboardButton("🔄 Modifica risultato", callback_data="menu_modifica")],
             [InlineKeyboardButton("🏁 Ultimi risultati", callback_data="menu_risultati")],
             [InlineKeyboardButton("📊 Statistiche", callback_data="menu_statistiche")]
         ]
@@ -1727,7 +2260,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "Per modificare un risultato esistente, usa il comando /modifica",
             parse_mode='HTML'
         )
-    
+        
     elif azione == "risultati":
         # Mostra gli ultimi risultati
         risultati = carica_risultati()
@@ -2032,6 +2565,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         # Crea i pulsanti per le funzioni standard
         keyboard = [
             [InlineKeyboardButton("📝 Inserisci nuova partita", callback_data="menu_nuova")],
+            [InlineKeyboardButton("🔄 Modifica risultato", callback_data="menu_modifica")],
             [InlineKeyboardButton("🏁 Ultimi risultati", callback_data="menu_risultati")],
             [InlineKeyboardButton("📊 Statistiche", callback_data="menu_statistiche")]
         ]
@@ -2718,6 +3252,566 @@ async def gestione_utenti_callback(update: Update, context: ContextTypes.DEFAULT
         return
 
 # Comando /nuova
+# Comando /modifica per modificare un risultato esistente
+async def modifica_risultato(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Avvia il processo di modifica di un risultato esistente."""
+    user_id = update.effective_user.id
+    
+    # Verifica che l'utente sia autorizzato
+    if not is_utente_autorizzato(user_id):
+        if update.callback_query:
+            await update.callback_query.answer("Non sei autorizzato a utilizzare questa funzione.")
+            await update.callback_query.edit_message_text(
+                "⚠️ <b>Accesso non autorizzato</b>\n\n"
+                "Non sei autorizzato a utilizzare questo comando.\n"
+                "Usa /start per richiedere l'accesso.",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_html(
+                "⚠️ <b>Accesso non autorizzato</b>\n\n"
+                "Non sei autorizzato a utilizzare questo comando.\n"
+                "Usa /start per richiedere l'accesso."
+            )
+        return ConversationHandler.END
+    
+    # Carica i risultati
+    risultati = carica_risultati()
+    
+    # Filtra i risultati inseriti dall'utente
+    user_name = update.effective_user.full_name
+    risultati_utente = [r for r in risultati if r.get('inserito_da') == user_name]
+    
+    # Ordina i risultati per data (più recenti prima)
+    risultati_utente.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    
+    # Prendi solo gli ultimi 10 risultati
+    ultimi_risultati = risultati_utente[:10]
+    
+    if not ultimi_risultati:
+        if update.callback_query:
+            await update.callback_query.answer("Non hai inserito partite recentemente.")
+            await update.callback_query.edit_message_text(
+                "⚠️ <b>Nessuna partita trovata</b>\n\n"
+                "Non hai inserito partite recentemente.\n"
+                "Usa /nuova per inserire una nuova partita.",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_html(
+                "⚠️ <b>Nessuna partita trovata</b>\n\n"
+                "Non hai inserito partite recentemente.\n"
+                "Usa /nuova per inserire una nuova partita."
+            )
+        return ConversationHandler.END
+    
+    # Crea i pulsanti per selezionare la partita da modificare
+    keyboard = []
+    for i, risultato in enumerate(ultimi_risultati):
+        data = risultato.get('data_partita', 'N/D')
+        if risultato.get('tipo_partita') == 'triangolare':
+            testo = f"{data} - Triangolare {risultato.get('categoria')} {risultato.get('genere')}"
+        else:
+            testo = f"{data} - {risultato.get('squadra1')} vs {risultato.get('squadra2')}"
+        
+        # Usa l'indice come callback_data
+        keyboard.append([InlineKeyboardButton(testo, callback_data=f"modifica_{i}")])
+    
+    # Aggiungi un pulsante per annullare
+    keyboard.append([InlineKeyboardButton("❌ Annulla", callback_data="modifica_annulla")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Salva i risultati nel contesto per recuperarli più tardi
+    context.user_data['risultati_da_modificare'] = ultimi_risultati
+    
+    # Invia il messaggio con i pulsanti
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            "🔄 <b>MODIFICA RISULTATO</b> 🔄\n\n"
+            "Seleziona la partita che vuoi modificare:",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_html(
+            "🔄 <b>MODIFICA RISULTATO</b> 🔄\n\n"
+            "Seleziona la partita che vuoi modificare:",
+            reply_markup=reply_markup
+        )
+    
+    return SELEZIONE_PARTITA
+
+# Callback per la selezione della partita da modificare
+async def selezione_partita_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Gestisce la selezione della partita da modificare."""
+    query = update.callback_query
+    await query.answer()
+    
+    # Estrai l'indice della partita selezionata
+    callback_data = query.data
+    
+    # Se l'utente ha annullato, termina la conversazione
+    if callback_data == "modifica_annulla":
+        await query.edit_message_text(
+            "❌ <b>Operazione annullata</b>\n\n"
+            "La modifica del risultato è stata annullata.",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    # Estrai l'indice della partita selezionata
+    indice = int(callback_data.replace("modifica_", ""))
+    
+    # Recupera la partita selezionata
+    risultati_da_modificare = context.user_data.get('risultati_da_modificare', [])
+    if indice >= len(risultati_da_modificare):
+        await query.edit_message_text(
+            "⚠️ <b>Errore</b>\n\n"
+            "Partita non trovata. Riprova con /modifica.",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    # Salva la partita selezionata nel contesto
+    partita = risultati_da_modificare[indice]
+    context.user_data['partita_da_modificare'] = partita
+    context.user_data['indice_partita'] = indice
+    
+    # Determina quali campi possono essere modificati in base al tipo di partita
+    if partita.get('tipo_partita') == 'triangolare':
+        # Per le partite triangolari, mostra opzioni diverse
+        keyboard = [
+            [InlineKeyboardButton("📅 Data", callback_data="mod_data")],
+            [InlineKeyboardButton("🏉 Squadra 1", callback_data="mod_squadra1")],
+            [InlineKeyboardButton("🏉 Squadra 2", callback_data="mod_squadra2")],
+            [InlineKeyboardButton("🏉 Squadra 3", callback_data="mod_squadra3")],
+            [InlineKeyboardButton("👨‍⚖️ Arbitro", callback_data="mod_arbitro")],
+            [InlineKeyboardButton("🏛️ Sezione Arbitrale", callback_data="mod_sezione")],
+            [InlineKeyboardButton("❌ Annulla", callback_data="mod_annulla")]
+        ]
+    else:
+        # Per le partite normali
+        keyboard = [
+            [InlineKeyboardButton("📅 Data", callback_data="mod_data")],
+            [InlineKeyboardButton("🏉 Squadra 1", callback_data="mod_squadra1")],
+            [InlineKeyboardButton("🏉 Squadra 2", callback_data="mod_squadra2")],
+            [InlineKeyboardButton("🔢 Punteggio Squadra 1", callback_data="mod_punteggio1")],
+            [InlineKeyboardButton("🔢 Punteggio Squadra 2", callback_data="mod_punteggio2")],
+            [InlineKeyboardButton("🏉 Mete Squadra 1", callback_data="mod_mete1")],
+            [InlineKeyboardButton("🏉 Mete Squadra 2", callback_data="mod_mete2")],
+            [InlineKeyboardButton("👨‍⚖️ Arbitro", callback_data="mod_arbitro")],
+            [InlineKeyboardButton("🏛️ Sezione Arbitrale", callback_data="mod_sezione")],
+            [InlineKeyboardButton("❌ Annulla", callback_data="mod_annulla")]
+        ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Prepara il messaggio con i dettagli della partita
+    if partita.get('tipo_partita') == 'triangolare':
+        messaggio = f"🔄 <b>MODIFICA TRIANGOLARE</b> 🔄\n\n"
+        messaggio += f"<b>Categoria:</b> {partita.get('categoria')} {partita.get('genere')}\n"
+        messaggio += f"<b>Data:</b> {partita.get('data_partita', 'N/D')}\n"
+        messaggio += f"<b>Squadre:</b>\n"
+        messaggio += f"• {partita.get('squadra1', 'N/D')}\n"
+        messaggio += f"• {partita.get('squadra2', 'N/D')}\n"
+        messaggio += f"• {partita.get('squadra3', 'N/D')}\n"
+        messaggio += f"<b>Arbitro:</b> {partita.get('arbitro', 'N/D')}\n"
+        messaggio += f"<b>Sezione Arbitrale:</b> {partita.get('sezione_arbitrale', 'N/D')}\n\n"
+    else:
+        messaggio = f"🔄 <b>MODIFICA PARTITA</b> 🔄\n\n"
+        messaggio += f"<b>Categoria:</b> {partita.get('categoria')} {partita.get('genere')}\n"
+        messaggio += f"<b>Data:</b> {partita.get('data_partita', 'N/D')}\n"
+        messaggio += f"<b>Squadre:</b>\n"
+        messaggio += f"• {partita.get('squadra1', 'N/D')} {partita.get('punteggio1', 'N/D')}-{partita.get('punteggio2', 'N/D')} {partita.get('squadra2', 'N/D')}\n"
+        messaggio += f"<b>Mete:</b> {partita.get('mete1', 'N/D')}-{partita.get('mete2', 'N/D')}\n"
+        messaggio += f"<b>Arbitro:</b> {partita.get('arbitro', 'N/D')}\n"
+        messaggio += f"<b>Sezione Arbitrale:</b> {partita.get('sezione_arbitrale', 'N/D')}\n\n"
+    
+    messaggio += "<b>Seleziona il campo da modificare:</b>"
+    
+    await query.edit_message_text(
+        messaggio,
+        reply_markup=reply_markup,
+        parse_mode='HTML'
+    )
+    
+    return SELEZIONE_CAMPO
+
+# Callback per la selezione del campo da modificare
+async def selezione_campo_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Gestisce la selezione del campo da modificare."""
+    query = update.callback_query
+    await query.answer()
+    
+    # Estrai il campo selezionato
+    campo = query.data.replace("mod_", "")
+    
+    # Se l'utente ha annullato, termina la conversazione
+    if campo == "annulla":
+        await query.edit_message_text(
+            "❌ <b>Operazione annullata</b>\n\n"
+            "La modifica del risultato è stata annullata.",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    # Salva il campo selezionato nel contesto
+    context.user_data['campo_da_modificare'] = campo
+    
+    # Recupera la partita da modificare
+    partita = context.user_data.get('partita_da_modificare', {})
+    
+    # Prepara il messaggio in base al campo selezionato
+    if campo == "data":
+        messaggio = "📅 <b>MODIFICA DATA</b>\n\n"
+        messaggio += f"Data attuale: <b>{partita.get('data_partita', 'N/D')}</b>\n\n"
+        messaggio += "Inserisci la nuova data nel formato <b>DD/MM/YYYY</b>:"
+        
+        await query.edit_message_text(
+            messaggio,
+            parse_mode='HTML'
+        )
+        return MODIFICA_VALORE
+    
+    elif campo in ["squadra1", "squadra2", "squadra3"]:
+        numero_squadra = campo[-1]  # Estrai il numero della squadra (1, 2 o 3)
+        messaggio = f"🏉 <b>MODIFICA SQUADRA {numero_squadra}</b>\n\n"
+        messaggio += f"Squadra attuale: <b>{partita.get(campo, 'N/D')}</b>\n\n"
+        messaggio += "Inserisci il nuovo nome della squadra:"
+        
+        # Crea i pulsanti con le squadre disponibili
+        keyboard = []
+        for i in range(0, len(SQUADRE), 2):
+            row = []
+            row.append(InlineKeyboardButton(SQUADRE[i], callback_data=f"sq_{SQUADRE[i]}"))
+            if i + 1 < len(SQUADRE):
+                row.append(InlineKeyboardButton(SQUADRE[i + 1], callback_data=f"sq_{SQUADRE[i + 1]}"))
+            keyboard.append(row)
+        
+        # Aggiungi un pulsante per annullare
+        keyboard.append([InlineKeyboardButton("❌ Annulla", callback_data="sq_annulla")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        return MODIFICA_VALORE
+    
+    elif campo in ["punteggio1", "punteggio2"]:
+        numero_squadra = campo[-1]  # Estrai il numero della squadra (1 o 2)
+        messaggio = f"🔢 <b>MODIFICA PUNTEGGIO SQUADRA {numero_squadra}</b>\n\n"
+        messaggio += f"Punteggio attuale: <b>{partita.get(campo, 'N/D')}</b>\n\n"
+        messaggio += "Inserisci il nuovo punteggio (solo numeri):"
+        
+        await query.edit_message_text(
+            messaggio,
+            parse_mode='HTML'
+        )
+        return MODIFICA_VALORE
+    
+    elif campo in ["mete1", "mete2"]:
+        numero_squadra = campo[-1]  # Estrai il numero della squadra (1 o 2)
+        messaggio = f"🏉 <b>MODIFICA METE SQUADRA {numero_squadra}</b>\n\n"
+        messaggio += f"Mete attuali: <b>{partita.get(campo, 'N/D')}</b>\n\n"
+        messaggio += "Inserisci il nuovo numero di mete (solo numeri):"
+        
+        await query.edit_message_text(
+            messaggio,
+            parse_mode='HTML'
+        )
+        return MODIFICA_VALORE
+    
+    elif campo == "arbitro":
+        messaggio = "👨‍⚖️ <b>MODIFICA ARBITRO</b>\n\n"
+        messaggio += f"Arbitro attuale: <b>{partita.get('arbitro', 'N/D')}</b>\n\n"
+        messaggio += "Inserisci il nuovo nome dell'arbitro:"
+        
+        await query.edit_message_text(
+            messaggio,
+            parse_mode='HTML'
+        )
+        return MODIFICA_VALORE
+    
+    elif campo == "sezione":
+        messaggio = "🏛️ <b>MODIFICA SEZIONE ARBITRALE</b>\n\n"
+        messaggio += f"Sezione attuale: <b>{partita.get('sezione_arbitrale', 'N/D')}</b>\n\n"
+        messaggio += "Seleziona la nuova sezione arbitrale:"
+        
+        # Crea i pulsanti con le sezioni arbitrali
+        keyboard = []
+        for sezione in SEZIONI_ARBITRALI:
+            keyboard.append([InlineKeyboardButton(sezione, callback_data=f"sez_{sezione}")])
+        
+        # Aggiungi un pulsante per annullare
+        keyboard.append([InlineKeyboardButton("❌ Annulla", callback_data="sez_annulla")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        return MODIFICA_VALORE
+    
+    # Se il campo non è riconosciuto, torna alla selezione del campo
+    await query.edit_message_text(
+        "⚠️ <b>Errore</b>\n\n"
+        "Campo non riconosciuto. Riprova.",
+        parse_mode='HTML'
+    )
+    return ConversationHandler.END
+
+# Callback per la modifica del valore
+async def modifica_valore_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Gestisce la modifica del valore del campo selezionato."""
+    # Recupera il campo da modificare
+    campo = context.user_data.get('campo_da_modificare')
+    
+    # Recupera la partita da modificare
+    partita = context.user_data.get('partita_da_modificare', {})
+    indice = context.user_data.get('indice_partita')
+    
+    # Gestisci sia i messaggi di testo che i callback query
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        
+        # Estrai il valore dal callback data
+        callback_data = query.data
+        
+        # Gestisci l'annullamento
+        if callback_data in ["sq_annulla", "sez_annulla"]:
+            await query.edit_message_text(
+                "❌ <b>Operazione annullata</b>\n\n"
+                "La modifica del risultato è stata annullata.",
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        # Estrai il valore in base al tipo di callback
+        if callback_data.startswith("sq_"):
+            valore = callback_data[3:]  # Rimuovi il prefisso "sq_"
+        elif callback_data.startswith("sez_"):
+            valore = callback_data[4:]  # Rimuovi il prefisso "sez_"
+        else:
+            valore = callback_data
+    else:
+        # Gestisci l'input testuale
+        valore = update.message.text.strip()
+    
+    # Valida e converti il valore in base al campo
+    if campo in ["punteggio1", "punteggio2", "mete1", "mete2"]:
+        try:
+            valore = int(valore)
+            if valore < 0:
+                if update.callback_query:
+                    await update.callback_query.edit_message_text(
+                        "⚠️ <b>Errore</b>\n\n"
+                        "Il valore deve essere un numero positivo. Riprova.",
+                        parse_mode='HTML'
+                    )
+                else:
+                    await update.message.reply_html(
+                        "⚠️ <b>Errore</b>\n\n"
+                        "Il valore deve essere un numero positivo. Riprova."
+                    )
+                return MODIFICA_VALORE
+        except ValueError:
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    "⚠️ <b>Errore</b>\n\n"
+                    "Il valore deve essere un numero. Riprova.",
+                    parse_mode='HTML'
+                )
+            else:
+                await update.message.reply_html(
+                    "⚠️ <b>Errore</b>\n\n"
+                    "Il valore deve essere un numero. Riprova."
+                )
+            return MODIFICA_VALORE
+    
+    elif campo == "data":
+        # Valida il formato della data
+        try:
+            datetime.strptime(valore, "%d/%m/%Y")
+        except ValueError:
+            if update.callback_query:
+                await update.callback_query.edit_message_text(
+                    "⚠️ <b>Errore</b>\n\n"
+                    "Il formato della data deve essere DD/MM/YYYY. Riprova.",
+                    parse_mode='HTML'
+                )
+            else:
+                await update.message.reply_html(
+                    "⚠️ <b>Errore</b>\n\n"
+                    "Il formato della data deve essere DD/MM/YYYY. Riprova."
+                )
+            return MODIFICA_VALORE
+    
+    # Aggiorna il valore nella partita
+    if campo == "sezione":
+        partita["sezione_arbitrale"] = valore
+    else:
+        partita[campo] = valore
+    
+    # Aggiorna il timestamp
+    partita["timestamp"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    
+    # Aggiorna la partita nel contesto
+    context.user_data['partita_da_modificare'] = partita
+    
+    # Carica tutti i risultati
+    risultati = carica_risultati()
+    
+    # Trova l'indice della partita da modificare nei risultati
+    risultati_utente = context.user_data.get('risultati_da_modificare', [])
+    partita_originale = risultati_utente[indice]
+    
+    # Trova la partita nei risultati globali
+    for i, r in enumerate(risultati):
+        # Confronta i timestamp per identificare la partita corretta
+        if (r.get('timestamp') == partita_originale.get('timestamp') and
+            r.get('squadra1') == partita_originale.get('squadra1') and
+            r.get('squadra2') == partita_originale.get('squadra2') and
+            r.get('data_partita') == partita_originale.get('data_partita')):
+            # Aggiorna la partita nei risultati globali
+            risultati[i] = partita
+            break
+    
+    # Salva i risultati aggiornati
+    salva_risultati(risultati)
+    
+    # Invia un messaggio di conferma
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            "✅ <b>Modifica completata</b>\n\n"
+            f"Il campo <b>{campo}</b> è stato aggiornato con successo.\n\n"
+            "Vuoi modificare un altro campo?",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✏️ Modifica altro campo", callback_data="mod_altro")],
+                [InlineKeyboardButton("✅ Fine", callback_data="mod_fine")]
+            ]),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_html(
+            "✅ <b>Modifica completata</b>\n\n"
+            f"Il campo <b>{campo}</b> è stato aggiornato con successo.\n\n"
+            "Vuoi modificare un altro campo?",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✏️ Modifica altro campo", callback_data="mod_altro")],
+                [InlineKeyboardButton("✅ Fine", callback_data="mod_fine")]
+            ])
+        )
+    
+    return CONFERMA_MODIFICA
+
+# Callback per la conferma della modifica
+async def conferma_modifica_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Gestisce la conferma della modifica."""
+    query = update.callback_query
+    await query.answer()
+    
+    # Estrai l'azione dal callback data
+    azione = query.data.replace("mod_", "")
+    
+    if azione == "altro":
+        # L'utente vuole modificare un altro campo
+        # Recupera la partita da modificare
+        partita = context.user_data.get('partita_da_modificare', {})
+        
+        # Determina quali campi possono essere modificati in base al tipo di partita
+        if partita.get('tipo_partita') == 'triangolare':
+            # Per le partite triangolari, mostra opzioni diverse
+            keyboard = [
+                [InlineKeyboardButton("📅 Data", callback_data="mod_data")],
+                [InlineKeyboardButton("🏉 Squadra 1", callback_data="mod_squadra1")],
+                [InlineKeyboardButton("🏉 Squadra 2", callback_data="mod_squadra2")],
+                [InlineKeyboardButton("🏉 Squadra 3", callback_data="mod_squadra3")],
+                [InlineKeyboardButton("👨‍⚖️ Arbitro", callback_data="mod_arbitro")],
+                [InlineKeyboardButton("🏛️ Sezione Arbitrale", callback_data="mod_sezione")],
+                [InlineKeyboardButton("❌ Annulla", callback_data="mod_annulla")]
+            ]
+        else:
+            # Per le partite normali
+            keyboard = [
+                [InlineKeyboardButton("📅 Data", callback_data="mod_data")],
+                [InlineKeyboardButton("🏉 Squadra 1", callback_data="mod_squadra1")],
+                [InlineKeyboardButton("🏉 Squadra 2", callback_data="mod_squadra2")],
+                [InlineKeyboardButton("🔢 Punteggio Squadra 1", callback_data="mod_punteggio1")],
+                [InlineKeyboardButton("🔢 Punteggio Squadra 2", callback_data="mod_punteggio2")],
+                [InlineKeyboardButton("🏉 Mete Squadra 1", callback_data="mod_mete1")],
+                [InlineKeyboardButton("🏉 Mete Squadra 2", callback_data="mod_mete2")],
+                [InlineKeyboardButton("👨‍⚖️ Arbitro", callback_data="mod_arbitro")],
+                [InlineKeyboardButton("🏛️ Sezione Arbitrale", callback_data="mod_sezione")],
+                [InlineKeyboardButton("❌ Annulla", callback_data="mod_annulla")]
+            ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Prepara il messaggio con i dettagli della partita
+        if partita.get('tipo_partita') == 'triangolare':
+            messaggio = f"🔄 <b>MODIFICA TRIANGOLARE</b> 🔄\n\n"
+            messaggio += f"<b>Categoria:</b> {partita.get('categoria')} {partita.get('genere')}\n"
+            messaggio += f"<b>Data:</b> {partita.get('data_partita', 'N/D')}\n"
+            messaggio += f"<b>Squadre:</b>\n"
+            messaggio += f"• {partita.get('squadra1', 'N/D')}\n"
+            messaggio += f"• {partita.get('squadra2', 'N/D')}\n"
+            messaggio += f"• {partita.get('squadra3', 'N/D')}\n"
+            messaggio += f"<b>Arbitro:</b> {partita.get('arbitro', 'N/D')}\n"
+            messaggio += f"<b>Sezione Arbitrale:</b> {partita.get('sezione_arbitrale', 'N/D')}\n\n"
+        else:
+            messaggio = f"🔄 <b>MODIFICA PARTITA</b> 🔄\n\n"
+            messaggio += f"<b>Categoria:</b> {partita.get('categoria')} {partita.get('genere')}\n"
+            messaggio += f"<b>Data:</b> {partita.get('data_partita', 'N/D')}\n"
+            messaggio += f"<b>Squadre:</b>\n"
+            messaggio += f"• {partita.get('squadra1', 'N/D')} {partita.get('punteggio1', 'N/D')}-{partita.get('punteggio2', 'N/D')} {partita.get('squadra2', 'N/D')}\n"
+            messaggio += f"<b>Mete:</b> {partita.get('mete1', 'N/D')}-{partita.get('mete2', 'N/D')}\n"
+            messaggio += f"<b>Arbitro:</b> {partita.get('arbitro', 'N/D')}\n"
+            messaggio += f"<b>Sezione Arbitrale:</b> {partita.get('sezione_arbitrale', 'N/D')}\n\n"
+        
+        messaggio += "<b>Seleziona il campo da modificare:</b>"
+        
+        await query.edit_message_text(
+            messaggio,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        
+        return SELEZIONE_CAMPO
+    
+    elif azione == "fine":
+        # L'utente ha finito di modificare
+        await query.edit_message_text(
+            "✅ <b>Modifiche completate</b>\n\n"
+            "Le modifiche sono state salvate con successo.\n\n"
+            "Usa /menu per tornare al menu principale.",
+            parse_mode='HTML'
+        )
+        
+        # Pulisci i dati utente
+        context.user_data.clear()
+        
+        return ConversationHandler.END
+    
+    # Se l'azione non è riconosciuta, termina la conversazione
+    await query.edit_message_text(
+        "⚠️ <b>Errore</b>\n\n"
+        "Azione non riconosciuta. Le modifiche sono state salvate.\n\n"
+        "Usa /menu per tornare al menu principale.",
+        parse_mode='HTML'
+    )
+    
+    # Pulisci i dati utente
+    context.user_data.clear()
+    
+    return ConversationHandler.END
+
 async def nuova_partita(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Avvia il processo di inserimento di una nuova partita con modalità wizard."""
     user_id = update.effective_user.id
@@ -5453,6 +6547,7 @@ def main() -> None:
     application.add_handler(CommandHandler("squadre", squadre_command))
     application.add_handler(CommandHandler("aggiungi_squadra", aggiungi_squadra_command))
     application.add_handler(CommandHandler("health", health_command))
+    application.add_handler(CommandHandler("gironi", gironi_command))
     
     # Aggiungi il gestore per i callback delle query inline
     application.add_handler(CallbackQueryHandler(reaction_callback, pattern=r"^(reaction:|view_reactions:)"))
@@ -5467,6 +6562,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(declassa_utente_callback, pattern=r"^declassa_"))
     application.add_handler(CallbackQueryHandler(gestione_utenti_callback, pattern=r"^(mostra_autorizzati|mostra_in_attesa|cerca_utente|rimuovi_)"))
     application.add_handler(CallbackQueryHandler(health_callback, pattern=r"^health_"))
+    application.add_handler(CallbackQueryHandler(gironi_callback, pattern=r"^gironi_"))
     
     # Aggiungi il gestore per la conversazione di inserimento nuova partita
     conv_handler = ConversationHandler(
@@ -5532,6 +6628,39 @@ def main() -> None:
         fallbacks=[CommandHandler("annulla", annulla)],
     )
     application.add_handler(conv_handler)
+    
+    # Crea il conversation handler per la modifica dei risultati
+    modifica_conv_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("modifica", modifica_risultato),
+            CallbackQueryHandler(modifica_risultato, pattern="^menu_modifica$"),
+            CallbackQueryHandler(modifica_risultato, pattern="^dashboard_modifica$")
+        ],
+        states={
+            SELEZIONE_PARTITA: [
+                CallbackQueryHandler(selezione_partita_callback, pattern="^modifica_")
+            ],
+            SELEZIONE_CAMPO: [
+                CallbackQueryHandler(selezione_campo_callback, pattern="^mod_")
+            ],
+            MODIFICA_VALORE: [
+                CallbackQueryHandler(modifica_valore_callback, pattern="^(sq_|sez_)"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, modifica_valore_callback)
+            ],
+            CONFERMA_MODIFICA: [
+                CallbackQueryHandler(conferma_modifica_callback, pattern="^mod_")
+            ]
+        },
+        fallbacks=[
+            CommandHandler("annulla", annulla),
+            CommandHandler("menu", menu_command)
+        ],
+        name="modifica_risultato",
+        persistent=False
+    )
+    
+    # Aggiungi il conversation handler per la modifica dei risultati
+    application.add_handler(modifica_conv_handler)
     
     # Aggiungi il gestore per il comando risultati
     application.add_handler(CommandHandler("risultati", risultati_command))

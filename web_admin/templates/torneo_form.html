@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}{% if torneo %}Modifica Torneo{% else %}Nuovo Torneo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            {% if torneo %}
+            <i class="fas fa-edit"></i> Modifica Torneo
+            {% else %}
+            <i class="fas fa-plus"></i> Nuovo Torneo
+            {% endif %}
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                <a href="{{ url_for('gironi') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna ai Gironi
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card mb-4">
+                <div class="card-header">
+                    {% if torneo %}
+                    <i class="fas fa-edit"></i> Modifica Torneo: {{ torneo.nome }}
+                    {% else %}
+                    <i class="fas fa-plus"></i> Inserisci i dati del nuovo torneo
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('salva_torneo', torneo_id=torneo.id if torneo else None) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="form-group">
+                            <label for="nome">Nome del Torneo</label>
+                            <input type="text" class="form-control" id="nome" name="nome" value="{{ torneo.nome if torneo else '' }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="categoria">Categoria</label>
+                            <select class="form-control" id="categoria" name="categoria" required>
+                                <option value="">Seleziona una categoria</option>
+                                {% for categoria in categorie %}
+                                <option value="{{ categoria }}" {% if torneo and torneo.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="genere">Genere</label>
+                            <select class="form-control" id="genere" name="genere" required>
+                                <option value="">Seleziona un genere</option>
+                                <option value="Maschile" {% if torneo and torneo.genere == 'Maschile' %}selected{% endif %}>Maschile</option>
+                                <option value="Femminile" {% if torneo and torneo.genere == 'Femminile' %}selected{% endif %}>Femminile</option>
+                                <option value="Misto" {% if torneo and torneo.genere == 'Misto' %}selected{% endif %}>Misto</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="data_inizio">Data Inizio</label>
+                            <input type="date" class="form-control" id="data_inizio" name="data_inizio" value="{{ torneo.data_inizio_iso if torneo else '' }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="data_fine">Data Fine</label>
+                            <input type="date" class="form-control" id="data_fine" name="data_fine" value="{{ torneo.data_fine_iso if torneo else '' }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="descrizione">Descrizione</label>
+                            <textarea class="form-control" id="descrizione" name="descrizione" rows="3">{{ torneo.descrizione if torneo else '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group text-center">
+                            <button type="submit" class="btn btn-primary">
+                                {% if torneo %}
+                                <i class="fas fa-save"></i> Salva Modifiche
+                                {% else %}
+                                <i class="fas fa-plus"></i> Crea Torneo
+                                {% endif %}
+                            </button>
+                            <a href="{{ url_for('gironi') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
