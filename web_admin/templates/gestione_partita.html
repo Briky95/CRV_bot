@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Partita{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-futbol"></i> Gestione Partita</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                <a href="{{ url_for('gestione_campionato', campionato_id=partita.campionato_id) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna al Campionato
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Informazioni Partita</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('aggiorna_partita', partita_id=partita.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="data_partita">Data</label>
+                                <input type="date" class="form-control" id="data_partita" name="data_partita" value="{{ partita.data_partita }}" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="ora">Ora</label>
+                                <input type="time" class="form-control" id="ora" name="ora" value="{{ partita.ora or '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="giornata">Giornata</label>
+                            <input type="number" class="form-control" id="giornata" name="giornata" value="{{ partita.giornata or '' }}" min="1">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="squadra_casa">Squadra Casa</label>
+                                <select class="form-control" id="squadra_casa" name="squadra_casa" required>
+                                    {% for squadra in squadre_campionato %}
+                                    <option value="{{ squadra }}" {% if squadra == partita.squadra_casa %}selected{% endif %}>{{ squadra }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="squadra_trasferta">Squadra Trasferta</label>
+                                <select class="form-control" id="squadra_trasferta" name="squadra_trasferta" required>
+                                    {% for squadra in squadre_campionato %}
+                                    <option value="{{ squadra }}" {% if squadra == partita.squadra_trasferta %}selected{% endif %}>{{ squadra }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="luogo">Luogo</label>
+                            <input type="text" class="form-control" id="luogo" name="luogo" value="{{ partita.luogo or '' }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="stato">Stato</label>
+                            <select class="form-control" id="stato" name="stato" required>
+                                <option value="programmata" {% if partita.stato == 'programmata' %}selected{% endif %}>Programmata</option>
+                                <option value="in_corso" {% if partita.stato == 'in_corso' %}selected{% endif %}>In corso</option>
+                                <option value="completata" {% if partita.stato == 'completata' %}selected{% endif %}>Completata</option>
+                                <option value="rinviata" {% if partita.stato == 'rinviata' %}selected{% endif %}>Rinviata</option>
+                                <option value="annullata" {% if partita.stato == 'annullata' %}selected{% endif %}>Annullata</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="punteggio_casa">Punteggio Casa</label>
+                                <input type="number" class="form-control" id="punteggio_casa" name="punteggio_casa" value="{{ partita.punteggio_casa or '' }}" min="0">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="punteggio_trasferta">Punteggio Trasferta</label>
+                                <input type="number" class="form-control" id="punteggio_trasferta" name="punteggio_trasferta" value="{{ partita.punteggio_trasferta or '' }}" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="mete_casa">Mete Casa</label>
+                                <input type="number" class="form-control" id="mete_casa" name="mete_casa" value="{{ partita.mete_casa or '' }}" min="0">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="mete_trasferta">Mete Trasferta</label>
+                                <input type="number" class="form-control" id="mete_trasferta" name="mete_trasferta" value="{{ partita.mete_trasferta or '' }}" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="note">Note</label>
+                            <textarea class="form-control" id="note" name="note" rows="3">{{ partita.note or '' }}</textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salva Modifiche
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-tie"></i> Designazioni Arbitrali</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('aggiungi_designazione', partita_id=partita.id) }}" class="mb-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="arbitro_id">Arbitro</label>
+                                <select class="form-control" id="arbitro_id" name="arbitro_id" required>
+                                    <option value="">Seleziona un arbitro</option>
+                                    {% for arbitro in arbitri %}
+                                    <option value="{{ arbitro.id }}">{{ arbitro.cognome }} {{ arbitro.nome }} {% if arbitro.livello %}({{ arbitro.livello }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="ruolo">Ruolo</label>
+                                <select class="form-control" id="ruolo" name="ruolo" required>
+                                    <option value="primo">Primo arbitro</option>
+                                    <option value="secondo">Secondo arbitro</option>
+                                    <option value="TMO">TMO</option>
+                                    <option value="quarto_uomo">Quarto uomo</option>
+                                    <option value="giudice_di_linea">Giudice di linea</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confermata" name="confermata" value="1">
+                                <label class="form-check-label" for="confermata">
+                                    Designazione confermata
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="note_designazione">Note</label>
+                            <textarea class="form-control" id="note_designazione" name="note" rows="2"></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Aggiungi Designazione
+                        </button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <h5>Designazioni Attuali</h5>
+                    {% if designazioni %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Arbitro</th>
+                                    <th>Ruolo</th>
+                                    <th>Stato</th>
+                                    <th>Note</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for designazione in designazioni %}
+                                <tr>
+                                    <td>{{ designazione.arbitro.cognome }} {{ designazione.arbitro.nome }}</td>
+                                    <td>
+                                        {% if designazione.ruolo == 'primo' %}
+                                        Primo arbitro
+                                        {% elif designazione.ruolo == 'secondo' %}
+                                        Secondo arbitro
+                                        {% elif designazione.ruolo == 'TMO' %}
+                                        TMO
+                                        {% elif designazione.ruolo == 'quarto_uomo' %}
+                                        Quarto uomo
+                                        {% elif designazione.ruolo == 'giudice_di_linea' %}
+                                        Giudice di linea
+                                        {% else %}
+                                        {{ designazione.ruolo }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if designazione.confermata %}
+                                        <span class="badge badge-success">Confermata</span>
+                                        {% else %}
+                                        <span class="badge badge-warning">In attesa</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ designazione.note or '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('rimuovi_designazione', designazione_id=designazione.id, partita_id=partita.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler rimuovere questa designazione?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Non ci sono designazioni arbitrali per questa partita.
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <h5>Tutor Arbitrale</h5>
+                    <form method="POST" action="{{ url_for('assegna_tutor', partita_id=partita.id) }}" class="mb-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-8">
+                                <label for="tutor_id">Tutor</label>
+                                <select class="form-control" id="tutor_id" name="tutor_id" required>
+                                    <option value="">Seleziona un tutor</option>
+                                    {% for tutor in tutors %}
+                                    <option value="{{ tutor.id }}">{{ tutor.cognome }} {{ tutor.nome }} {% if tutor.qualifica %}({{ tutor.qualifica }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-info btn-block">
+                                    <i class="fas fa-plus"></i> Assegna Tutor
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="note_tutor">Note</label>
+                            <textarea class="form-control" id="note_tutor" name="note" rows="2"></textarea>
+                        </div>
+                    </form>
+                    
+                    {% if tutor_assegnato %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Tutor</th>
+                                    <th>Note</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ tutor_assegnato.tutor.cognome }} {{ tutor_assegnato.tutor.nome }}</td>
+                                    <td>{{ tutor_assegnato.note or '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('rimuovi_tutor', tutor_partita_id=tutor_assegnato.id, partita_id=partita.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler rimuovere questo tutor dalla partita?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Non è stato assegnato alcun tutor arbitrale a questa partita.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

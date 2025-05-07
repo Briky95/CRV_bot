@@ -48,6 +48,7 @@ except ImportError:
 
 from modules.export_manager import genera_excel_riepilogo_weekend, genera_pdf_riepilogo_weekend
 from modules.db_manager import carica_utenti, salva_utenti, carica_risultati, salva_risultati, carica_squadre, salva_squadre, carica_admin_users, salva_admin_users, is_supabase_configured, migra_dati_a_supabase
+from modules.config import CATEGORIE
 from modules.gironi_manager import (
     carica_gironi, salva_gironi, crea_torneo, elimina_torneo, modifica_torneo,
     crea_girone, elimina_girone, modifica_girone, aggiungi_squadra_a_girone,
@@ -3027,6 +3028,9 @@ configure_app_for_lambda()
 
 # Migra gli utenti dal vecchio formato al nuovo all'avvio dell'app
 migra_utenti_vecchio_formato()
+
+# Importa le route per la gestione dei campionati
+from web_admin.routes.campionati_routes import *
 
 # Configurazione per l'ambiente di produzione
 def configure_app_for_production():

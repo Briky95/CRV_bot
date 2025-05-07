@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Campionato - {{ campionato.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-trophy"></i> {{ campionato.nome }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                <a href="{{ url_for('campionati') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna ai Campionati
+                </a>
+                <a href="{{ url_for('modifica_campionato', campionato_id=campionato.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-edit"></i> Modifica Campionato
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Informazioni Campionato</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Stagione:</strong> {{ stagione.nome }}</p>
+                    <p><strong>Categoria:</strong> {{ campionato.categoria }}</p>
+                    <p><strong>Genere:</strong> {{ campionato.genere }}</p>
+                    <p><strong>Formato:</strong> {{ campionato.formato }}</p>
+                    <p><strong>Descrizione:</strong> {{ campionato.descrizione or 'Nessuna descrizione' }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-users"></i> Squadre Partecipanti</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <form method="POST" action="{{ url_for('aggiungi_squadra_campionato', campionato_id=campionato.id) }}" class="form-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="form-group mr-2">
+                                    <select class="form-control" name="squadra" required>
+                                        <option value="">Seleziona una squadra</option>
+                                        {% for squadra in tutte_squadre %}
+                                        {% if squadra not in squadre_campionato %}
+                                        <option value="{{ squadra }}">{{ squadra }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Aggiungi
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <a href="{{ url_for('genera_calendario', campionato_id=campionato.id) }}" class="btn btn-warning">
+                                <i class="fas fa-calendar-alt"></i> Genera Calendario
+                            </a>
+                        </div>
+                    </div>
+                    
+                    {% if squadre_campionato %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Squadra</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for squadra in squadre_campionato %}
+                                <tr>
+                                    <td>{{ squadra }}</td>
+                                    <td>
+                                        <a href="{{ url_for('rimuovi_squadra_campionato', campionato_id=campionato.id, squadra=squadra) }}" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler rimuovere questa squadra dal campionato?')">
+                                            <i class="fas fa-trash"></i> Rimuovi
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Non ci sono squadre partecipanti a questo campionato.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Classifica -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list-ol"></i> Classifica</h5>
+                    <a href="{{ url_for('ricalcola_classifica', campionato_id=campionato.id) }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-sync-alt"></i> Ricalcola
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if classifica %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th>Squadra</th>
+                                    <th>Pt</th>
+                                    <th>PG</th>
+                                    <th>V</th>
+                                    <th>P</th>
+                                    <th>S</th>
+                                    <th>MF</th>
+                                    <th>MS</th>
+                                    <th>PF</th>
+                                    <th>PS</th>
+                                    <th>BO</th>
+                                    <th>BD</th>
+                                    <th>Diff</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pos, riga in classifica %}
+                                <tr>
+                                    <td><strong>{{ pos }}</strong></td>
+                                    <td><strong>{{ riga.squadra }}</strong></td>
+                                    <td><strong>{{ riga.punti }}</strong></td>
+                                    <td>{{ riga.partite_giocate }}</td>
+                                    <td>{{ riga.vittorie }}</td>
+                                    <td>{{ riga.pareggi }}</td>
+                                    <td>{{ riga.sconfitte }}</td>
+                                    <td>{{ riga.mete_fatte }}</td>
+                                    <td>{{ riga.mete_subite }}</td>
+                                    <td>{{ riga.punti_fatti }}</td>
+                                    <td>{{ riga.punti_subiti }}</td>
+                                    <td>{{ riga.bonus_offensivi }}</td>
+                                    <td>{{ riga.bonus_difensivi }}</td>
+                                    <td>{{ riga.punti_fatti - riga.punti_subiti }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <strong>Legenda:</strong> Pt = Punti, PG = Partite Giocate, V = Vittorie, P = Pareggi, S = Sconfitte, 
+                            MF = Mete Fatte, MS = Mete Subite, PF = Punti Fatti, PS = Punti Subiti, 
+                            BO = Bonus Offensivi, BD = Bonus Difensivi, Diff = Differenza Punti
+                        </small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Non ci sono dati di classifica disponibili.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Calendario -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Calendario</h5>
+                    <a href="{{ url_for('nuova_partita', campionato_id=campionato.id) }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-plus"></i> Nuova Partita
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if partite %}
+                    <ul class="nav nav-tabs" id="calendarioTab" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="tutte-tab" data-toggle="tab" href="#tutte" role="tab" aria-controls="tutte" aria-selected="true">Tutte</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="prossime-tab" data-toggle="tab" href="#prossime" role="tab" aria-controls="prossime" aria-selected="false">Prossime</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="completate-tab" data-toggle="tab" href="#completate" role="tab" aria-controls="completate" aria-selected="false">Completate</a>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="calendarioTabContent">
+                        <div class="tab-pane fade show active" id="tutte" role="tabpanel" aria-labelledby="tutte-tab">
+                            <div class="table-responsive mt-3">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Giornata</th>
+                                            <th>Data</th>
+                                            <th>Ora</th>
+                                            <th>Squadra Casa</th>
+                                            <th>Risultato</th>
+                                            <th>Squadra Trasferta</th>
+                                            <th>Stato</th>
+                                            <th>Arbitri/Tutor</th>
+                                            <th>Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for partita in partite %}
+                                        <tr>
+                                            <td>{{ partita.giornata or '-' }}</td>
+                                            <td>{{ partita.data_partita }}</td>
+                                            <td>{{ partita.ora or '-' }}</td>
+                                            <td>{{ partita.squadra_casa }}</td>
+                                            <td>
+                                                {% if partita.punteggio_casa is not none and partita.punteggio_trasferta is not none %}
+                                                <strong>{{ partita.punteggio_casa }} - {{ partita.punteggio_trasferta }}</strong>
+                                                {% else %}
+                                                -
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ partita.squadra_trasferta }}</td>
+                                            <td>
+                                                {% if partita.stato == 'programmata' %}
+                                                <span class="badge badge-primary">Programmata</span>
+                                                {% elif partita.stato == 'in_corso' %}
+                                                <span class="badge badge-warning">In corso</span>
+                                                {% elif partita.stato == 'completata' %}
+                                                <span class="badge badge-success">Completata</span>
+                                                {% elif partita.stato == 'rinviata' %}
+                                                <span class="badge badge-secondary">Rinviata</span>
+                                                {% elif partita.stato == 'annullata' %}
+                                                <span class="badge badge-danger">Annullata</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if partita.arbitri %}
+                                                {% for arbitro in partita.arbitri %}
+                                                <span class="badge badge-secondary">{{ arbitro.nome_completo }} ({{ arbitro.ruolo }})</span>
+                                                {% endfor %}
+                                                {% if partita.tutor %}
+                                                <br><span class="badge badge-info">Tutor: {{ partita.tutor.nome_completo }}</span>
+                                                {% endif %}
+                                                {% else %}
+                                                <span class="badge badge-warning">Non designati</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('gestione_partita', partita_id=partita.id) }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-cogs"></i>
+                                                </a>
+                                                <a href="{{ url_for('elimina_partita', partita_id=partita.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler eliminare questa partita?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="prossime" role="tabpanel" aria-labelledby="prossime-tab">
+                            <div class="table-responsive mt-3">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Giornata</th>
+                                            <th>Data</th>
+                                            <th>Ora</th>
+                                            <th>Squadra Casa</th>
+                                            <th>Squadra Trasferta</th>
+                                            <th>Arbitri</th>
+                                            <th>Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for partita in partite if partita.stato == 'programmata' %}
+                                        <tr>
+                                            <td>{{ partita.giornata or '-' }}</td>
+                                            <td>{{ partita.data_partita }}</td>
+                                            <td>{{ partita.ora or '-' }}</td>
+                                            <td>{{ partita.squadra_casa }}</td>
+                                            <td>{{ partita.squadra_trasferta }}</td>
+                                            <td>
+                                                {% if partita.arbitri %}
+                                                {% for arbitro in partita.arbitri %}
+                                                <span class="badge badge-secondary">{{ arbitro.nome_completo }} ({{ arbitro.ruolo }})</span>
+                                                {% endfor %}
+                                                {% else %}
+                                                <span class="badge badge-warning">Non designati</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('gestione_partita', partita_id=partita.id) }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-cogs"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center">Non ci sono partite programmate.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="completate" role="tabpanel" aria-labelledby="completate-tab">
+                            <div class="table-responsive mt-3">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Giornata</th>
+                                            <th>Data</th>
+                                            <th>Squadra Casa</th>
+                                            <th>Risultato</th>
+                                            <th>Squadra Trasferta</th>
+                                            <th>Mete</th>
+                                            <th>Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for partita in partite if partita.stato == 'completata' %}
+                                        <tr>
+                                            <td>{{ partita.giornata or '-' }}</td>
+                                            <td>{{ partita.data_partita }}</td>
+                                            <td>{{ partita.squadra_casa }}</td>
+                                            <td><strong>{{ partita.punteggio_casa }} - {{ partita.punteggio_trasferta }}</strong></td>
+                                            <td>{{ partita.squadra_trasferta }}</td>
+                                            <td>{{ partita.mete_casa or 0 }} - {{ partita.mete_trasferta or 0 }}</td>
+                                            <td>
+                                                <a href="{{ url_for('gestione_partita', partita_id=partita.id) }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-cogs"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center">Non ci sono partite completate.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Non ci sono partite in questo campionato.
+                        <a href="{{ url_for('nuova_partita', campionato_id=campionato.id) }}" class="alert-link">Aggiungi una partita</a> o
+                        <a href="{{ url_for('genera_calendario', campionato_id=campionato.id) }}" class="alert-link">genera il calendario</a>.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

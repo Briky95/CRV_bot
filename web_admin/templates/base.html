@@ -166,6 +166,21 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if 'campionati' in request.path %}active{% endif %}" href="{{ url_for('campionati') }}">
+                                <i class="fas fa-medal"></i> Gestione Campionati
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'arbitri' in request.path %}active{% endif %}" href="{{ url_for('arbitri') }}">
+                                <i class="fas fa-user-tie"></i> Gestione Arbitri
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'tutor_arbitrali' in request.path %}active{% endif %}" href="{{ url_for('tutor_arbitrali') }}">
+                                <i class="fas fa-chalkboard-teacher"></i> Tutor Arbitrali
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {% if 'quiz' in request.path %}active{% endif %}" href="{{ url_for('quizzes') }}">
                                 <i class="fas fa-question-circle"></i> Quiz Educativi
                             </a>

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{% if tutor %}Modifica Tutor{% else %}Nuovo Tutor{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            {% if tutor %}
+            <i class="fas fa-edit"></i> Modifica Tutor
+            {% else %}
+            <i class="fas fa-plus"></i> Nuovo Tutor
+            {% endif %}
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                <a href="{{ url_for('tutor_arbitrali') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna ai Tutor
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card mb-4">
+                <div class="card-header">
+                    {% if tutor %}
+                    <i class="fas fa-edit"></i> Modifica Tutor: {{ tutor.cognome }} {{ tutor.nome }}
+                    {% else %}
+                    <i class="fas fa-plus"></i> Inserisci i dati del nuovo tutor
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('salva_tutor', tutor_id=tutor.id if tutor else None) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="nome">Nome</label>
+                                <input type="text" class="form-control" id="nome" name="nome" value="{{ tutor.nome if tutor else '' }}" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="cognome">Cognome</label>
+                                <input type="text" class="form-control" id="cognome" name="cognome" value="{{ tutor.cognome if tutor else '' }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="email">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ tutor.email if tutor else '' }}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="telefono">Telefono</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono" value="{{ tutor.telefono if tutor else '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="qualifica">Qualifica</label>
+                            <select class="form-control" id="qualifica" name="qualifica">
+                                <option value="">Seleziona una qualifica</option>
+                                <option value="regionale" {% if tutor and tutor.qualifica == 'regionale' %}selected{% endif %}>Regionale</option>
+                                <option value="nazionale" {% if tutor and tutor.qualifica == 'nazionale' %}selected{% endif %}>Nazionale</option>
+                                <option value="internazionale" {% if tutor and tutor.qualifica == 'internazionale' %}selected{% endif %}>Internazionale</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="attivo" name="attivo" value="1" {% if tutor is none or tutor.attivo %}checked{% endif %}>
+                                <label class="form-check-label" for="attivo">
+                                    Tutor attivo
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="note">Note</label>
+                            <textarea class="form-control" id="note" name="note" rows="3">{{ tutor.note if tutor else '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group text-center">
+                            <button type="submit" class="btn btn-primary">
+                                {% if tutor %}
+                                <i class="fas fa-save"></i> Salva Modifiche
+                                {% else %}
+                                <i class="fas fa-plus"></i> Crea Tutor
+                                {% endif %}
+                            </button>
+                            <a href="{{ url_for('tutor_arbitrali') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{% if campionato %}Modifica Campionato{% else %}Nuovo Campionato{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            {% if campionato %}
+            <i class="fas fa-edit"></i> Modifica Campionato
+            {% else %}
+            <i class="fas fa-plus"></i> Nuovo Campionato
+            {% endif %}
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                <a href="{{ url_for('campionati') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna ai Campionati
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card mb-4">
+                <div class="card-header">
+                    {% if campionato %}
+                    <i class="fas fa-edit"></i> Modifica Campionato: {{ campionato.nome }}
+                    {% else %}
+                    <i class="fas fa-plus"></i> Inserisci i dati del nuovo campionato
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('salva_campionato', campionato_id=campionato.id if campionato else None) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        {% if not campionato %}
+                        <div class="form-group">
+                            <label for="stagione_id">Stagione</label>
+                            <select class="form-control" id="stagione_id" name="stagione_id" required>
+                                <option value="">Seleziona una stagione</option>
+                                {% for s in stagioni %}
+                                <option value="{{ s.id }}" {% if stagione_attiva and s.id == stagione_attiva.id %}selected{% endif %}>{{ s.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="nome">Nome del Campionato</label>
+                            <input type="text" class="form-control" id="nome" name="nome" value="{{ campionato.nome if campionato else '' }}" required>
+                            <small class="form-text text-muted">Es. "Serie A", "Coppa Italia", ecc.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="categoria">Categoria</label>
+                            <select class="form-control" id="categoria" name="categoria" required>
+                                <option value="">Seleziona una categoria</option>
+                                {% for categoria in categorie %}
+                                <option value="{{ categoria }}" {% if campionato and campionato.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="genere">Genere</label>
+                            <select class="form-control" id="genere" name="genere" required>
+                                <option value="">Seleziona un genere</option>
+                                <option value="Maschile" {% if campionato and campionato.genere == 'Maschile' %}selected{% endif %}>Maschile</option>
+                                <option value="Femminile" {% if campionato and campionato.genere == 'Femminile' %}selected{% endif %}>Femminile</option>
+                                <option value="Misto" {% if campionato and campionato.genere == 'Misto' %}selected{% endif %}>Misto</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="formato">Formato</label>
+                            <select class="form-control" id="formato" name="formato" required>
+                                <option value="">Seleziona un formato</option>
+                                <option value="girone" {% if campionato and campionato.formato == 'girone' %}selected{% endif %}>Girone all'italiana</option>
+                                <option value="eliminazione" {% if campionato and campionato.formato == 'eliminazione' %}selected{% endif %}>Eliminazione diretta</option>
+                                <option value="misto" {% if campionato and campionato.formato == 'misto' %}selected{% endif %}>Formato misto</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="descrizione">Descrizione</label>
+                            <textarea class="form-control" id="descrizione" name="descrizione" rows="3">{{ campionato.descrizione if campionato else '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group text-center">
+                            <button type="submit" class="btn btn-primary">
+                                {% if campionato %}
+                                <i class="fas fa-save"></i> Salva Modifiche
+                                {% else %}
+                                <i class="fas fa-plus"></i> Crea Campionato
+                                {% endif %}
+                            </button>
+                            <a href="{{ url_for('campionati') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
