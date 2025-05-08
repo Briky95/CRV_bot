@@ -17,6 +17,12 @@ _cache = {
     'last_load_arbitri': 0
 }
 
+# Importa le funzioni per la gestione dei tutor arbitrali
+from modules.tutor_manager import (
+    carica_tutor_arbitrali, get_tutor, crea_tutor, aggiorna_tutor, elimina_tutor,
+    get_tutor_partita, assegna_tutor_partita, rimuovi_tutor_partita
+)
+
 # Tempo di validità della cache in secondi (5 secondi)
 CACHE_TTL = 5
 

@@ -274,7 +274,7 @@
                                             <th>Ora</th>
                                             <th>Squadra Casa</th>
                                             <th>Squadra Trasferta</th>
-                                            <th>Arbitri</th>
+                                            <th>Arbitri/Tutor</th>
                                             <th>Azioni</th>
                                         </tr>
                                     </thead>
@@ -291,6 +291,9 @@
                                                 {% for arbitro in partita.arbitri %}
                                                 <span class="badge badge-secondary">{{ arbitro.nome_completo }} ({{ arbitro.ruolo }})</span>
                                                 {% endfor %}
+                                                {% if partita.tutor %}
+                                                <br><span class="badge badge-info">Tutor: {{ partita.tutor.nome_completo }}</span>
+                                                {% endif %}
                                                 {% else %}
                                                 <span class="badge badge-warning">Non designati</span>
                                                 {% endif %}

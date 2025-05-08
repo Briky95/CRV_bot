@@ -440,16 +440,11 @@ def nuova_partita(campionato_id):
         # Carica le squadre del campionato
         squadre_campionato = carica_squadre_campionato(campionato_id)
         
-        # Carica gli arbitri
-        arbitri = carica_arbitri()
-        
-        # Filtra solo gli arbitri attivi
-        arbitri = [a for a in arbitri if a.get('attivo')]
+        # Non carichiamo più tutti gli arbitri qui, verranno caricati tramite API
         
         return render_template('gestione_partita.html',
                               partita=partita,
                               squadre_campionato=squadre_campionato,
-                              arbitri=arbitri,
                               designazioni=[])
     except Exception as e:
         app.logger.error(f"Errore nella pagina nuova partita: {e}")
@@ -471,11 +466,7 @@ def gestione_partita(partita_id):
         # Carica le squadre del campionato
         squadre_campionato = carica_squadre_campionato(partita.get('campionato_id'))
         
-        # Carica gli arbitri
-        arbitri = carica_arbitri()
-        
-        # Filtra solo gli arbitri attivi
-        arbitri = [a for a in arbitri if a.get('attivo')]
+        # Non carichiamo più tutti gli arbitri qui, verranno caricati tramite API
         
         # Carica le designazioni arbitrali
         designazioni_raw = carica_designazioni_partita(partita_id)
@@ -488,11 +479,7 @@ def gestione_partita(partita_id):
                 designazione['arbitro'] = arbitro
                 designazioni.append(designazione)
         
-        # Carica i tutor arbitrali
-        tutors = carica_tutor_arbitrali()
-        
-        # Filtra solo i tutor attivi
-        tutors = [t for t in tutors if t.get('attivo')]
+        # Non carichiamo più tutti i tutor qui, verranno caricati tramite API
         
         # Carica il tutor assegnato alla partita
         tutor_partita = get_tutor_partita(partita_id)
@@ -507,9 +494,7 @@ def gestione_partita(partita_id):
         return render_template('gestione_partita.html',
                               partita=partita,
                               squadre_campionato=squadre_campionato,
-                              arbitri=arbitri,
                               designazioni=designazioni,
-                              tutors=tutors,
                               tutor_assegnato=tutor_assegnato)
     except Exception as e:
         app.logger.error(f"Errore nella pagina gestione partita: {e}")

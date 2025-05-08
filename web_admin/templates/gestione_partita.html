@@ -2,6 +2,25 @@
 
 {% block title %}Gestione Partita{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+    .select2-result-arbitro__info .badge,
+    .select2-result-tutor__info .badge {
+        margin-right: 5px;
+    }
+    
+    .alert-warning {
+        font-size: 0.9rem;
+    }
+    
+    .alert-warning ul {
+        margin-top: 10px;
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -123,12 +142,13 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label for="arbitro_id">Arbitro</label>
-                                <select class="form-control" id="arbitro_id" name="arbitro_id" required>
+                                <select class="form-control select2-arbitri" id="arbitro_id" name="arbitro_id" required>
                                     <option value="">Seleziona un arbitro</option>
-                                    {% for arbitro in arbitri %}
-                                    <option value="{{ arbitro.id }}">{{ arbitro.cognome }} {{ arbitro.nome }} {% if arbitro.livello %}({{ arbitro.livello }}){% endif %}</option>
-                                    {% endfor %}
                                 </select>
+                                <div id="avviso-arbitro" class="alert alert-warning mt-2" style="display: none;">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Attenzione!</strong> Questo arbitro è già impegnato in un'altra partita nella stessa data:
+                                    <div id="impegni-arbitro"></div>
+                                </div>
                             </div>
                             <div class="form-group col-md-6">
                                 <label for="ruolo">Ruolo</label>
@@ -228,12 +248,13 @@
                         <div class="form-row">
                             <div class="form-group col-md-8">
                                 <label for="tutor_id">Tutor</label>
-                                <select class="form-control" id="tutor_id" name="tutor_id" required>
+                                <select class="form-control select2-tutor" id="tutor_id" name="tutor_id" required>
                                     <option value="">Seleziona un tutor</option>
-                                    {% for tutor in tutors %}
-                                    <option value="{{ tutor.id }}">{{ tutor.cognome }} {{ tutor.nome }} {% if tutor.qualifica %}({{ tutor.qualifica }}){% endif %}</option>
-                                    {% endfor %}
                                 </select>
+                                <div id="avviso-tutor" class="alert alert-warning mt-2" style="display: none;">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Attenzione!</strong> Questo tutor è già impegnato in un'altra partita nella stessa data:
+                                    <div id="impegni-tutor"></div>
+                                </div>
                             </div>
                             <div class="form-group col-md-4">
                                 <label>&nbsp;</label>
@@ -282,4 +303,86 @@
         </div>
     </div>
 </div>
+
+<script>
+$(document).ready(function() {
+    // Ottieni la data della partita
+    var dataPartita = $('#data_partita').val();
+    var partitaId = {{ partita.id or 'null' }};
+    
+    // Funzione per verificare la disponibilità dell'arbitro
+    function verificaDisponibilitaArbitro(arbitroId) {
+        if (!arbitroId || !dataPartita) return;
+        
+        $.ajax({
+            url: '{{ url_for("api_verifica_disponibilita_arbitro") }}',
+            data: {
+                arbitro_id: arbitroId,
+                data_partita: dataPartita,
+                partita_id: partitaId
+            },
+            success: function(response) {
+                if (!response.disponibile) {
+                    $('#impegni-arbitro').html(response.impegni_html);
+                    $('#avviso-arbitro').show();
+                } else {
+                    $('#avviso-arbitro').hide();
+                }
+            },
+            error: function() {
+                $('#avviso-arbitro').hide();
+            }
+        });
+    }
+    
+    // Funzione per verificare la disponibilità del tutor
+    function verificaDisponibilitaTutor(tutorId) {
+        if (!tutorId || !dataPartita) return;
+        
+        $.ajax({
+            url: '{{ url_for("api_verifica_disponibilita_tutor") }}',
+            data: {
+                tutor_id: tutorId,
+                data_partita: dataPartita,
+                partita_id: partitaId
+            },
+            success: function(response) {
+                if (!response.disponibile) {
+                    $('#impegni-tutor').html(response.impegni_html);
+                    $('#avviso-tutor').show();
+                } else {
+                    $('#avviso-tutor').hide();
+                }
+            },
+            error: function() {
+                $('#avviso-tutor').hide();
+            }
+        });
+    }
+    
+    // Evento change per la data della partita
+    $('#data_partita').on('change', function() {
+        dataPartita = $(this).val();
+        
+        // Verifica la disponibilità dell'arbitro e del tutor selezionati
+        var arbitroId = $('#arbitro_id').val();
+        var tutorId = $('#tutor_id').val();
+        
+        if (arbitroId) verificaDisponibilitaArbitro(arbitroId);
+        if (tutorId) verificaDisponibilitaTutor(tutorId);
+    });
+    
+    // Evento change per la selezione dell'arbitro
+    $('#arbitro_id').on('change', function() {
+        var arbitroId = $(this).val();
+        verificaDisponibilitaArbitro(arbitroId);
+    });
+    
+    // Evento change per la selezione del tutor
+    $('#tutor_id').on('change', function() {
+        var tutorId = $(this).val();
+        verificaDisponibilitaTutor(tutorId);
+    });
+});
+</script>
 {% endblock %}

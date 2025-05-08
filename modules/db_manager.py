@@ -9,6 +9,25 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
 from dotenv import load_dotenv
 
+def format_date(date_str: str) -> str:
+    """
+    Formatta una data dal formato ISO (YYYY-MM-DD) al formato italiano (DD/MM/YYYY).
+    
+    Args:
+        date_str: Data in formato ISO
+        
+    Returns:
+        Data in formato italiano
+    """
+    if not date_str:
+        return ""
+    
+    try:
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        return date_obj.strftime('%d/%m/%Y')
+    except:
+        return date_str
+
 # Carica le variabili d'ambiente
 load_dotenv()
 
